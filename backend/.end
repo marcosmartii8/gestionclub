@@ -1,0 +1,2 @@
+PORT=4000
+DATABASE_URL=postgresql://Marcosmartii8:28012004Mmc@localhost:5432/BaseTuGestClub

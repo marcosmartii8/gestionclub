@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ver Usuarios - tuGestClub</title>
+    <link rel="stylesheet" href="css/ver_usuarios.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.13/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Usuarios Registrados</div>
+        <div class="table-container">
+            <table id="user-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">Nombre de Usuario</th>
+                        <th onclick="sortTable(1)">Nombre Completo</th>
+                        <th onclick="sortTable(2)">Correo Electrónico</th>
+                        <th onclick="sortTable(3)">DNI</th>
+                        <th onclick="sortTable(4)">Dirección</th>
+                        <th onclick="sortTable(5)">Kilómetros</th>
+                        <th onclick="sortTable(6)">Contraseña</th>
+                        <th onclick="sortTable(7)">Código del Club</th>
+                        <th onclick="sortTable(8)">Rol</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="user-table-body">
+                    <!-- Filas generadas dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+        <button class="back-button" onclick="redirectToPersonalizedInterface()">Atrás</button>
+        <button class="export-button" onclick="exportToExcel()">Exportar a Excel</button>
+    </div>
+    <script src="js/ver_usuarios.js"></script>
+    <script>
+    if (localStorage.getItem('clubCode') === '82801') {
+        document.body.style.background = 'yellow';
+        document.body.style.color = '#333';
+    }
+    if (localStorage.getItem('clubCode') === '1234') {
+        document.body.style.background = '#ffcccc';
+        document.body.style.color = '#333';
+    }
+    </script>
+</body>
+</html>

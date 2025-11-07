@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios - Líder</title>
+    <link rel="stylesheet" href="css/gestion_usuarios.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Gestión de Usuarios Registrados</div>
+        <!-- Filtro de búsqueda -->
+        <div class="filter-container">
+            <label for="club-code-filter">Filtrar por Código del Club:</label>
+            <input type="text" id="club-code-filter" placeholder="Introduce el código del club" oninput="filterByClubCode()">
+        </div>
+        <div class="table-container">
+            <table id="user-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">Nombre de Usuario</th>
+                        <th onclick="sortTable(1)">Nombre Completo</th>
+                        <th onclick="sortTable(2)">Correo Electrónico</th>
+                        <th onclick="sortTable(3)">DNI</th>
+                        <th onclick="sortTable(4)">Dirección</th>
+                        <th onclick="sortTable(5)">Número de Teléfono</th>
+                        <th onclick="sortTable(6)">Kilómetros</th>
+                        <th onclick="sortTable(7)">Rol</th>
+                        <th onclick="sortTable(8)">Código del Club</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="user-table-body"></tbody>
+            </table>
+        </div>
+        <button class="back-button" onclick="window.location.href='interfaz_lider.html'">Atrás</button>
+        <button class="export-button" onclick="exportToExcel()">Exportar a Excel</button>
+    </div>
+    <script src="js/gestion_usuarios.js"></script>
+</body>
+</html>

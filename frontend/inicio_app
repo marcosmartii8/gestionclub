@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tuGestClub</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #1b5e20, #004d40); /* Darker green gradient */
+            font-family: 'Roboto', sans-serif;
+            color: #333;
+        }
+        .loading-container {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-container">
+        <div class="title">tuGestClub</div>
+        <div class="spinner"></div>
+        <div style="margin-top: 20px;">
+            <label for="background-upload" style="color: #555;">Subir fondo de pantalla (PNG):</label>
+            <input type="file" id="background-upload" accept="image/png" style="margin-top: 10px;">
+        </div>
+    </div>
+    <script>
+        // Redirigir después de 5 segundos
+        setTimeout(() => {
+            window.location.href = "inicio_app1.html"; // Cambiar a la página de inicio_app1
+        }, 5000);
+
+        document.getElementById('background-upload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.body.style.backgroundImage = `url('${e.target.result}')`;
+                    localStorage.setItem('backgroundImage', e.target.result); // Save to localStorage
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Load saved background image on page load
+        const savedBackground = localStorage.getItem('backgroundImage');
+        if (savedBackground) {
+            document.body.style.backgroundImage = `url('${savedBackground}')`;
+        }
+    </script>
+</body>
+</html>

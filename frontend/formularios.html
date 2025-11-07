@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario - tuGestClub</title>
+    <link rel="stylesheet" href="css/formularios.css">
+</head>
+<body>
+    <div class="form-container">
+        <h2 id="user-title">Formulario Mensual</h2>
+        <button class="form-button" onclick="toggleForm()">Formulario</button>
+        <table class="data-table" id="dataTable">
+            <thead>
+                <tr>
+                    <th>Año</th>
+                    <th>Mes</th>
+                    <th>Asistencia entrenamientos y partidos</th>
+                    <th>Desplazamientos fuera del club</th>
+                    <th>Detalles de partidos</th>
+                    <th>Gasto Transporte</th>
+                    <th>Detalles Gasto Transporte</th>
+                    <th>Gasto en Dietas</th>
+                    <th>Detalles Gasto en Dietas</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <button class="back-button" onclick="redirectToPersonalizedInterface()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Volver
+    </button>
+
+    <script src="js/formularios.js"></script>
+    <script>
+    if (localStorage.getItem('clubCode') === '82801') {
+        document.body.style.background = 'yellow';
+        document.body.style.color = '#333';
+    }
+    if (localStorage.getItem('clubCode') === '1234') {
+        document.body.style.background = '#ffcccc';
+        document.body.style.color = '#333';
+    }
+    </script>
+</body>
+</html>

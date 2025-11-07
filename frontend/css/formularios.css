@@ -1,0 +1,172 @@
+body {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(135deg, #004d40, #1b5e20);
+    color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* Botón del formulario */
+.form-button {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #26a69a;
+    color: #fff;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+.form-button:hover {
+    background-color: #00796b;
+    transform: scale(1.05);
+}
+
+/* Tabla de datos */
+.data-table {
+    margin-top: 20px;
+    width: 90%;
+    border-collapse: collapse;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+.data-table th {
+    background-color: #004d40;
+    color: #fff;
+    padding: 12px;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+.data-table td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+    font-size: 14px;
+    color: #000;
+    opacity: 0.9;
+}
+.data-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+.data-table tr:hover {
+    background-color: #e0f2f1;
+}
+
+/* Botones de acción */
+.action-buttons button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+.edit-button {
+    background-color: #ffca28;
+    color: #000;
+}
+.edit-button:hover {
+    background-color: #ffa000;
+    transform: scale(1.1);
+}
+.delete-button {
+    background-color: #e53935;
+    color: #fff;
+}
+.delete-button:hover {
+    background-color: #b71c1c;
+    transform: scale(1.1);
+}
+
+/* Botón de volver */
+.back-button {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background-color: #26a69a;
+    color: #fff;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+.back-button:hover {
+    background-color: #00796b;
+    transform: scale(1.05);
+}
+
+/* Ventana emergente del formulario */
+.form-widget {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #ffffff, #e0f7fa);
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+    padding: 40px;
+    width: 90%;
+    max-width: 800px;
+    height: 85%;
+    max-height: 90%;
+    display: none;
+    animation: popIn 0.3s ease;
+    overflow-y: auto;
+    color: black;
+}
+.form-widget h2 {
+    text-align: center;
+    color: #004d40;
+    margin-bottom: 20px;
+}
+.form-widget form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.form-widget form label {
+    font-weight: bold;
+    color: black;
+}
+.form-widget form input,
+.form-widget form select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 100%;
+}
+.form-widget form button {
+    padding: 12px;
+    background-color: #26a69a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+}
+.form-widget form button:hover {
+    background-color: #00796b;
+    transform: scale(1.05);
+}

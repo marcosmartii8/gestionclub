@@ -1,0 +1,103 @@
+body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #1b5e20, #004d40); /* Darker green gradient */
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 48px 32px 36px 32px;
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: 22px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.18);
+            max-width: 480px;
+            margin: 0 auto;
+        }
+        .logo-circle {
+            width: 140px;
+            height: 140px;
+            /* Cambiar el color del borde al mismo verde que el texto de bienvenida (#004d40) */
+            background: linear-gradient(135deg, #004d40 100%);
+            border-radius: 50%;
+            margin: 0 auto 18px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px #26a69a33;
+            overflow: hidden;
+            border: 4px solid #004d40;
+        }
+        .logo-circle img {
+            width: 135px;
+            height: 135px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: none;
+            outline: none;
+            box-shadow: none;
+            display: block;
+        }
+        .title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            color: #004d40;
+            letter-spacing: 1.5px;
+            text-shadow: 0 2px 8px #b2dfdb80;
+        }
+        .description {
+            font-size: 1.25rem;
+            margin-bottom: 2.2rem;
+            color: #388e3c;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        .role-buttons {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin-top: 18px;
+        }
+        .role-button {
+            padding: 16px 38px;
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(90deg, #26a69a 60%, #004d40 100%);
+            border: none;
+            border-radius: 12px;
+            text-decoration: none;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(38,166,154,0.15);
+            transition: background 0.2s, transform 0.2s;
+        }
+        .role-button:hover {
+            background: linear-gradient(90deg, #004d40 60%, #26a69a 100%);
+            transform: scale(1.06);
+        }
+        .footer {
+            margin-top: 38px;
+            font-size: 1rem;
+            color: #888;
+            letter-spacing: 0.5px;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 18px 2vw 18px 2vw;
+                max-width: 98vw;
+            }
+            .title {
+                font-size: 1.5rem;
+            }
+            .role-button {
+                font-size: 1rem;
+                padding: 10px 18px;
+            }
+        }

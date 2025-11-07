@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizar Formularios</title>
+    <link rel="stylesheet" href="css/visualizar_formularios.css">
+</head>
+<body>
+    <div class="container">
+        <div class="title">Formularios Registrados</div>
+        <div class="filters">
+            <label for="filter-year">Año:</label>
+            <select id="filter-year">
+                <option value="all">Todos</option>
+            </select>
+            <label for="filter-month">Mes:</label>
+            <select id="filter-month">
+                <option value="all">Todos</option>
+                <option value="0">Enero</option>
+                <option value="1">Febrero</option>
+                <option value="2">Marzo</option>
+                <option value="3">Abril</option>
+                <option value="4">Mayo</option>
+                <option value="5">Junio</option>
+                <option value="6">Julio</option>
+                <option value="7">Agosto</option>
+                <option value="8">Septiembre</option>
+                <option value="9">Octubre</option>
+                <option value="10">Noviembre</option>
+                <option value="11">Diciembre</option>
+            </select>
+            <label for="filter-username">Usuario:</label>
+            <select id="filter-username">
+                <option value="all">Todos</option>
+            </select>
+            <button onclick="applyFilters()">Filtrar</button>
+        </div>
+        <div class="table-wrapper">
+            <table id="forms-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">Usuario</th>
+                        <th onclick="sortTable(1)">Año</th>
+                        <th onclick="sortTable(2)">Mes</th>
+                        <th onclick="sortTable(3)">Asistencia</th>
+                        <th onclick="sortTable(4)">Desplazamientos</th>
+                        <th onclick="sortTable(5)">Detalles Desplazamientos</th>
+                        <th onclick="sortTable(6)">Gastos Transporte</th>
+                        <th onclick="sortTable(7)">Detalles Transporte</th>
+                        <th onclick="sortTable(8)">Dietas</th>
+                        <th onclick="sortTable(9)">Detalles Dietas</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="forms-table-body"></tbody>
+            </table>
+        </div>
+        <button class="back-button" onclick="goBack()">Atrás</button>
+    </div>
+    <script src="js/visualizar_formularios.js"></script>
+    <script>
+    if (localStorage.getItem('clubCode') === '82801') {
+        document.body.style.background = 'yellow';
+        document.body.style.color = '#333';
+    }
+    if (localStorage.getItem('clubCode') === '1234') {
+        document.body.style.background = '#ffcccc';
+        document.body.style.color = '#333';
+    }
+    </script>
+</body>
+</html>

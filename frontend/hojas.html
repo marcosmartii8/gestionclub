@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hojas - tuGestClub</title>
+    <link rel="stylesheet" href="css/hojas.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Hojas</div>
+        <div class="select-group">
+            <div class="select-block">
+                <label for="user-select">Selecciona un usuario:</label>
+                <select id="user-select">
+                    <option value="">-- Selecciona usuario --</option>
+                </select>
+            </div>
+            <div class="select-block" id="forms-section" style="display:none;">
+                <label for="form-select">Selecciona un formulario:</label>
+                <select id="form-select">
+                    <option value="">-- Selecciona formulario --</option>
+                </select>
+            </div>
+        </div>
+        <div id="form-details"></div>
+        <button id="generate-pdf-btn" class="action-btn" style="display:none;">Generar PDF</button>
+        <button class="back-button" onclick="goBack()">Volver</button>
+    </div>
+    <script src="js/hojas.js"></script>
+    <script>
+    if (localStorage.getItem('clubCode') === '82801') {
+        document.body.style.background = 'yellow';
+        document.body.style.color = '#333';
+    }
+    if (localStorage.getItem('clubCode') === '1234') {
+        document.body.style.background = '#ffcccc';
+        document.body.style.color = '#333';
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+body {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(135deg, #004d40, #1b5e20);
+    color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.container {
+    width: 90%;
+    max-width: 1200px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    overflow: hidden;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #2c3e50;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.table-container {
+    overflow: auto;
+    max-height: 400px;
+}
+
+table {
+    width: 100%;
+    min-width: 1200px;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+table th, table td {
+    padding: 12px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+table th {
+    background-color: #004d40;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+table td {
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+table tr:nth-child(even) td {
+    background-color: #eaf2f8;
+}
+
+table tr:hover td {
+    background-color: #d6eaf8;
+}
+
+.back-button, .export-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.back-button {
+    background-color: #e74c3c;
+}
+
+.back-button:hover {
+    background-color: #c0392b;
+    transform: scale(1.05);
+}
+
+.export-button {
+    background-color: #3498db;
+}
+
+.export-button:hover {
+    background-color: #2980b9;
+    transform: scale(1.05);
+}

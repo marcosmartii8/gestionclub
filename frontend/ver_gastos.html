@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ver Gastos - tuGestClub</title>
+    <link rel="stylesheet" href="css/ver_gastos.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Gastos Totales por Usuario y Formulario</h1>
+        <div class="filtros-container">
+            <div>
+                <label for="filtro-usuario"><b>Filtrar por usuario:</b></label>
+                <select id="filtro-usuario">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div>
+                <label for="filtro-mes"><b>Filtrar por mes:</b></label>
+                <select id="filtro-mes">
+                    <option value="">Todos</option>
+                    <option value="0">enero</option>
+                    <option value="1">febrero</option>
+                    <option value="2">marzo</option>
+                    <option value="3">abril</option>
+                    <option value="4">mayo</option>
+                    <option value="5">junio</option>
+                    <option value="6">julio</option>
+                    <option value="7">agosto</option>
+                    <option value="8">septiembre</option>
+                    <option value="9">octubre</option>
+                    <option value="10">noviembre</option>
+                    <option value="11">diciembre</option>
+                </select>
+            </div>
+            <div>
+                <label for="filtro-anio"><b>Filtrar por año:</b></label>
+                <select id="filtro-anio">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+        </div>
+        <div id="gastos-table"></div>
+        <button class="back-button" onclick="goBack()">Volver</button>
+    </div>
+    <script src="js/ver_gastos.js"></script>
+    <script>
+    if (localStorage.getItem('clubCode') === '82801') {
+        document.body.style.background = 'yellow';
+        document.body.style.color = '#333';
+    }
+    if (localStorage.getItem('clubCode') === '1234') {
+        document.body.style.background = '#ffcccc';
+        document.body.style.color = '#333';
+    }
+    </script>
+</body>
+</html>

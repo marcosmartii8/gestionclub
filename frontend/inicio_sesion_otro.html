@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio de Sesión - tuGestClub</title>
+    <link rel="stylesheet" href="css/inicio_sesion_otro.css">
+</head>
+<body>
+    <div class="container">
+        <div class="title">Inicio de Sesión</div>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">Nombre de Usuario</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="button">Iniciar Sesión</button>
+            <a href="inicio_app1.html" class="back-to-home">Volver</a>
+        </form>
+    </div>
+    <script src="js/inicio_sesion_otro.js"></script>
+    <script>
+document.getElementById('login-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const userData = JSON.parse(localStorage.getItem(username));
+    if (userData && userData.password === password) {
+        localStorage.setItem('clubCode', userData.clubCode || '');
+        alert("Inicio de sesión exitoso.");
+        window.location.href = `interfaz_personalizada.html?nombre=${encodeURIComponent(userData.username)}`;
+    } else {
+        alert("Nombre de usuario o contraseña incorrectos. Por favor, inténtalo de nuevo.");
+    }
+});
+</script>
+</body>
+</html>
