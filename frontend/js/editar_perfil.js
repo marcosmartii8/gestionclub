@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         const res = await fetch(`/api/users/${encodeURIComponent(originalUsername)}`);
         if (res.ok) {
             userData = await res.json();
+            // sincronizar copia local con servidor
+            try { localStorage.setItem(userData.username || originalUsername, JSON.stringify(userData)); } catch(e) {}
         } else {
             throw new Error('API user not found');
         }

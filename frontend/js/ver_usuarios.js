@@ -24,11 +24,23 @@ async function loadUsers() {
     const tableBody = document.getElementById('user-table-body');
     tableBody.innerHTML = '';
 
+    // obtener el clubCode del usuario actual (guardado en login)
+    const currentClub = localStorage.getItem('clubCode') || '';
+
     try {
         const res = await fetch('/api/users');
         if (!res.ok) throw new Error('API users error');
-        const users = await res.json();
+        let users = await res.json();
+
+        // Filtrar por clubCode: solo mostrar usuarios del mismo club
+        users = users.filter(u => (u.clubcode || u.clubCode || '') === currentClub);
+
+        // Sincronizar con localStorage: actualizar entrada por usuario y lista usuarios_registrados
+        const usuariosLocal = [];
         users.forEach(user => {
+            // store canonical object
+            try { localStorage.setItem(user.username, JSON.stringify(user)); } catch(e) { /* ignore storage errors */ }
+            usuariosLocal.push(user);
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${user.username || ''}</td>
@@ -47,14 +59,18 @@ async function loadUsers() {
             `;
             tableBody.appendChild(row);
         });
+        try { localStorage.setItem('usuarios_registrados', JSON.stringify(usuariosLocal)); } catch(e) {}
+        return;
     } catch (err) {
-        // Fallback localStorage
+        // Fallback localStorage: mostrar solo usuarios del mismo club
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if (!key) continue;
             try {
                 const userData = JSON.parse(localStorage.getItem(key));
                 if (userData && userData.username) {
+                    const userClub = (userData.clubCode || userData.clubcode || '');
+                    if (userClub !== currentClub) continue; // <-- filtrado aquí
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${userData.username || ''}</td>
@@ -90,6 +106,11 @@ async function deleteUser(encodedKey) {
     try {
         const res = await fetch(`/api/users/${encodeURIComponent(key)}`, { method: 'DELETE' });
         if (res.ok) {
+            // sincronizar localStorage tras borrado exitoso
+            localStorage.removeItem(key);
+            let usuarios = JSON.parse(localStorage.getItem('usuarios_registrados') || '[]');
+            usuarios = usuarios.filter(u => u.username !== key);
+            try { localStorage.setItem('usuarios_registrados', JSON.stringify(usuarios)); } catch(e) {}
             alert('Usuario borrado.');
             loadUsers();
             return;
@@ -99,6 +120,9 @@ async function deleteUser(encodedKey) {
     } catch (err) {
         // Fallback localStorage
         localStorage.removeItem(key);
+        let usuarios = JSON.parse(localStorage.getItem('usuarios_registrados') || '[]');
+        usuarios = usuarios.filter(u => u.username !== key);
+        try { localStorage.setItem('usuarios_registrados', JSON.stringify(usuarios)); } catch(e) {}
         alert('Usuario borrado (fallback).');
         loadUsers();
     }

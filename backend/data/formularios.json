@@ -1,0 +1,38 @@
+[
+  {
+    "username": "MarcosTBCF",
+    "year": 2025,
+    "month": 11,
+    "trainingAttendance": "15",
+    "matches": [
+      {
+        "date": "2025-12-20",
+        "locality": "alboraya",
+        "place": "alboraya",
+        "km": "2"
+      }
+    ],
+    "transportExpenses": [],
+    "dietExpenses": [],
+    "weeksInMonth": "5",
+    "clubCode": "1337"
+  },
+  {
+    "username": "voluntario1",
+    "year": 2025,
+    "month": 11,
+    "trainingAttendance": "15",
+    "matches": [
+      {
+        "date": "2025-12-13",
+        "locality": "Puzol",
+        "place": "Puzol",
+        "km": "20"
+      }
+    ],
+    "transportExpenses": [],
+    "dietExpenses": [],
+    "weeksInMonth": "5",
+    "clubCode": "1337"
+  }
+]

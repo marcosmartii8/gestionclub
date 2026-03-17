@@ -1,0 +1,122 @@
+[
+  {
+    "username": "adminTBCF",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "lider",
+    "fullName": "",
+    "email": "",
+    "dni": "",
+    "address": "",
+    "phone": "",
+    "km": ""
+  },
+  {
+    "username": "Pepe",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "administrador",
+    "fullName": "",
+    "email": "",
+    "dni": "",
+    "address": "",
+    "phone": "",
+    "km": ""
+  },
+  {
+    "username": "MarcosTBCF",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "voluntario",
+    "fullName": "Marcos Marti Cordoba",
+    "email": "marcosmarticordoba@gmail.com",
+    "dni": "23847146X",
+    "address": "Avinguda de Pérez Galdós 122",
+    "phone": "667847501",
+    "km": "8"
+  },
+  {
+    "username": "Paco",
+    "password": "2222",
+    "clubCode": "1234",
+    "role": "voluntario"
+  },
+  {
+    "username": "adminLider",
+    "password": "82801",
+    "clubCode": "82801",
+    "role": "lider"
+  },
+  {
+    "username": "voluntario1",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "voluntario",
+    "fullName": "",
+    "email": "",
+    "dni": "",
+    "address": "",
+    "phone": "",
+    "km": ""
+  },
+  {
+    "username": "voluntario2",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "voluntario",
+    "fullName": "",
+    "email": "",
+    "dni": "",
+    "address": "",
+    "phone": "",
+    "km": ""
+  },
+  {
+    "username": "voluntario3",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "voluntario"
+  },
+  {
+    "username": "voluntario4",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "voluntario"
+  },
+  {
+    "username": "voluntario5",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "voluntario"
+  },
+  {
+    "username": "voluntario6",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "voluntario"
+  },
+  {
+    "username": "voluntario7",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "voluntario"
+  },
+  {
+    "username": "voluntario8",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "voluntario"
+  },
+  {
+    "username": "voluntario9",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "voluntario"
+  },
+  {
+    "username": "voluntario10",
+    "password": "1111",
+    "clubCode": "1337",
+    "role": "voluntario"
+  }
+]

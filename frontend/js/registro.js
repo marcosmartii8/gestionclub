@@ -30,6 +30,11 @@ async function handleRegistration(event) {
             body: JSON.stringify(payload)
         });
         if (res.ok) {
+            // sincronizar localStorage con nuevo usuario
+            try { localStorage.setItem(username, JSON.stringify(payload)); } catch(e) {}
+            const usuarios = JSON.parse(localStorage.getItem('usuarios_registrados') || '[]');
+            usuarios.push(payload);
+            try { localStorage.setItem('usuarios_registrados', JSON.stringify(usuarios)); } catch(e) {}
             alert('Registro completado.');
             window.location.href = 'interfaz_lider.html';
             return;

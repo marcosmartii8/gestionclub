@@ -1,201 +1,573 @@
 import express from "express";
 import cors from "cors";
 import path from "path";
-import fs from "fs/promises";
 import { fileURLToPath } from "url";
-import { pool } from "./db/index.js";
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
-// Utils: resolve __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Frontend static folder (project root ../frontend relative to backend/src)
+// Frontend static folder
 const frontendPath = path.resolve(__dirname, "../../frontend");
+console.log('Serving frontend from:', frontendPath);
 app.use(express.static(frontendPath));
 
-// Data files fallback (if no DB)
-const dataDir = path.resolve(__dirname, "../data");
-const usersFile = path.join(dataDir, "users.json");
-
-async function ensureDataDir() {
-  try {
-    await fs.mkdir(dataDir, { recursive: true });
-    try { await fs.access(usersFile); } catch { await fs.writeFile(usersFile, "[]"); }
-  } catch (err) {
-    console.error("Error creando data dir:", err);
-  }
-}
-
-async function readUsersFromFile() {
-  try {
-    const content = await fs.readFile(usersFile, "utf8");
-    return JSON.parse(content || "[]");
-  } catch (err) {
-    return [];
-  }
-}
-async function writeUsersToFile(users) {
-  await ensureDataDir();
-  await fs.writeFile(usersFile, JSON.stringify(users, null, 2), "utf8");
-}
-
-// Helper: try DB query, return null on failure
-async function tryDbQuery(query, params = []) {
-  if (!process.env.DATABASE_URL) return null;
-  try {
-    const res = await pool.query(query, params);
-    return res;
-  } catch (err) {
-    console.warn("DB query failed, falling back to file storage:", err.message);
-    return null;
-  }
-}
-
-// API: listar usuarios
-app.get("/api/users", async (req, res) => {
-  // Intentar BD
-  const dbRes = await tryDbQuery("SELECT username, fullname, email, dni, address, phone, km, clubcode, role FROM users");
-  if (dbRes) return res.json(dbRes.rows);
-
-  // Fallback fichero
-  const users = await readUsersFromFile();
-  return res.json(users);
+// Ruta raíz - redirigir a inicio
+app.get('/', (req, res) => {
+  res.redirect('/inicio_app1.html');
 });
 
-// API: obtener usuario por username
-app.get("/api/users/:username", async (req, res) => {
-  const username = req.params.username;
-  const dbRes = await tryDbQuery("SELECT * FROM users WHERE username = $1", [username]);
-  if (dbRes) {
-    if (dbRes.rows.length === 0) return res.status(404).json({ error: "Usuario no encontrado" });
-    return res.json(dbRes.rows[0]);
-  }
-  const users = await readUsersFromFile();
-  const user = users.find(u => u.username === username);
-  if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
-  res.json(user);
-});
+// Inicializar Supabase
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
+);
 
-// API: crear usuario
-app.post("/api/users", async (req, res) => {
-  const u = req.body;
-  // Minimal validation
-  if (!u.username || !u.password) return res.status(400).json({ error: "username y password requeridos" });
-
-  // Try DB insert
-  const insertQuery = `INSERT INTO users (username, fullname, email, dni, address, phone, km, clubcode, role, password)
-                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`;
-  const dbRes = await tryDbQuery(insertQuery, [
-    u.username, u.fullName || null, u.email || null, u.dni || null, u.address || null,
-    u.phone || null, u.km || null, u.clubCode || null, u.role || null, u.password
-  ]);
-  if (dbRes) return res.status(201).json(dbRes.rows[0]);
-
-  // Fallback file
-  const users = await readUsersFromFile();
-  if (users.find(x => x.username === u.username)) return res.status(409).json({ error: "Usuario ya existe" });
-  users.push(u);
-  await writeUsersToFile(users);
-  res.status(201).json(u);
-});
-
-// API: actualizar usuario
-app.put("/api/users/:username", async (req, res) => {
-  const username = req.params.username;
-  const u = req.body;
-
-  const dbRes = await tryDbQuery(
-    `UPDATE users SET username=$1, fullname=$2, email=$3, dni=$4, address=$5, phone=$6, km=$7, clubcode=$8, role=$9, password=$10
-     WHERE username=$11 RETURNING *`,
-    [u.username, u.fullName || null, u.email || null, u.dni || null, u.address || null, u.phone || null, u.km || null, u.clubCode || null, u.role || null, u.password || null, username]
-  );
-  if (dbRes) {
-    if (dbRes.rows.length === 0) return res.status(404).json({ error: "Usuario no encontrado" });
-    return res.json(dbRes.rows[0]);
-  }
-
-  // Fallback file update
-  const users = await readUsersFromFile();
-  const idx = users.findIndex(x => x.username === username);
-  if (idx === -1) return res.status(404).json({ error: "Usuario no encontrado" });
-  users[idx] = { ...users[idx], ...u };
-  // Handle username change: ensure not duplicate
-  if (u.username && u.username !== username && users.some((x, i) => x.username === u.username && i !== idx)) {
-    return res.status(409).json({ error: "El nuevo username ya existe" });
-  }
-  await writeUsersToFile(users);
-  res.json(users[idx]);
-});
-
-// API: borrar usuario
-app.delete("/api/users/:username", async (req, res) => {
-  const username = req.params.username;
-  const dbRes = await tryDbQuery("DELETE FROM users WHERE username=$1 RETURNING *", [username]);
-  if (dbRes) {
-    if (dbRes.rows.length === 0) return res.status(404).json({ error: "Usuario no encontrado" });
-    return res.json({ success: true });
-  }
-  const users = await readUsersFromFile();
-  const filtered = users.filter(u => u.username !== username);
-  if (filtered.length === users.length) return res.status(404).json({ error: "Usuario no encontrado" });
-  await writeUsersToFile(filtered);
-  res.json({ success: true });
-});
-
-// API: login (simple)
-app.post("/api/login", async (req, res) => {
+// ========== LOGIN ==========
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: "username y password requeridos" });
-
-  const dbRes = await tryDbQuery("SELECT * FROM users WHERE username=$1 LIMIT 1", [username]);
-  if (dbRes && dbRes.rows.length > 0) {
-    const user = dbRes.rows[0];
-    if (user.password === password) return res.json({ success: true, user });
-    return res.status(401).json({ error: "Credenciales inválidas" });
-  }
-
-  // Fallback file lookup
-  const users = await readUsersFromFile();
-  const user = users.find(u => u.username === username && u.password === password);
-  if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
-  res.json({ success: true, user });
-});
-
-// Endpoint para inicializar tablas si conectas DB (opcional)
-app.post("/api/init-db", async (req, res) => {
-  if (!process.env.DATABASE_URL) return res.status(400).json({ error: "DATABASE_URL no configurada" });
+  
   try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        fullname TEXT,
-        email TEXT,
-        dni TEXT,
-        address TEXT,
-        phone TEXT,
-        km TEXT,
-        clubcode TEXT,
-        role TEXT,
-        password TEXT
-      );
-    `);
-    return res.json({ ok: true });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .eq('password', password)
+      .single();
+
+    if (error || !data) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+
+    // Verificar si el usuario está activo
+    if (data.active !== true) {
+      return res.status(403).json({ error: 'Acceso denegado. Usuario desactivado.' });
+    }
+
+    res.json({
+      user: {
+        username: data.username,
+        role: data.role,
+        clubCode: data.club_code,
+        fullName: data.full_name,
+        email: data.email,
+        dni: data.dni,
+        address: data.address,
+        phone: data.phone,
+        km: data.km ? data.km.toString() : ''
+      }
+    });
+  } catch (error) {
+    console.error('Error en login:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
   }
 });
 
-// Fallback: servir index.html para rutas no API (SPA)
-app.get("*", (req, res) => {
-  const isApi = req.path.startsWith("/api/");
-  if (isApi) return res.status(404).json({ error: "API endpoint no encontrado" });
-  res.sendFile(path.join(frontendPath, "inicio_app1.html")); // página principal del frontend
+// ========== USUARIOS ==========
+app.get('/api/users', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('username');
+
+    if (error) throw error;
+
+    const users = data.map(user => ({
+      username: user.username,
+      password: user.password,
+      clubCode: user.club_code,
+      role: user.role,
+      fullName: user.full_name || '',
+      email: user.email || '',
+      dni: user.dni || '',
+      address: user.address || '',
+      phone: user.phone || '',
+      km: user.km ? user.km.toString() : '',
+      active: user.active !== false
+    }));
+
+    res.json(users);
+  } catch (error) {
+    console.error('Error al obtener usuarios:', error);
+    res.status(500).json({ message: 'Error al obtener usuarios', error: error.message });
+  }
 });
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
+app.get('/api/users/:username', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', req.params.username)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    res.json({
+      username: data.username,
+      password: data.password,
+      clubCode: data.club_code,
+      role: data.role,
+      fullName: data.full_name || '',
+      email: data.email || '',
+      dni: data.dni || '',
+      address: data.address || '',
+      phone: data.phone || '',
+      km: data.km ? data.km.toString() : ''
+    });
+  } catch (error) {
+    console.error('Error al obtener usuario:', error);
+    res.status(500).json({ message: 'Error al obtener usuario' });
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  const { username, password, clubCode, role, fullName, email, dni, address, phone, km } = req.body;
+
+  try {
+    // Validar longitud mínima de contraseña
+    if (!password || password.length < 8) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+
+    // Verificar que la contraseña no esté en uso
+    const { data: existingPassword } = await supabase
+      .from('users')
+      .select('username')
+      .eq('password', password)
+      .single();
+
+    if (existingPassword) {
+      return res.status(400).json({ error: 'Esta contraseña ya está en uso. Por favor, elige otra diferente' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        username,
+        password,
+        club_code: clubCode,
+        role,
+        full_name: fullName || null,
+        email: email || null,
+        dni: dni || null,
+        address: address || null,
+        phone: phone || null,
+        km: km ? parseInt(km) : null
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json({ message: 'Usuario creado exitosamente', user: data });
+  } catch (error) {
+    console.error('Error al crear usuario:', error);
+    res.status(400).json({ error: 'Error al crear usuario: ' + error.message });
+  }
+});
+
+app.put('/api/users/:username', async (req, res) => {
+  const oldUsername = req.params.username;
+  const { username: newUsername, password, clubCode, role, fullName, email, dni, address, phone, km } = req.body;
+
+  try {
+    // Si se proporciona una nueva contraseña, validarla
+    if (password !== undefined) {
+      if (password.length < 8) {
+        return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+      }
+
+      // Verificar que la contraseña no esté en uso por otro usuario
+      const { data: existingPassword } = await supabase
+        .from('users')
+        .select('username')
+        .eq('password', password)
+        .neq('username', oldUsername)
+        .single();
+
+      if (existingPassword) {
+        return res.status(400).json({ error: 'Esta contraseña ya está en uso. Por favor, elige otra diferente' });
+      }
+    }
+
+    // Si se proporciona un nuevo username diferente al actual
+    if (newUsername && newUsername !== oldUsername) {
+      // Verificar si el nuevo username ya existe
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('username')
+        .eq('username', newUsername)
+        .single();
+
+      if (existingUser) {
+        return res.status(400).json({ error: 'El nombre de usuario ya está en uso' });
+      }
+
+      // Obtener todos los datos del usuario actual
+      const { data: currentUser, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', oldUsername)
+        .single();
+
+      if (fetchError || !currentUser) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+
+      // Crear un nuevo usuario con el nuevo username y los datos actualizados
+      const { data: newUser, error: insertError } = await supabase
+        .from('users')
+        .insert({
+          username: newUsername,
+          password: password || currentUser.password,
+          club_code: clubCode !== undefined ? clubCode : currentUser.club_code,
+          role: role || currentUser.role,
+          full_name: fullName !== undefined ? fullName : currentUser.full_name,
+          email: email !== undefined ? email : currentUser.email,
+          dni: dni !== undefined ? dni : currentUser.dni,
+          address: address !== undefined ? address : currentUser.address,
+          phone: phone !== undefined ? phone : currentUser.phone,
+          km: km !== undefined ? (km ? parseInt(km) : null) : currentUser.km,
+          active: currentUser.active
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Eliminar el usuario antiguo
+      const { error: deleteError } = await supabase
+        .from('users')
+        .delete()
+        .eq('username', oldUsername);
+
+      if (deleteError) throw deleteError;
+
+      return res.json({ message: 'Usuario actualizado exitosamente', user: newUser });
+    }
+
+    // Si no se cambia el username, solo actualizar los campos proporcionados
+    const updateData = {};
+    if (password !== undefined) updateData.password = password;
+    if (clubCode !== undefined) updateData.club_code = clubCode;
+    if (role !== undefined) updateData.role = role;
+    if (fullName !== undefined) updateData.full_name = fullName;
+    if (email !== undefined) updateData.email = email;
+    if (dni !== undefined) updateData.dni = dni;
+    if (address !== undefined) updateData.address = address;
+    if (phone !== undefined) updateData.phone = phone;
+    if (km !== undefined) updateData.km = km ? parseInt(km) : null;
+
+    const { data, error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('username', oldUsername)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ message: 'Usuario actualizado exitosamente', user: data });
+  } catch (error) {
+    console.error('Error al actualizar usuario:', error);
+    res.status(400).json({ error: 'Error al actualizar usuario: ' + error.message });
+  }
+});
+
+app.delete('/api/users/:username', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('username', req.params.username);
+
+    if (error) throw error;
+
+    res.json({ message: 'Usuario eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar usuario:', error);
+    res.status(500).json({ message: 'Error al eliminar usuario', error: error.message });
+  }
+});
+
+// Endpoint para cambiar el estado activo del usuario
+app.patch('/api/users/:username/toggle-access', async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    // Obtener el estado actual
+    const { data: userData, error: fetchError } = await supabase
+      .from('users')
+      .select('active')
+      .eq('username', username)
+      .single();
+
+    if (fetchError || !userData) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Alternar el estado activo
+    const newActiveState = userData.active === false ? true : false;
+    
+    const { data, error } = await supabase
+      .from('users')
+      .update({ active: newActiveState })
+      .eq('username', username)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ 
+      message: `Acceso ${newActiveState ? 'permitido' : 'denegado'} exitosamente`, 
+      active: newActiveState 
+    });
+  } catch (error) {
+    console.error('Error al cambiar estado de acceso:', error);
+    res.status(500).json({ message: 'Error al cambiar estado de acceso', error: error.message });
+  }
+});
+
+// ========== CLUBES ==========
+app.get('/api/clubs', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('clubs')
+      .select('*')
+      .order('club_code');
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error al obtener clubes:', error);
+    res.status(500).json({ message: 'Error al obtener clubes', error: error.message });
+  }
+});
+
+app.post('/api/clubs', async (req, res) => {
+  try {
+    const { club_code, club_name } = req.body;
+
+    if (!club_code || !club_name) {
+      return res.status(400).json({ message: 'Código y nombre del club son requeridos' });
+    }
+
+    const { data, error } = await supabase
+      .from('clubs')
+      .insert([{ club_code, club_name }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json(data);
+  } catch (error) {
+    console.error('Error al crear club:', error);
+    res.status(500).json({ message: 'Error al crear club', error: error.message });
+  }
+});
+
+app.patch('/api/clubs/:club_code', async (req, res) => {
+  try {
+    const { club_name } = req.body;
+
+    const { data, error } = await supabase
+      .from('clubs')
+      .update({ club_name })
+      .eq('club_code', req.params.club_code)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error al actualizar club:', error);
+    res.status(500).json({ message: 'Error al actualizar club', error: error.message });
+  }
+});
+
+app.delete('/api/clubs/:club_code', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('clubs')
+      .delete()
+      .eq('club_code', req.params.club_code);
+
+    if (error) throw error;
+
+    res.json({ message: 'Club eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar club:', error);
+    res.status(500).json({ message: 'Error al eliminar club', error: error.message });
+  }
+});
+
+// ========== FORMULARIOS ==========
+app.get('/api/formularios', async (req, res) => {
+  try {
+    console.log('📋 Obteniendo todos los formularios...');
+    
+    // Obtener todos los formularios
+    const { data: formularios, error: formError } = await supabase
+      .from('formularios')
+      .select('*')
+      .order('year', { ascending: false })
+      .order('month', { ascending: false });
+
+    if (formError) {
+      console.error('❌ Error al obtener formularios:', formError);
+      return res.status(500).json({ message: 'Error al obtener formularios', error: formError.message });
+    }
+    
+    console.log(`✓ ${formularios?.length || 0} formularios encontrados`);
+
+    // Obtener todos los usuarios para mapear clubCode
+    const { data: users, error: userError } = await supabase
+      .from('users')
+      .select('username, club_code');
+
+    if (userError) {
+      console.error('❌ Error al obtener usuarios:', userError);
+      return res.status(500).json({ message: 'Error al obtener usuarios', error: userError.message });
+    }
+    
+    console.log(`✓ ${users?.length || 0} usuarios encontrados`);
+
+    // Crear un mapa de username -> club_code
+    const userClubMap = {};
+    if (users && Array.isArray(users)) {
+      users.forEach(user => {
+        if (user && user.username) {
+          userClubMap[user.username] = user.club_code;
+        }
+      });
+    }
+
+    // Mapear los campos y agregar clubCode
+    const formulariosConClub = (formularios || []).map(form => ({
+      ...form,
+      clubCode: userClubMap[form.username] || null,
+      matches: form.desplazamientos || [],
+      trainingAttendance: form.asistencia || 0,
+      transportExpenses: form.gastos_transporte || [],
+      dietExpenses: form.gastos_dietas || [],
+      weeksInMonth: form.semanas || 0
+    }));
+    
+    console.log(`✓ Formularios procesados con clubCode: ${formulariosConClub.length}`);
+
+    res.json(formulariosConClub);
+  } catch (error) {
+    console.error('❌ Error en /api/formularios:', error);
+    res.status(500).json({ message: 'Error al obtener formularios', error: error.message });
+  }
+});
+
+app.get('/api/formularios/:username', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('formularios')
+      .select('*')
+      .eq('username', req.params.username)
+      .order('year', { ascending: false })
+      .order('month', { ascending: false });
+
+    if (error) throw error;
+
+    // Mapear los campos de snake_case a camelCase para el frontend
+    const formularios = data.map(form => ({
+      ...form,
+      matches: form.desplazamientos || [],
+      trainingAttendance: form.asistencia || 0,
+      transportExpenses: form.gastos_transporte || [],
+      dietExpenses: form.gastos_dietas || [],
+      weeksInMonth: form.semanas || 4,
+      // Mantener compatibilidad con nombres anteriores
+      gastosTransporte: form.gastos_transporte || [],
+      gastosDietas: form.gastos_dietas || []
+    }));
+
+    res.json(formularios);
+  } catch (error) {
+    console.error('Error al obtener formularios:', error);
+    res.status(500).json({ message: 'Error al obtener formularios', error: error.message });
+  }
+});
+
+app.post('/api/formularios', async (req, res) => {
+  const { username, year, month, asistencia, desplazamientos, gastosTransporte, gastosDietas, semanas } = req.body;
+
+  console.log('📝 Datos recibidos:', {
+    username, year, month, asistencia, desplazamientos, gastosTransporte, gastosDietas, semanas
+  });
+
+  try {
+    const formularioData = {
+      username,
+      year: parseInt(year),
+      month: parseInt(month),
+      asistencia: parseInt(asistencia || 0),
+      desplazamientos: desplazamientos || [],
+      gastos_transporte: gastosTransporte || [],
+      gastos_dietas: gastosDietas || [],
+      semanas: parseInt(semanas || 0),
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('💾 Guardando en Supabase:', formularioData);
+
+    const { data, error } = await supabase
+      .from('formularios')
+      .upsert(formularioData, { onConflict: 'username,year,month' })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    console.log('✅ Guardado exitoso:', data);
+    res.json({ message: 'Formulario guardado exitosamente', formulario: data });
+  } catch (error) {
+    console.error('❌ Error al guardar formulario:', error);
+    res.status(400).json({ message: 'Error al guardar formulario', error: error.message });
+  }
+});
+
+app.delete('/api/formularios/:username/:year/:month', async (req, res) => {
+  const { username, year, month } = req.params;
+
+  try {
+    const { error } = await supabase
+      .from('formularios')
+      .delete()
+      .eq('username', username)
+      .eq('year', parseInt(year))
+      .eq('month', parseInt(month));
+
+    if (error) throw error;
+
+    res.json({ message: 'Formulario eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar formulario:', error);
+    res.status(500).json({ message: 'Error al eliminar formulario', error: error.message });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✓ Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`✓ También accesible desde: http://192.168.0.24:${PORT}`);
+  console.log('✓ Conectado a Supabase');
+});
