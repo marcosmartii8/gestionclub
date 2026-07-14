@@ -4,24 +4,34 @@ const params = new URLSearchParams(window.location.search);
         const userData = JSON.parse(localStorage.getItem(username));
 
         const welcomeMessageElement = document.getElementById('welcome-message');
-        if (userData) {
-            if (userData.clubCode === '1337') {
-                welcomeMessageElement.textContent = "TAVERNES BLANQUES C.F.";
-            } else if (userData.clubCode === '1234') {
-                welcomeMessageElement.textContent = "ALBORAYA UD.";
-            } else if (userData.clubCode === '2828') {
-                welcomeMessageElement.textContent = "TORRENT C.F.";
-                
+        
+        // Función para cargar el nombre del club desde la API
+        async function loadClubName() {
+            if (!userData) {
+                welcomeMessageElement.textContent = "Usuario no identificado.";
+                return;
             }
-             else if (userData.clubCode === '2024') {
-                welcomeMessageElement.textContent = "TBCFFORMA";
+
+            try {
+                const response = await fetch('http://localhost:3000/api/clubs');
+                if (!response.ok) throw new Error('Error al cargar clubes');
                 
-            }  else {
-                welcomeMessageElement.textContent = `Bienvenido, ${username}!`;
+                const clubs = await response.json();
+                const userClub = clubs.find(club => club.club_code === userData.clubCode);
+                
+                if (userClub) {
+                    welcomeMessageElement.textContent = userClub.club_name;
+                } else {
+                    welcomeMessageElement.textContent = username || "Club";
+                }
+            } catch (error) {
+                console.error('Error al cargar el nombre del club:', error);
+                welcomeMessageElement.textContent = username || "Club";
             }
-        } else {
-            welcomeMessageElement.textContent = "Usuario no identificado.";
         }
+
+        // Cargar el nombre del club
+        loadClubName();
 
         // Mostrar datos del formulario y usuario
         if (formKey) {

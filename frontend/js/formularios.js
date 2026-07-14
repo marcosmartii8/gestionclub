@@ -8,6 +8,21 @@ const params = new URLSearchParams(window.location.search);
 
         const userData = JSON.parse(localStorage.getItem(username)) || {};
 
+        function getAuthHeaders(extraHeaders = {}) {
+            if (window.AuthUtils && typeof window.AuthUtils.getAuthHeaders === 'function') {
+                return window.AuthUtils.getAuthHeaders({ userHint: username, extraHeaders });
+            }
+
+            return { ...extraHeaders };
+        }
+
+        function handleAuthFailure(response) {
+            if (window.AuthUtils && typeof window.AuthUtils.handleAuthFailure === 'function') {
+                return window.AuthUtils.handleAuthFailure(response);
+            }
+            return false;
+        }
+
         document.getElementById('user-title').textContent = `Formulario Mensual: ${username}`;
 
         function redirectToPersonalizedInterface() {
@@ -17,6 +32,7 @@ const params = new URLSearchParams(window.location.search);
         const formWidget = document.createElement('div');
         formWidget.className = 'form-widget';
         formWidget.innerHTML = `
+            <button type="button" class="form-close-btn" onclick="toggleForm()" aria-label="Cerrar formulario">✕</button>
             <h2>Formulario Mensual</h2>
             <form id="monthlyForm" style="display: flex; flex-direction: column; gap: 20px;">
                 <div style="display: flex; flex-wrap: wrap; gap: 20px;">
@@ -91,11 +107,49 @@ const params = new URLSearchParams(window.location.search);
         let isEditMode = false;
         let editYear = null;
         let editMonth = null;
+        let currentEditFormData = null;
 
-        function toggleForm() {
+        function resetFormToCreateMode() {
+            const monthlyForm = document.getElementById('monthlyForm');
+            if (monthlyForm) {
+                monthlyForm.reset();
+            }
+
+            const now = new Date();
+            const yearInput = document.getElementById('formYearSelect');
+            const monthSelect = document.getElementById('formMonthSelect');
+            const attendanceInput = document.getElementById('trainingAttendance');
+            const weeksSelect = document.getElementById('weeksInMonth');
+
+            if (yearInput) yearInput.value = String(now.getFullYear());
+            if (monthSelect) monthSelect.value = String(now.getMonth());
+            if (attendanceInput) attendanceInput.value = '';
+            if (weeksSelect) weeksSelect.value = '4';
+
+            const awayMatchesDetails = document.getElementById('awayMatchesDetails');
+            const transportExpensesDetails = document.getElementById('transportExpensesDetails');
+            const dietExpensesDetails = document.getElementById('dietExpensesDetails');
+
+            if (awayMatchesDetails) awayMatchesDetails.innerHTML = '';
+            if (transportExpensesDetails) transportExpensesDetails.innerHTML = '';
+            if (dietExpensesDetails) dietExpensesDetails.innerHTML = '';
+
+            isEditMode = false;
+            editYear = null;
+            editMonth = null;
+            currentEditFormData = null;
+        }
+
+        function toggleForm(options = {}) {
             const formWidget = document.querySelector('.form-widget');
-            formWidget.style.display = formWidget.style.display === 'none' ? 'block' : 'none';
-            if (formWidget.style.display === 'block') {
+            const isHidden = window.getComputedStyle(formWidget).display === 'none';
+
+            if (isHidden && !options.preserveState) {
+                resetFormToCreateMode();
+            }
+
+            formWidget.style.display = isHidden ? 'block' : 'none';
+            if (isHidden) {
                 formWidget.scrollIntoView({ behavior: 'smooth' }); // Scroll to the form when opened
             }
         }
@@ -136,103 +190,283 @@ const params = new URLSearchParams(window.location.search);
             return false;
         }
 
-        function generateDataTable() {
+        async function generateDataTable() {
             dataTable.innerHTML = '';
-            for (let month = 0; month < 12; month++) {
-                for (let year = 2020; year <= new Date().getFullYear(); year++) {
-                    const formDataKey = `formData_${username}_${year}_${month}`;
-                    const formData = JSON.parse(localStorage.getItem(formDataKey));
-                    if (formData) {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${year}</td>
-                            <td>${new Date(0, month).toLocaleString('es-ES', { month: 'long' })}</td>
-                            <td>${formData.trainingAttendance || ''}</td>
-                            <td>${formData.matches.length}</td>
-                            <td>${formData.matches.map(match => `Fecha: ${match.date}, Localidad: ${match.locality}, Equipo: ${match.place}, Km: ${match.km}`).join('<br>')}</td>
-                            <td>${formData.transportExpenses.length}</td>
-                            <td>${formData.transportExpenses.map(expense => 
-                                `Fecha: ${expense.date}, Concepto: ${expense.concept}, Importe: ${expense.amount}` +
-                                (expense.file ? `<br><a href="${expense.file}" target="_blank">Archivo</a>` : '')
-                            ).join('<br>')}</td>
-                            <td>${formData.dietExpenses.length}</td>
-                            <td>${formData.dietExpenses.map(expense => 
-                                `Fecha: ${expense.date}, Concepto: ${expense.concept}, Importe: ${expense.amount}` +
-                                (expense.file ? `<br><a href="${expense.file}" target="_blank">Archivo</a>` : '')
-                            ).join('<br>')}</td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="edit-button" onclick="editForm(${year}, ${month})">Editar</button>
-                                    <button class="delete-button" onclick="deleteForm(${year}, ${month})">Borrar</button>
-                                </div>
-                            </td>
-                        `;
-                        dataTable.appendChild(row);
-                    }
+            try {
+                const response = await fetch(`/api/formularios/${username}`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) {
+                    if (handleAuthFailure(response)) return;
+                    throw new Error(`Error HTTP ${response.status}`);
                 }
+
+                const rawFormularios = await response.json();
+                const formularios = Array.isArray(rawFormularios) ? rawFormularios : [];
+                
+                console.log('📊 Formularios cargados:', formularios);
+                
+                if (formularios.length === 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="8" style="text-align: center; color: #666;">No tienes formularios creados aún</td>`;
+                    dataTable.appendChild(row);
+                    return;
+                }
+                
+
+                formularios.forEach(formData => {
+                    const year = formData.year;
+                    const month = formData.month;
+                    const desplazamientos = Array.isArray(formData.matches)
+                        ? formData.matches
+                        : (formData.desplazamientos || []);
+                    const gastosTransporte = formData.gastosTransporte || formData.transportExpenses || [];
+                    const gastosDietas = formData.gastosDietas || formData.dietExpenses || [];
+                    const asistencia = formData.asistencia ?? formData.trainingAttendance ?? 0;
+                    const semanas = formData.semanas ?? formData.weeksInMonth ?? 0;
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${year}</td>
+                        <td>${new Date(0, month).toLocaleString('es-ES', { month: 'long' })}</td>
+                        <td>${asistencia}</td>
+                        <td><button class="ver-btn" data-type="desplazamientos">Ver</button></td>
+                        <td><button class="ver-btn" data-type="gastosTransporte">Ver</button></td>
+                        <td><button class="ver-btn" data-type="gastosDietas">Ver</button></td>
+                        <td>${semanas}</td>
+                        <td>
+                            <button class="edit-button" data-year="${year}" data-month="${month}">✏️ Editar</button>
+                        </td>
+                    `;
+
+                    // Añadir listeners a los botones "Ver"
+                    const verBtns = row.querySelectorAll('.ver-btn');
+                    verBtns.forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            let html = '';
+                            if (btn.dataset.type === 'desplazamientos') {
+                                if (Array.isArray(desplazamientos) && desplazamientos.length > 0) {
+                                    html = desplazamientos.map(desp =>
+                                        `<div style='margin-bottom:8px;padding:5px;border-left:3px solid #004d40;'>
+                                            <strong>📅 ${desp.date}</strong><br>
+                                            📍 ${desp.locality}<br>
+                                            👥 ${desp.place}<br>
+                                            🚗 ${desp.km} km
+                                        </div>`
+                                    ).join('');
+                                } else {
+                                    html = '<span style="color:#999">Sin desplazamientos</span>';
+                                }
+                            } else if (btn.dataset.type === 'gastosTransporte') {
+                                let total = 0;
+                                if (Array.isArray(gastosTransporte) && gastosTransporte.length > 0) {
+                                    html = gastosTransporte.map(gasto => {
+                                        const amount = parseFloat(gasto.amount) || 0;
+                                        total += amount;
+                                        return `<div style='margin-bottom:8px;padding:5px;border-left:3px solid #26a69a;'>
+                                            <strong>📅 ${gasto.date}</strong><br>
+                                            📝 ${gasto.concept}<br>
+                                            💰 ${amount.toFixed(2)}€<br>
+                                            ${gasto.fileUrl ? `<a href='${gasto.fileUrl}' target='_blank'>Ver archivo</a>` : ''}
+                                        </div>`;
+                                    }).join('');
+                                    html += `<div style='margin-top:8px;padding:5px;background:#e3f2fd;font-weight:bold;'>Total: ${total.toFixed(2)}€</div>`;
+                                } else {
+                                    html = '<span style="color:#999">Sin gastos</span>';
+                                }
+                            } else if (btn.dataset.type === 'gastosDietas') {
+                                let total = 0;
+                                if (Array.isArray(gastosDietas) && gastosDietas.length > 0) {
+                                    html = gastosDietas.map(gasto => {
+                                        const amount = parseFloat(gasto.amount) || 0;
+                                        total += amount;
+                                        return `<div style='margin-bottom:8px;padding:5px;border-left:3px solid #ff9800;'>
+                                            <strong>📅 ${gasto.date}</strong><br>
+                                            📝 ${gasto.concept}<br>
+                                            💰 ${amount.toFixed(2)}€<br>
+                                            ${gasto.fileUrl ? `<a href='${gasto.fileUrl}' target='_blank'>Ver archivo</a>` : ''}
+                                        </div>`;
+                                    }).join('');
+                                    html += `<div style='margin-top:8px;padding:5px;background:#fff3e0;font-weight:bold;'>Total: ${total.toFixed(2)}€</div>`;
+                                } else {
+                                    html = '<span style="color:#999">Sin gastos</span>';
+                                }
+                            }
+                            mostrarModal(html, btn.dataset.type);
+                        });
+                    });
+
+                    // Evitar tooltip de celda al pulsar en "Editar"
+                    const editBtn = row.querySelector('.edit-button');
+                    if (editBtn) {
+                        editBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            editForm(year, month);
+                        });
+                    }
+
+                    dataTable.appendChild(row);
+                });
+
+                // Modal para mostrar detalles
+                if (!document.getElementById('modal-detalles')) {
+                    const modal = document.createElement('div');
+                    modal.id = 'modal-detalles';
+                    modal.style.display = 'none';
+                    modal.style.position = 'fixed';
+                    modal.style.top = '0';
+                    modal.style.left = '0';
+                    modal.style.width = '100vw';
+                    modal.style.height = '100vh';
+                    modal.style.background = 'rgba(0,0,0,0.4)';
+                    modal.style.zIndex = '9999';
+                    modal.style.justifyContent = 'center';
+                    modal.style.alignItems = 'center';
+                    modal.innerHTML = `<div id='modal-content-detalles' style='background:#fff;padding:24px 18px;max-width:420px;width:90vw;max-height:80vh;overflow:auto;border-radius:12px;position:relative;box-shadow:0 8px 32px rgba(0,0,0,0.25);color:#222;'>
+                        <button id='cerrar-modal-detalles' style='position:absolute;top:8px;right:12px;font-size:1.3em;background:none;border:none;cursor:pointer;'>&#10006;</button>
+                        <div id='contenido-modal-detalles'></div>
+                    </div>`;
+                    document.body.appendChild(modal);
+                    document.getElementById('cerrar-modal-detalles').onclick = () => {
+                        modal.style.display = 'none';
+                    };
+                }
+
+                window.mostrarModal = function(html, tipo) {
+                    const modal = document.getElementById('modal-detalles');
+                    const contenido = document.getElementById('contenido-modal-detalles');
+                    contenido.innerHTML = `<h3 style='margin-top:0;text-transform:capitalize;'>${tipo.replace('gastos','Gastos ').replace('desplazamientos','Desplazamientos')}</h3>` + html;
+                    modal.style.display = 'flex';
+                };
+            } catch (error) {
+                console.error('❌ Error cargando formularios:', error);
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="8" style="text-align: center; color: red;">Error al cargar formularios</td>`;
+                dataTable.appendChild(row);
             }
         }
 
-        function editForm(year, month) {
-            const formDataKey = `formData_${username}_${year}_${month}`;
-            const formData = JSON.parse(localStorage.getItem(formDataKey));
-            if (formData) {
-                document.getElementById('formYearSelect').value = year;
-                document.getElementById('formMonthSelect').value = month;
-                document.getElementById('trainingAttendance').value = formData.trainingAttendance;
-
-                const awayMatchesDetails = document.getElementById('awayMatchesDetails');
-                awayMatchesDetails.innerHTML = '';
-                formData.matches.forEach(match => {
-                    const matchDiv = document.createElement('div');
-                    matchDiv.innerHTML = `
-                        <input type="date" value="${match.date}" required>
-                        <input type="text" value="${match.locality}" required>
-                        <input type="text" value="${match.place}" required>
-                        <input type="number" value="${match.km}" required>
-                    `;
-                    awayMatchesDetails.appendChild(matchDiv);
+        async function editForm(year, month) {
+            try {
+                const response = await fetch(`/api/formularios/${username}`, {
+                    headers: getAuthHeaders()
                 });
 
-                const transportExpensesDetails = document.getElementById('transportExpensesDetails');
-                transportExpensesDetails.innerHTML = '';
-                formData.transportExpenses.forEach(expense => {
-                    const expenseDiv = document.createElement('div');
-                    expenseDiv.innerHTML = `
-                        <input type="date" value="${expense.date}" required>
-                        <input type="text" value="${expense.concept}" required>
-                        <input type="number" value="${expense.amount}" required>
-                    `;
-                    transportExpensesDetails.appendChild(expenseDiv);
-                });
+                if (!response.ok) {
+                    if (handleAuthFailure(response)) return;
+                    throw new Error(`Error HTTP ${response.status}`);
+                }
 
-                const dietExpensesDetails = document.getElementById('dietExpensesDetails');
-                dietExpensesDetails.innerHTML = '';
-                formData.dietExpenses.forEach(expense => {
-                    const expenseDiv = document.createElement('div');
-                    expenseDiv.innerHTML = `
-                        <input type="date" value="${expense.date}" required>
-                        <input type="text" value="${expense.concept}" required>
-                        <input type="number" value="${expense.amount}" required>
-                    `;
-                    dietExpensesDetails.appendChild(expenseDiv);
-                });
+                const rawFormularios = await response.json();
+                const formularios = Array.isArray(rawFormularios) ? rawFormularios : [];
+                const formDataRaw = formularios.find(f => f.year === year && f.month === month);
+                const formData = formDataRaw ? {
+                    ...formDataRaw,
+                    desplazamientos: Array.isArray(formDataRaw.matches)
+                        ? formDataRaw.matches
+                        : (formDataRaw.desplazamientos || []),
+                    gastosTransporte: formDataRaw.gastosTransporte || formDataRaw.transportExpenses || [],
+                    gastosDietas: formDataRaw.gastosDietas || formDataRaw.dietExpenses || [],
+                    asistencia: formDataRaw.asistencia ?? formDataRaw.trainingAttendance ?? 0,
+                    semanas: formDataRaw.semanas ?? formDataRaw.weeksInMonth ?? 0
+                } : null;
+                
+                if (formData) {
+                    currentEditFormData = formData; // Guardar globalmente para submit
+                    document.getElementById('formYearSelect').value = year;
+                    document.getElementById('formMonthSelect').value = month;
+                    document.getElementById('trainingAttendance').value = formData.asistencia || 0;
+                    document.getElementById('weeksInMonth').value = formData.semanas || 0;
 
-                document.getElementById('weeksInMonth').value = formData.weeksInMonth;
+                    // Desplazamientos
+                    const awayMatchesDetails = document.getElementById('awayMatchesDetails');
+                    awayMatchesDetails.innerHTML = '';
+                    const matches = formData.desplazamientos || [];
+                    matches.forEach(match => {
+                        const matchDiv = document.createElement('div');
+                        matchDiv.innerHTML = `
+                            <input type="date" value="${match.date}" required>
+                            <input type="text" value="${match.locality}" required>
+                            <input type="text" value="${match.place}" required>
+                            <input type="number" value="${match.km}" required>
+                        `;
+                        awayMatchesDetails.appendChild(matchDiv);
+                    });
 
-                isEditMode = true;
-                editYear = year;
-                editMonth = month;
-                toggleForm();
-            }
-        }
+                    // Gastos de transporte
+                    const transportExpensesDetails = document.getElementById('transportExpensesDetails');
+                    transportExpensesDetails.innerHTML = '';
+                    const transportExpenses = formData.gastosTransporte || [];
+                    transportExpenses.forEach(expense => {
+                        const expenseDiv = document.createElement('div');
+                        let fileUrl = expense.fileUrl || expense.url || (expense.file ? (typeof expense.file === 'string' ? expense.file : expense.file.url) : null);
+                        let fileName = fileUrl ? fileUrl.split('/').pop() : '';
+                        expenseDiv.innerHTML = `
+                            <input type="date" value="${expense.date}" required>
+                            <input type="text" value="${expense.concept}" required>
+                            <input type="number" value="${expense.amount}" required>
+                            <span class="file-upload-area">
+                                ${fileUrl
+                                    ? `<a href="${fileUrl}" target="_blank" style="color:#0288d1;display:inline-block;margin-left:8px;">Ver archivo (${fileName})</a>
+                                       <button type="button" class="remove-file-btn" style="margin-left:8px;">Eliminar</button>`
+                                    : `<input type="file" accept="image/*,application/pdf" style="width:100%;">`}
+                            </span>
+                        `;
+                        if (fileUrl) {
+                            expenseDiv.querySelector('.remove-file-btn').addEventListener('click', function() {
+                                expense.fileUrl = null;
+                                expense.url = null;
+                                expense.file = null;
+                                expenseDiv.querySelector('.file-upload-area').innerHTML = `<input type="file" accept="image/*,application/pdf" style="width:100%;">`;
+                            });
+                        }
+                        transportExpensesDetails.appendChild(expenseDiv);
+                    });
 
-        function deleteForm(year, month) {
-            const confirmation = confirm("¿Estás seguro de que quieres borrar este formulario?");
-            if (confirmation) {
-                const formDataKey = `formData_${username}_${year}_${month}`;
-                localStorage.removeItem(formDataKey);
-                generateDataTable();
+                    // Gastos de dietas
+                    const dietExpensesDetails = document.getElementById('dietExpensesDetails');
+                    dietExpensesDetails.innerHTML = '';
+                    const dietExpenses = formData.gastosDietas || [];
+                    dietExpenses.forEach(expense => {
+                        const expenseDiv = document.createElement('div');
+                        let fileUrl = expense.fileUrl || expense.url || (expense.file ? (typeof expense.file === 'string' ? expense.file : expense.file.url) : null);
+                        let fileName = fileUrl ? fileUrl.split('/').pop() : '';
+                        expenseDiv.innerHTML = `
+                            <input type="date" value="${expense.date}" required>
+                            <input type="text" value="${expense.concept}" required>
+                            <input type="number" value="${expense.amount}" required>
+                            <span class="file-upload-area">
+                                ${fileUrl
+                                    ? `<a href="${fileUrl}" target="_blank" style="color:#f57c00;display:inline-block;margin-left:8px;">Ver archivo (${fileName})</a>
+                                       <button type="button" class="remove-file-btn" style="margin-left:8px;">Eliminar</button>`
+                                    : `<input type="file" accept="image/*,application/pdf" style="width:100%;">`}
+                            </span>
+                        `;
+                        if (fileUrl) {
+                            expenseDiv.querySelector('.remove-file-btn').addEventListener('click', function() {
+                                expense.fileUrl = null;
+                                expense.url = null;
+                                expense.file = null;
+                                expenseDiv.querySelector('.file-upload-area').innerHTML = `<input type="file" accept="image/*,application/pdf" style="width:100%;">`;
+                            });
+                        }
+                        dietExpensesDetails.appendChild(expenseDiv);
+                    });
+
+                    isEditMode = true;
+                    editYear = year;
+                    editMonth = month;
+                    toggleForm({ preserveState: true });
+                } else {
+                    alert('No se encontró el formulario seleccionado.');
+                }
+            } catch (error) {
+                console.error('❌ Error cargando formulario:', error);
+                alert('Error al cargar el formulario');
             }
         }
 
@@ -295,33 +529,82 @@ const params = new URLSearchParams(window.location.search);
                 return;
             }
 
-            // Transporte: guardar archivo por gasto
+            // Verificar si ya existe un formulario para este mes y año (solo si no estamos en modo edición)
+            if (!isEditMode) {
+                try {
+                    const response = await fetch(`/api/formularios/${username}`, {
+                        headers: getAuthHeaders()
+                    });
+
+                    if (!response.ok) {
+                        if (handleAuthFailure(response)) return;
+                        throw new Error(`Error HTTP ${response.status}`);
+                    }
+
+                    const rawFormularios = await response.json();
+                    const formularios = Array.isArray(rawFormularios) ? rawFormularios : [];
+                    const exists = formularios.some(f => f.year === year && f.month === month);
+                    
+                    if (exists) {
+                        alert(`Ya existe un formulario para ${new Date(0, month).toLocaleString('es-ES', { month: 'long' })} de ${year}. Si deseas modificarlo, usa el botón "Editar" o borra el formulario existente.`);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error verificando formularios existentes:', error);
+                }
+            }
+
+
+            // Transporte: subir archivo a Supabase y guardar SOLO la URL como fileUrl
             const transportExpenses = await Promise.all(
-                Array.from(document.getElementById('transportExpensesDetails').children).map(async expenseDiv => {
+                Array.from(document.getElementById('transportExpensesDetails').children).map(async (expenseDiv, idx) => {
                     const date = expenseDiv.children[0].value;
                     const concept = expenseDiv.children[1].value;
                     const amount = expenseDiv.children[2].value;
-                    const fileInput = expenseDiv.children[3];
-                    let fileBase64 = null;
-                    if (fileInput && fileInput.files[0]) {
-                        fileBase64 = await fileToBase64(fileInput.files[0]);
+                    const fileInput = expenseDiv.querySelector('input[type="file"]');
+                    let fileUrl = null;
+                    // Buscar el archivo anterior si existe
+                    let previousExpense = null;
+                    if (isEditMode && currentEditFormData && currentEditFormData.gastosTransporte && currentEditFormData.gastosTransporte[idx]) {
+                        previousExpense = currentEditFormData.gastosTransporte[idx];
                     }
-                    return { date, concept, amount, file: fileBase64 };
+                    if (fileInput && fileInput.files[0]) {
+                        try {
+                            const uploadResult = await uploadFileToSupabase(fileInput.files[0], 'gastos_transporte');
+                            fileUrl = uploadResult.url;
+                        } catch (e) {
+                            alert('Error subiendo archivo de transporte: ' + e.message);
+                        }
+                    } else if (previousExpense && (previousExpense.fileUrl || previousExpense.url || previousExpense.file)) {
+                        fileUrl = previousExpense.fileUrl || previousExpense.url || (typeof previousExpense.file === 'string' ? previousExpense.file : previousExpense.file?.url);
+                    }
+                    return { date, concept, amount, fileUrl };
                 })
             );
 
-            // Dietas: guardar archivo por gasto
+            // Dietas: subir archivo a Supabase y guardar SOLO la URL como fileUrl
             const dietExpenses = await Promise.all(
-                Array.from(document.getElementById('dietExpensesDetails').children).map(async expenseDiv => {
+                Array.from(document.getElementById('dietExpensesDetails').children).map(async (expenseDiv, idx) => {
                     const date = expenseDiv.children[0].value;
                     const concept = expenseDiv.children[1].value;
                     const amount = expenseDiv.children[2].value;
-                    const fileInput = expenseDiv.children[3];
-                    let fileBase64 = null;
-                    if (fileInput && fileInput.files[0]) {
-                        fileBase64 = await fileToBase64(fileInput.files[0]);
+                    const fileInput = expenseDiv.querySelector('input[type="file"]');
+                    let fileUrl = null;
+                    let previousExpense = null;
+                    if (isEditMode && currentEditFormData && currentEditFormData.gastosDietas && currentEditFormData.gastosDietas[idx]) {
+                        previousExpense = currentEditFormData.gastosDietas[idx];
                     }
-                    return { date, concept, amount, file: fileBase64 };
+                    if (fileInput && fileInput.files[0]) {
+                        try {
+                            const uploadResult = await uploadFileToSupabase(fileInput.files[0], 'gastos_dietas');
+                            fileUrl = uploadResult.url;
+                        } catch (e) {
+                            alert('Error subiendo archivo de dieta: ' + e.message);
+                        }
+                    } else if (previousExpense && (previousExpense.fileUrl || previousExpense.url || previousExpense.file)) {
+                        fileUrl = previousExpense.fileUrl || previousExpense.url || (typeof previousExpense.file === 'string' ? previousExpense.file : previousExpense.file?.url);
+                    }
+                    return { date, concept, amount, fileUrl };
                 })
             );
 
@@ -332,23 +615,41 @@ const params = new URLSearchParams(window.location.search);
                 km: matchDiv.children[3].value
             }));
 
-            const formDataKey = `formData_${username}_${year}_${month}`;
             const formData = {
-                trainingAttendance: document.getElementById('trainingAttendance').value,
-                matches,
-                transportExpenses,
-                dietExpenses,
-                weeksInMonth: document.getElementById('weeksInMonth').value,
+                username: username,
+                year: parseInt(year),
+                month: parseInt(month),
+                asistencia: parseInt(document.getElementById('trainingAttendance').value || 0),
+                desplazamientos: matches,
+                gastosTransporte: transportExpenses,
+                gastosDietas: dietExpenses,
+                semanas: parseInt(document.getElementById('weeksInMonth').value || 0),
                 clubCode: document.getElementById('clubCode').value
             };
 
-            localStorage.setItem(formDataKey, JSON.stringify(formData));
-            alert(isEditMode ? 'Formulario actualizado exitosamente.' : 'Formulario guardado exitosamente.');
-            isEditMode = false;
-            editYear = null;
-            editMonth = null;
-            toggleForm();
-            generateDataTable();
+            try {
+                const response = await fetch('/api/formularios', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    alert(isEditMode ? 'Formulario actualizado exitosamente.' : 'Formulario guardado exitosamente.');
+                    isEditMode = false;
+                    editYear = null;
+                    editMonth = null;
+                    currentEditFormData = null;
+                    toggleForm();
+                    generateDataTable();
+                } else {
+                    if (handleAuthFailure(response)) return;
+                    alert('Error al guardar el formulario');
+                }
+            } catch (error) {
+                console.error('Error guardando formulario:', error);
+                alert('Error al guardar el formulario');
+            }
         });
 
         function incrementAwayMatches() {

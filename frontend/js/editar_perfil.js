@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const params = new URLSearchParams(window.location.search);
     const originalUsername = params.get('nombre');
     const referrer = params.get('referrer');
+    const from = params.get('from'); // nuevo parámetro para detectar origen
 
     if (!originalUsername) {
         alert('Error: Usuario no identificado.');
@@ -11,9 +12,19 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     let userData = {};
 
+    function getAuthHeaders(extraHeaders = {}) {
+        if (window.AuthUtils && typeof window.AuthUtils.getAuthHeaders === 'function') {
+            return window.AuthUtils.getAuthHeaders({ userHint: originalUsername, extraHeaders });
+        }
+
+        return { ...extraHeaders };
+    }
+
     // Intentar obtener usuario desde API
     try {
-        const res = await fetch(`/api/users/${encodeURIComponent(originalUsername)}`);
+        const res = await fetch(`/api/users/${encodeURIComponent(originalUsername)}`, {
+            headers: getAuthHeaders()
+        });
         if (res.ok) {
             userData = await res.json();
             // sincronizar copia local con servidor
@@ -50,7 +61,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (newUsername !== originalUsername) {
             // Si cambia username, comprobar duplicados vía API o localStorage
             try {
-                const check = await fetch(`/api/users/${encodeURIComponent(newUsername)}`);
+                const check = await fetch(`/api/users/${encodeURIComponent(newUsername)}`, {
+                    headers: getAuthHeaders()
+                });
                 if (check.ok) {
                     alert('El nuevo nombre de usuario ya existe en servidor.');
                     return;
@@ -72,15 +85,14 @@ document.addEventListener('DOMContentLoaded', async function() {
             phone: document.getElementById('phone').value,
             km: document.getElementById('km').value,
             clubCode: document.getElementById('club-code').value,
-            role: document.getElementById('role').value,
-            password: userData.password || '' // preserve password if available
+            role: document.getElementById('role').value
         };
 
         // Intentar guardar via API
         try {
             const res = await fetch(`/api/users/${encodeURIComponent(originalUsername)}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
@@ -115,12 +127,30 @@ document.addEventListener('DOMContentLoaded', async function() {
     };
 
     // Botón atrás
-    document.querySelector('.back-button').onclick = function() {
-        if (referrer === 'gestion_usuarios') {
+    document.querySelector('.button-back').onclick = function() {
+        console.log('🔙 Botón atrás presionado');
+        console.log('📍 Parámetro from:', from);
+        console.log('📍 Parámetro referrer:', referrer);
+        
+        // Obtener el username del líder (del parámetro nombre en la URL)
+        const leaderUsername = params.get('lider') || originalUsername;
+        
+        // Si viene de ver_usuarios, volver ahí
+        if (from === 'ver_usuarios') {
+            console.log('✅ Redirigiendo a ver_usuarios.html');
+            window.location.href = `ver_usuarios.html?nombre=${encodeURIComponent(leaderUsername)}`;
+        }
+        // Si tiene referrer específico (gestión o ver usuarios legacy)
+        else if (referrer === 'gestion_usuarios') {
+            console.log('✅ Redirigiendo a gestion_usuarios.html');
             window.location.href = 'gestion_usuarios.html';
         } else if (referrer === 'ver_usuarios') {
-            window.location.href = 'ver_usuarios.html';
-        } else {
+            console.log('✅ Redirigiendo a ver_usuarios.html (legacy)');
+            window.location.href = `ver_usuarios.html?nombre=${encodeURIComponent(leaderUsername)}`;
+        } 
+        // Por defecto, volver a interfaz personalizada
+        else {
+            console.log('✅ Redirigiendo a interfaz_personalizada.html');
             window.location.href = `interfaz_personalizada.html?nombre=${encodeURIComponent(originalUsername)}`;
         }
     };

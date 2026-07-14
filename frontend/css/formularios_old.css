@@ -1,0 +1,638 @@
+    /* --- Mejora visual tabla formularios --- */
+    .data-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 98%;
+        margin: 24px auto 0 auto;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+        overflow: hidden;
+    }
+
+
+    .data-table th {
+        background: linear-gradient(90deg, #26a69a 60%, #00796b 100%);
+        color: #fff;
+        font-size: 0.78em;
+        font-weight: 700;
+        padding: 3px 2px;
+        border-bottom: 2px solid #26a69a;
+        text-align: center;
+        letter-spacing: 0.5px;
+    }
+
+
+    .data-table td {
+        padding: 2px 2px;
+        border-bottom: 1px solid #e0e0e0;
+        color: #222;
+        background: #fff;
+        text-align: center;
+        font-size: 0.78em;
+    }
+
+    .data-table tbody tr:nth-child(even) td {
+        background: #f6f8fa;
+    }
+
+    .data-table tbody tr:hover td {
+        background: #e0f2f1;
+        color: #004d40;
+        transition: background 0.2s, color 0.2s;
+    }
+
+    .data-table td button.edit-button {
+        background: #26a69a;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: 0.95em;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .data-table td button.edit-button:hover {
+        background: #00796b;
+    }
+
+    .data-table {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: #ffffff;
+        opacity: 1 !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+
+#filtros-formularios {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 100;
+    padding-top: 18px;
+    padding-bottom: 12px;
+    margin-bottom: 0;
+    opacity: 1 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+body {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(135deg, #004d40, #1b5e20);
+    color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 10px;
+}
+
+/* Título principal */
+#user-title {
+    position: fixed;
+    top: 25px;
+    left: 20px;
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 800;
+    margin: 0;
+    z-index: 10;
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.5);
+    letter-spacing: 1px;
+}
+
+/* Botón del formulario */
+.form-button {
+    position: absolute;
+    top: 50px;
+    right: 20px;
+    background: linear-gradient(135deg, #26a69a, #00796b);
+    color: #fff;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 15px rgba(38, 166, 154, 0.4);
+    z-index: 10;
+    overflow: hidden;
+}
+
+.form-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+}
+
+.form-button:hover::before {
+    left: 100%;
+}
+
+.form-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(38, 166, 154, 0.5);
+}
+
+/* Contenedor principal */
+.form-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 10px;
+}
+
+/* Tabla de datos */
+.data-table {
+    margin-top: 40px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 98%;
+    max-width: 1800px;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #ffffff;
+    border-radius: 15px;
+    overflow-y: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    display: table;
+    max-height: none;
+    overflow-y: visible;
+    position: relative;
+}
+
+.data-table tbody {
+    display: block;
+    max-height: 68vh;
+    margin-bottom: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+}
+.data-table thead, .data-table tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.data-table th {
+    background: linear-gradient(135deg, #004d40, #00695c);
+    color: #fff;
+    padding: 14px 16px;
+    font-size: 14px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border-bottom: 3px solid #26a69a;
+}
+
+.data-table td {
+    border-bottom: 1px solid #e0e0e0;
+    padding: 12px 14px;
+    text-align: center;
+    font-size: 14px;
+    color: #333;
+    transition: background-color 0.2s ease;
+}
+
+.data-table tr:nth-child(even) {
+    background-color: #f5f5f5;
+}
+
+.data-table tr:hover {
+    background: linear-gradient(90deg, #e0f2f1, #b2dfdb, #e0f2f1);
+    transform: scale(1.01);
+}
+
+.data-table tbody tr {
+    transition: all 0.2s ease;
+}
+
+/* Botones de acción */
+.action-buttons button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.edit-button {
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    color: #000;
+}
+
+.edit-button:hover {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(255, 152, 0, 0.4);
+}
+
+.delete-button {
+    background: linear-gradient(135deg, #e53935, #c62828);
+    color: #fff;
+}
+
+.delete-button:hover {
+    background: linear-gradient(135deg, #c62828, #b71c1c);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(229, 57, 53, 0.4);
+}
+
+/* Botón de volver */
+.back-button {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: linear-gradient(135deg, #26a69a, #00796b);
+    color: #fff;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 15px rgba(38, 166, 154, 0.4);
+}
+
+.back-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(38, 166, 154, 0.5);
+}
+
+/* Ventana emergente del formulario */
+.form-widget {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2000;
+    background: linear-gradient(145deg, #ffffff, #f5f5f5);
+    border-radius: 20px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
+    padding: 40px;
+    width: 90%;
+    max-width: 800px;
+    height: 85%;
+    max-height: 90%;
+    display: none;
+    animation: popIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    overflow-y: auto;
+    color: black;
+    border: 3px solid rgba(38, 166, 154, 0.2);
+}
+
+.form-widget::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #26a69a, #00796b, #004d40);
+    border-radius: 20px 20px 0 0;
+}
+
+.form-close-btn {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: #e0f2f1;
+    color: #004d40;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.form-close-btn:hover {
+    background: #b2dfdb;
+}
+
+.form-widget h2 {
+    text-align: center;
+    color: #004d40;
+    margin-bottom: 25px;
+    font-size: 1.8rem;
+    font-weight: 800;
+    text-shadow: 2px 2px 4px rgba(0, 77, 64, 0.1);
+}
+
+.form-widget h3 {
+    color: #00796b;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.form-widget form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-widget form label {
+    font-weight: 600;
+    color: #00796b;
+    font-size: 0.95rem;
+    letter-spacing: 0.3px;
+}
+
+.form-widget form input,
+.form-widget form select {
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 14px;
+    width: 100%;
+    transition: all 0.3s ease;
+    background: #fff;
+}
+
+
+
+.form-widget form button {
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #26a69a, #00796b);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(38, 166, 154, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.form-widget form button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+}
+
+.form-widget form button:hover::before {
+    left: 100%;
+}
+
+.form-widget form button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(38, 166, 154, 0.4);
+}
+
+/* Responsive para móvil */
+@media (max-width: 768px) {
+    body {
+        overflow-x: hidden;
+        justify-content: flex-start;
+        align-items: center;
+        padding: 12px 10px 92px;
+    }
+
+    .form-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 0;
+    }
+
+    #user-title {
+        position: static;
+        margin: 0 0 10px;
+        font-size: 1.15rem;
+        line-height: 1.25;
+        text-align: left;
+        width: 100%;
+    }
+
+    .form-button {
+        position: sticky;
+        top: 8px;
+        width: 100%;
+        margin: 0 0 14px;
+        padding: 12px 16px;
+        font-size: 0.98rem;
+        border-radius: 12px;
+        z-index: 2501;
+    }
+
+    .data-table {
+        display: table;
+        width: 800px;
+        min-width: 800px;
+        margin: 0;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .data-table thead {
+        display: table-header-group;
+    }
+
+    .data-table tbody {
+        display: table-row-group;
+        max-height: none;
+        overflow: visible;
+        margin: 0;
+    }
+
+    .data-table tr {
+        display: table-row;
+    }
+
+    .data-table th,
+    .data-table td {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        font-size: 0.77rem;
+        line-height: 1.2;
+        padding: 8px 6px;
+        min-width: 78px;
+    }
+
+    .data-table th:nth-child(4),
+    .data-table th:nth-child(5),
+    .data-table th:nth-child(6),
+    .data-table td:nth-child(4),
+    .data-table td:nth-child(5),
+    .data-table td:nth-child(6) {
+        min-width: 108px;
+    }
+
+    .data-table tbody tr:hover {
+        transform: none;
+    }
+
+    .data-table td:last-child {
+        min-width: 98px;
+    }
+
+    .ver-btn,
+    .edit-button {
+        min-height: 34px;
+        padding: 6px 8px;
+        font-size: 0.74rem;
+        border-radius: 10px;
+    }
+
+    .back-button {
+        left: 12px;
+        right: auto;
+        bottom: 10px;
+        justify-content: center;
+        padding: 8px 12px;
+        font-size: 0.82rem;
+        border-radius: 9px;
+        gap: 6px;
+    }
+
+    .form-widget {
+        width: 88%;
+        height: auto;
+        max-height: 82vh;
+        padding: 12px 10px;
+        border-radius: 14px;
+        top: 58%;
+    }
+
+    .form-close-btn {
+        top: 6px;
+        right: 8px;
+        width: 30px;
+        height: 30px;
+        font-size: 1rem;
+    }
+
+    .form-widget h2 {
+        font-size: 1.05rem;
+        margin-bottom: 10px;
+    }
+
+    .form-widget h3 {
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+
+    .form-widget form {
+        gap: 12px !important;
+    }
+
+    .form-widget form > div {
+        margin-bottom: 0;
+    }
+
+    .form-widget form > div:first-child {
+        gap: 10px !important;
+    }
+
+    .form-widget form input,
+    .form-widget form select,
+    .form-widget form button {
+        font-size: 0.86rem;
+        padding: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px 8px 84px;
+    }
+
+    #user-title {
+        font-size: 1.02rem;
+    }
+
+    .form-button {
+        padding: 11px 12px;
+        font-size: 0.92rem;
+    }
+
+    .data-table {
+        width: 700px;
+        min-width: 700px;
+    }
+
+    .data-table th,
+    .data-table td {
+        font-size: 0.72rem;
+        padding: 7px 5px;
+        min-width: 68px;
+    }
+
+    .ver-btn,
+    .edit-button {
+        min-height: 30px;
+        min-width: 78px;
+        padding: 5px 7px;
+        font-size: 0.7rem;
+    }
+
+    .back-button {
+        left: 10px;
+        bottom: 8px;
+        padding: 7px 10px;
+        font-size: 0.76rem;
+    }
+
+    .form-widget {
+        width: 86%;
+        max-height: 78vh;
+        padding: 10px 8px;
+        top: 60%;
+    }
+
+    .form-close-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.95rem;
+    }
+
+    .form-widget h2 {
+        font-size: 0.98rem;
+    }
+
+    .form-widget h3 {
+        font-size: 0.84rem;
+    }
+
+    .form-widget form {
+        gap: 10px !important;
+    }
+
+    .form-widget form input,
+    .form-widget form select,
+    .form-widget form button {
+        font-size: 0.8rem;
+        padding: 5px;
+    }
+}

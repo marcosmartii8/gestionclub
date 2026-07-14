@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Superadmin - tuGestClub</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a237e, #283593);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* ===== LOGIN ===== */
+        #login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .login-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 48px 40px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            width: 360px;
+            text-align: center;
+        }
+        .login-box h1 { font-size: 1.6rem; color: #1a237e; margin-bottom: 6px; }
+        .login-box p  { font-size: 0.9rem; color: #666; margin-bottom: 28px; }
+        .login-box input {
+            width: 100%; padding: 12px 14px; margin-bottom: 14px;
+            border: 1.5px solid #c5cae9; border-radius: 8px;
+            font-size: 1rem; outline: none; transition: border 0.2s;
+        }
+        .login-box input:focus { border-color: #3949ab; }
+        .btn-primary {
+            width: 100%; padding: 13px; background: #1a237e; color: #fff;
+            border: none; border-radius: 8px; font-size: 1rem;
+            font-weight: 600; cursor: pointer; transition: background 0.2s;
+        }
+        .btn-primary:hover { background: #283593; }
+        #login-error { color: #c62828; font-size: 0.88rem; margin-top: 10px; }
+
+        /* ===== MAIN PANEL ===== */
+        #main-panel { display: none; }
+
+        header {
+            background: #1a237e;
+            color: #fff;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        header h1 { font-size: 1.3rem; letter-spacing: 1px; }
+        .header-right { display: flex; align-items: center; gap: 16px; }
+        .badge-admin {
+            background: #ffd54f; color: #1a237e;
+            padding: 4px 12px; border-radius: 20px;
+            font-size: 0.8rem; font-weight: 700;
+        }
+        .btn-logout {
+            background: rgba(255,255,255,0.15); color: #fff;
+            border: 1px solid rgba(255,255,255,0.4); border-radius: 8px;
+            padding: 7px 16px; cursor: pointer; font-size: 0.9rem;
+        }
+        .btn-logout:hover { background: rgba(255,255,255,0.25); }
+
+        .tabs {
+            background: #283593;
+            display: flex;
+            gap: 4px;
+            padding: 0 32px;
+        }
+        .tab-btn {
+            padding: 13px 22px; color: rgba(255,255,255,0.7);
+            background: none; border: none; cursor: pointer;
+            font-size: 0.95rem; border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            color: #fff;
+            border-bottom-color: #ffd54f;
+            font-weight: 600;
+        }
+        .tab-btn:hover { color: #fff; }
+
+        .content { padding: 32px; max-width: 1200px; margin: 0 auto; }
+
+        .tab-section { display: none; }
+        .tab-section.active { display: block; }
+
+        /* ===== CARDS & STATS ===== */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: #fff; border-radius: 12px;
+            padding: 20px 24px; text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .stat-card .num { font-size: 2.2rem; font-weight: 700; color: #1a237e; }
+        .stat-card .label { font-size: 0.85rem; color: #666; margin-top: 4px; }
+
+        /* ===== SECTION HEADER ===== */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .section-header h2 { font-size: 1.2rem; color: #1a237e; }
+
+        /* ===== FORMS ===== */
+        .card {
+            background: #fff; border-radius: 12px;
+            padding: 28px 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        .card h3 { font-size: 1.05rem; color: #1a237e; margin-bottom: 20px; border-bottom: 1px solid #e8eaf6; padding-bottom: 10px; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 0.85rem; font-weight: 600; color: #444; }
+        .form-group input, .form-group select {
+            padding: 10px 12px; border: 1.5px solid #c5cae9;
+            border-radius: 8px; font-size: 0.95rem; outline: none;
+            transition: border 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: #3949ab; }
+        .form-group small { font-size: 0.78rem; color: #888; }
+
+        .color-row { display: flex; gap: 16px; flex-wrap: wrap; }
+        .color-picker-group {
+            display: flex; flex-direction: column; gap: 6px; align-items: center;
+        }
+        .color-picker-group label { font-size: 0.78rem; color: #555; font-weight: 600; }
+        .color-picker-group input[type="color"] {
+            width: 52px; height: 40px; padding: 2px; border-radius: 8px;
+            border: 1.5px solid #c5cae9; cursor: pointer;
+        }
+
+        .btn-success {
+            background: #2e7d32; color: #fff;
+            border: none; border-radius: 8px;
+            padding: 11px 28px; font-size: 0.95rem;
+            font-weight: 600; cursor: pointer; margin-top: 20px;
+            transition: background 0.2s;
+        }
+        .btn-success:hover { background: #388e3c; }
+        .btn-danger {
+            background: #c62828; color: #fff;
+            border: none; border-radius: 8px;
+            padding: 7px 16px; font-size: 0.85rem;
+            cursor: pointer; border-radius: 6px;
+        }
+        .btn-danger:hover { background: #b71c1c; }
+        .btn-edit {
+            background: #1565c0; color: #fff;
+            border: none; border-radius: 6px;
+            padding: 7px 14px; font-size: 0.85rem; cursor: pointer;
+        }
+        .btn-edit:hover { background: #1976d2; }
+        .btn-secondary {
+            background: #546e7a; color: #fff;
+            border: none; border-radius: 8px;
+            padding: 11px 24px; font-size: 0.9rem;
+            cursor: pointer; margin-top: 20px; margin-left: 10px;
+        }
+
+        /* ===== USERS BLOCK ===== */
+        .users-block {
+            border: 1.5px solid #e8eaf6; border-radius: 10px;
+            padding: 20px; margin-top: 20px;
+        }
+        .users-block h4 { font-size: 0.95rem; color: #283593; margin-bottom: 16px; }
+        .users-section { margin-bottom: 18px; }
+        .users-section h5 {
+            font-size: 0.85rem; color: #555;
+            margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+        }
+        .role-badge {
+            display: inline-block; padding: 2px 10px; border-radius: 12px;
+            font-size: 0.75rem; font-weight: 700;
+        }
+        .role-lider     { background: #e3f2fd; color: #0d47a1; }
+        .role-admin     { background: #fce4ec; color: #880e4f; }
+        .role-voluntario{ background: #e8f5e9; color: #1b5e20; }
+
+        .user-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 10px; align-items: center;
+            margin-bottom: 8px;
+        }
+        .user-row input {
+            padding: 8px 10px; border: 1.5px solid #c5cae9;
+            border-radius: 7px; font-size: 0.88rem; outline: none;
+        }
+        .user-row input:focus { border-color: #3949ab; }
+        .btn-add-user {
+            background: #e8eaf6; color: #283593;
+            border: 1.5px solid #c5cae9; border-radius: 7px;
+            padding: 7px 14px; font-size: 0.85rem; cursor: pointer;
+            margin-top: 6px;
+        }
+        .btn-add-user:hover { background: #c5cae9; }
+        .btn-remove-user {
+            background: none; color: #c62828;
+            border: none; font-size: 1.1rem; cursor: pointer; padding: 4px;
+        }
+
+        /* ===== TABLE ===== */
+        .table-wrap { overflow-x: auto; }
+        table {
+            width: 100%; border-collapse: collapse;
+            background: #fff; border-radius: 10px;
+            overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        }
+        th {
+            background: #1a237e; color: #fff;
+            padding: 12px 16px; text-align: left;
+            font-size: 0.85rem; font-weight: 600;
+        }
+        td {
+            padding: 11px 16px; border-bottom: 1px solid #f0f0f0;
+            font-size: 0.88rem;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f8f9ff; }
+
+        .color-dot {
+            display: inline-block; width: 16px; height: 16px;
+            border-radius: 50%; border: 1px solid #ccc;
+            vertical-align: middle; margin-right: 4px;
+        }
+
+        /* ===== CREDENTIALS BOX ===== */
+        .credentials-box {
+            background: #e8f5e9; border: 1.5px solid #a5d6a7;
+            border-radius: 10px; padding: 20px; margin-top: 20px;
+        }
+        .credentials-box h4 { color: #1b5e20; margin-bottom: 12px; }
+        .credential-item {
+            display: flex; justify-content: space-between;
+            align-items: center; padding: 8px 0;
+            border-bottom: 1px solid #c8e6c9; font-size: 0.88rem;
+        }
+        .credential-item:last-child { border-bottom: none; }
+        .credential-item .user-info { display: flex; flex-direction: column; gap: 2px; }
+        .credential-item .cred-role { font-size: 0.75rem; color: #555; }
+        .cred-pass { font-family: monospace; background: #fff; padding: 3px 8px; border-radius: 5px; }
+        .btn-copy-all {
+            background: #1b5e20; color: #fff; border: none;
+            border-radius: 8px; padding: 10px 20px;
+            font-size: 0.9rem; cursor: pointer; margin-top: 14px;
+        }
+        .btn-copy-all:hover { background: #2e7d32; }
+
+        /* ===== ALERT ===== */
+        .alert {
+            padding: 12px 16px; border-radius: 8px;
+            margin-bottom: 16px; font-size: 0.9rem;
+        }
+        .alert-success { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+        .alert-error   { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+
+        .spinner {
+            display: inline-block; width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: #fff; border-radius: 50%;
+            animation: spin 0.7s linear infinite; margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 600px) {
+            .content { padding: 16px; }
+            .tabs { padding: 0 8px; overflow-x: auto; }
+            .form-grid { grid-template-columns: 1fr; }
+            .user-row { grid-template-columns: 1fr 1fr auto; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ======== LOGIN ======== -->
+<div id="login-screen">
+    <div class="login-box">
+        <h1>🔐 tuGestClub</h1>
+        <p>Acceso exclusivo Superadministrador</p>
+        <input type="text" id="sa-user" placeholder="Usuario superadmin" autocomplete="off">
+        <input type="password" id="sa-pass" placeholder="Contraseña">
+        <button class="btn-primary" onclick="doLogin()">Entrar</button>
+        <div id="login-error"></div>
+    </div>
+</div>
+
+<!-- ======== PANEL PRINCIPAL ======== -->
+<div id="main-panel">
+    <header>
+        <h1>⚙️ Panel Superadmin — tuGestClub</h1>
+        <div class="header-right">
+            <span class="badge-admin">SUPERADMIN</span>
+            <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('tab-dashboard')">📊 Resumen</button>
+        <button class="tab-btn" onclick="showTab('tab-crear')">➕ Crear Club</button>
+        <button class="tab-btn" onclick="showTab('tab-clubes')">🏟 Clubes</button>
+    </div>
+
+    <div class="content">
+
+        <!-- ======== DASHBOARD ======== -->
+        <div id="tab-dashboard" class="tab-section active">
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="num" id="stat-clubes">—</div>
+                    <div class="label">Clubes activos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="num" id="stat-usuarios">—</div>
+                    <div class="label">Usuarios totales</div>
+                </div>
+                <div class="stat-card">
+                    <div class="num" id="stat-lideres">—</div>
+                    <div class="label">Líderes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="num" id="stat-voluntarios">—</div>
+                    <div class="label">Voluntarios</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Clubes registrados</h3>
+                <div class="table-wrap">
+                    <table id="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre del club</th>
+                                <th>Presidente</th>
+                                <th>Colores</th>
+                                <th>Usuarios</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======== CREAR CLUB ======== -->
+        <div id="tab-crear" class="tab-section">
+            <div id="alert-crear"></div>
+
+            <div class="card">
+                <h3>Datos del club</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Código oficial del club *</label>
+                        <input type="text" id="new-club-code" placeholder="Ej: 82801">
+                        <small>Código de la federación. No se puede cambiar después.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre del club *</label>
+                        <input type="text" id="new-club-name" placeholder="Ej: Club Deportivo Valencia">
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre del presidente *</label>
+                        <input type="text" id="new-president" placeholder="Ej: Juan García López">
+                        <small>Aparecerá en las hojas de gastos generadas.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>DNI del presidente *</label>
+                        <input type="text" id="new-dni-president" placeholder="Ej: 23847146X">
+                        <small>Aparecerá en las hojas de gastos generadas.</small>
+                    </div>
+                </div>
+
+                <div style="margin-top:20px;">
+                    <label style="font-size:0.85rem;font-weight:600;color:#444;display:block;margin-bottom:12px;">Colores corporativos del club</label>
+                    <div class="color-row">
+                        <div class="color-picker-group">
+                            <label>Color primario</label>
+                            <input type="color" id="new-color-primary" value="#004d40">
+                            <small>Fondo principal</small>
+                        </div>
+                        <div class="color-picker-group">
+                            <label>Color secundario</label>
+                            <input type="color" id="new-color-secondary" value="#1b5e20">
+                            <small>Gradiente</small>
+                        </div>
+                        <div class="color-picker-group">
+                            <label>Color texto</label>
+                            <input type="color" id="new-text-color" value="#f5f5f5">
+                            <small>Texto sobre fondo</small>
+                        </div>
+                        <div class="color-picker-group">
+                            <label>Color acento</label>
+                            <input type="color" id="new-accent-color" value="#26a69a">
+                            <small>Botones y bordes</small>
+                        </div>
+                    </div>
+                    <div style="margin-top:14px;padding:16px;border-radius:10px;transition:all 0.3s;" id="color-preview">
+                        <span style="font-size:0.85rem;">Vista previa del tema del club</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Usuarios del club</h3>
+                <p style="font-size:0.85rem;color:#666;margin-bottom:20px;">Indica cuántos usuarios de cada rol necesita el club. Los nombres y contraseñas se generan automáticamente. El líder podrá modificarlos después desde la app.</p>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label><span class="role-badge role-lider">LÍDER</span> &nbsp;Nº de líderes</label>
+                        <input type="number" id="num-lider" value="1" min="0" max="10" style="width:80px;">
+                        <small>Gestiona el club y sus usuarios.</small>
+                    </div>
+                    <div class="form-group">
+                        <label><span class="role-badge role-admin">ADMIN</span> &nbsp;Nº de administradores</label>
+                        <input type="number" id="num-admin" value="0" min="0" max="10" style="width:80px;">
+                        <small>Rol secundario de gestión.</small>
+                    </div>
+                    <div class="form-group">
+                        <label><span class="role-badge role-voluntario">VOLUNTARIO</span> &nbsp;Nº de voluntarios</label>
+                        <input type="number" id="num-voluntario" value="0" min="0" max="50" style="width:80px;">
+                        <small>Técnicos que rellenan formularios.</small>
+                    </div>
+                </div>
+
+                <div id="preview-usuarios" style="margin-top:20px;padding:16px;background:#f8f9ff;border-radius:10px;border:1.5px solid #e8eaf6;display:none;">
+                    <p style="font-size:0.85rem;font-weight:600;color:#1a237e;margin-bottom:10px;">👁 Vista previa de usuarios que se crearán:</p>
+                    <div id="preview-lista"></div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn-success" id="btn-crear" onclick="crearClub()">✅ Crear club y generar credenciales</button>
+                <button class="btn-secondary" onclick="limpiarFormCrear()">🗑 Limpiar formulario</button>
+            </div>
+
+            <!-- CREDENCIALES GENERADAS -->
+            <div id="credentials-output" style="display:none;" class="credentials-box">
+                <h4>✅ Club creado — Credenciales para entregar al club</h4>
+                <div id="credentials-list"></div>
+                <button class="btn-copy-all" onclick="copiarCredenciales()">📋 Copiar todas las credenciales</button>
+            </div>
+        </div>
+
+        <!-- ======== LISTA CLUBES ======== -->
+        <div id="tab-clubes" class="tab-section">
+            <div id="alert-clubes"></div>
+            <div class="section-header">
+                <h2>Todos los clubes</h2>
+                <button class="btn-primary" style="width:auto;padding:10px 20px;" onclick="cargarDatos()">🔄 Recargar</button>
+            </div>
+
+            <div id="clubes-list"></div>
+        </div>
+
+    </div><!-- /content -->
+</div><!-- /main-panel -->
+
+<script>
+// ============================================================
+// CONFIGURACIÓN
+// ============================================================
+const SA_USERNAME = 'superadmin';   // ← CAMBIA ESTO
+const SA_PASSWORD = 'Admin1234!';   // ← CAMBIA ESTO por una contraseña segura
+
+let adminToken = null;
+let allClubs   = [];
+let allUsers   = [];
+
+// ============================================================
+// LOGIN
+// ============================================================
+function doLogin() {
+    const u = document.getElementById('sa-user').value.trim();
+    const p = document.getElementById('sa-pass').value;
+    if (u === SA_USERNAME && p === SA_PASSWORD) {
+        adminToken = 'superadmin-local';
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('main-panel').style.display = 'block';
+        cargarDatos();
+        initColorPreview();
+    } else {
+        document.getElementById('login-error').textContent = 'Usuario o contraseña incorrectos.';
+    }
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') {
+        doLogin();
+    }
+});
+
+function doLogout() {
+    adminToken = null;
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('main-panel').style.display = 'none';
+    document.getElementById('sa-pass').value = '';
+    document.getElementById('login-error').textContent = '';
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function showTab(id) {
+    document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    event.target.classList.add('active');
+    if (id === 'tab-clubes') renderClubesList();
+}
+
+// ============================================================
+// CARGAR DATOS
+// ============================================================
+async function cargarDatos() {
+    try {
+        const [clubsRes, usersRes] = await Promise.all([
+            fetch('/api/clubs'),
+            fetch('/api/users', { headers: await getSuperadminHeaders() })
+        ]);
+
+        if (clubsRes.ok) allClubs = await clubsRes.json();
+        if (usersRes.ok) allUsers = await usersRes.json();
+
+        renderDashboard();
+    } catch (e) {
+        console.error('Error cargando datos:', e);
+    }
+}
+
+async function getSuperadminHeaders() {
+    // Intenta login como superadmin para obtener token real
+    // Si tienes un usuario superadmin en la BD, ajusta aquí.
+    // Por ahora usa el token de lider del primer club si existe.
+    try {
+        const r = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: SA_USERNAME, password: SA_PASSWORD })
+        });
+        if (r.ok) {
+            const data = await r.json();
+            return { 'Authorization': `Bearer ${data.token}`, 'Content-Type': 'application/json' };
+        }
+    } catch(e) {}
+    return { 'Content-Type': 'application/json' };
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard() {
+    const lideres     = allUsers.filter(u => u.role === 'lider').length;
+    const admins      = allUsers.filter(u => u.role === 'administrador').length;
+    const voluntarios = allUsers.filter(u => u.role === 'voluntario').length;
+
+    document.getElementById('stat-clubes').textContent    = allClubs.length;
+    document.getElementById('stat-usuarios').textContent  = allUsers.length;
+    document.getElementById('stat-lideres').textContent   = lideres;
+    document.getElementById('stat-voluntarios').textContent = voluntarios;
+
+    const tbody = document.getElementById('dashboard-tbody');
+    tbody.innerHTML = '';
+
+    allClubs.forEach(club => {
+        const usersClub = allUsers.filter(u => u.clubCode === club.club_code);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${club.club_code}</strong></td>
+            <td>${club.club_name}</td>
+            <td>${club.nom_presidente || '—'}</td>
+            <td>
+                <span class="color-dot" style="background:${club.color_primary || '#004d40'}"></span>
+                <span class="color-dot" style="background:${club.color_secondary || '#1b5e20'}"></span>
+                <span class="color-dot" style="background:${club.accent_color || '#26a69a'}"></span>
+            </td>
+            <td>${usersClub.length}</td>
+            <td>
+                <button class="btn-edit" onclick="editarClub('${club.club_code}')">✏️ Editar</button>
+                <button class="btn-danger" style="margin-left:6px;" onclick="eliminarClub('${club.club_code}', '${club.club_name}')">🗑</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ============================================================
+// VISTA PREVIA DE COLORES
+// ============================================================
+function initColorPreview() {
+    ['new-color-primary','new-color-secondary','new-text-color','new-accent-color'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updateColorPreview);
+    });
+    updateColorPreview();
+}
+
+function updateColorPreview() {
+    const p  = document.getElementById('new-color-primary').value;
+    const s  = document.getElementById('new-color-secondary').value;
+    const t  = document.getElementById('new-text-color').value;
+    const a  = document.getElementById('new-accent-color').value;
+    const prev = document.getElementById('color-preview');
+    prev.style.background = `linear-gradient(135deg, ${p}, ${s})`;
+    prev.style.color = t;
+    prev.innerHTML = `<strong style="color:${t}">Vista previa del club</strong>
+        <span style="background:${a};color:#fff;padding:4px 14px;border-radius:16px;font-size:0.82rem;margin-left:12px;">Botón de ejemplo</span>`;
+}
+
+// ============================================================
+// GENERACIÓN AUTOMÁTICA DE USUARIOS
+// ============================================================
+
+function generarPassword() {
+    const mayus = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const minus = 'abcdefghjkmnpqrstuvwxyz';
+    const nums  = '23456789';
+    const spec  = '!@#$%&*';
+    const all   = mayus + minus + nums + spec;
+    let pass = mayus[Math.floor(Math.random()*mayus.length)]
+             + minus[Math.floor(Math.random()*minus.length)]
+             + nums[Math.floor(Math.random()*nums.length)]
+             + spec[Math.floor(Math.random()*spec.length)];
+    for (let i = 0; i < 6; i++) pass += all[Math.floor(Math.random()*all.length)];
+    return pass.split('').sort(() => Math.random()-0.5).join('');
+}
+
+function generarUsuarios(clubCode) {
+    const numLider     = parseInt(document.getElementById('num-lider').value)     || 0;
+    const numAdmin     = parseInt(document.getElementById('num-admin').value)     || 0;
+    const numVoluntario= parseInt(document.getElementById('num-voluntario').value)|| 0;
+
+    const prefix = clubCode ? clubCode.toLowerCase() : 'club';
+    const usuarios = [];
+
+    for (let i = 1; i <= numLider;      i++) usuarios.push({ username: `lider_${prefix}_${i}`,     password: generarPassword(), role: 'lider' });
+    for (let i = 1; i <= numAdmin;      i++) usuarios.push({ username: `admin_${prefix}_${i}`,     password: generarPassword(), role: 'administrador' });
+    for (let i = 1; i <= numVoluntario; i++) usuarios.push({ username: `vol_${prefix}_${i}`,       password: generarPassword(), role: 'voluntario' });
+
+    return usuarios;
+}
+
+function actualizarPreview() {
+    const clubCode = document.getElementById('new-club-code').value.trim() || 'club';
+    const usuarios = generarUsuarios(clubCode);
+    const preview  = document.getElementById('preview-usuarios');
+    const lista    = document.getElementById('preview-lista');
+
+    if (usuarios.length === 0) {
+        preview.style.display = 'none';
+        return;
+    }
+
+    const roleLabel = { lider: 'LÍDER', administrador: 'ADMIN', voluntario: 'VOLUNTARIO' };
+    const roleClass = { lider: 'role-lider', administrador: 'role-admin', voluntario: 'role-voluntario' };
+
+    lista.innerHTML = usuarios.map(u => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #e8eaf6;font-size:0.87rem;">
+            <span><span class="role-badge ${roleClass[u.role]}">${roleLabel[u.role]}</span> &nbsp;<strong>${u.username}</strong></span>
+            <span style="font-family:monospace;background:#fff;padding:3px 10px;border-radius:6px;border:1px solid #c5cae9;">${u.password}</span>
+        </div>`).join('');
+
+    preview.style.display = 'block';
+}
+
+// Actualizar preview al cambiar números o código de club
+window.addEventListener('load', () => {
+    ['num-lider','num-admin','num-voluntario','new-club-code'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', actualizarPreview);
+    });
+});
+
+// ============================================================
+// CREAR CLUB
+// ============================================================
+
+async function crearClub() {
+    const clubCode    = document.getElementById('new-club-code').value.trim();
+    const clubName    = document.getElementById('new-club-name').value.trim();
+    const president   = document.getElementById('new-president').value.trim();
+    const dniPresident = document.getElementById('new-dni-president').value.trim();
+    const colorP      = document.getElementById('new-color-primary').value;
+    const colorS      = document.getElementById('new-color-secondary').value;
+    const textColor   = document.getElementById('new-text-color').value;
+    const accentColor = document.getElementById('new-accent-color').value;
+    const users       = generarUsuarios(clubCode);
+
+    const alertDiv = document.getElementById('alert-crear');
+    alertDiv.innerHTML = '';
+
+    if (!clubCode || !clubName || !president || !dniPresident) {
+        alertDiv.innerHTML = '<div class="alert alert-error">⚠️ Código, nombre del club, nombre del presidente y DNI son obligatorios.</div>';
+        return;
+    }
+    if (users.length === 0) {
+        alertDiv.innerHTML = '<div class="alert alert-error">⚠️ Añade al menos un usuario antes de crear el club.</div>';
+        return;
+    }
+
+    const btn = document.getElementById('btn-crear');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Creando club...';
+
+    const headers = await getSuperadminHeaders();
+
+    try {
+        // 1. Crear el club
+        const clubBody = {
+            club_code:       clubCode,
+            club_name:       clubName,
+            nom_presidente:  president,
+            dni_presidente:  dniPresident,
+            color_primary:   colorP,
+            color_secondary: colorS,
+            text_color:      textColor,
+            accent_color:    accentColor
+        };
+
+        const clubRes = await fetch('/api/clubs', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(clubBody)
+        });
+
+        if (!clubRes.ok) {
+            const err = await clubRes.json();
+            throw new Error(err.message || 'Error al crear el club');
+        }
+
+        // 2. Crear usuarios uno a uno
+        const createdUsers = [];
+        const failedUsers  = [];
+
+        for (const user of users) {
+            const userRes = await fetch('/api/users', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    username: user.username,
+                    password: user.password,
+                    clubCode: clubCode,
+                    role:     user.role
+                })
+            });
+
+            if (userRes.ok) {
+                createdUsers.push(user);
+            } else {
+                const err = await userRes.json();
+                failedUsers.push({ ...user, error: err.error || 'Error desconocido' });
+            }
+        }
+
+        // 3. Mostrar resultado
+        let html = '';
+        if (failedUsers.length > 0) {
+            html += `<div class="alert alert-error">⚠️ Algunos usuarios no se pudieron crear: ${failedUsers.map(u => `${u.username} (${u.error})`).join(', ')}</div>`;
+        }
+        if (createdUsers.length > 0) {
+            html += `<div class="alert alert-success">✅ Club <strong>${clubName}</strong> creado con ${createdUsers.length} usuario(s).</div>`;
+        }
+        alertDiv.innerHTML = html;
+
+        // 4. Mostrar credenciales
+        mostrarCredenciales(clubCode, clubName, president, dniPresident, createdUsers);
+
+        // 5. Recargar datos
+        await cargarDatos();
+
+    } catch(e) {
+        alertDiv.innerHTML = `<div class="alert alert-error">❌ ${e.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '✅ Crear club y generar credenciales';
+    }
+}
+
+function mostrarCredenciales(clubCode, clubName, president, dniPresident, users) {
+    const output = document.getElementById('credentials-output');
+    const list   = document.getElementById('credentials-list');
+
+    const roleLabel = { lider: 'Líder', administrador: 'Administrador', voluntario: 'Voluntario' };
+    const roleClass = { lider: 'role-lider', administrador: 'role-admin', voluntario: 'role-voluntario' };
+
+    list.innerHTML = `
+        <div class="credential-item">
+            <div class="user-info">
+                <strong>📋 Club</strong>
+                <span class="cred-role">Código oficial</span>
+            </div>
+            <span class="cred-pass">${clubCode}</span>
+        </div>
+        <div class="credential-item">
+            <div class="user-info">
+                <strong>🏛 Nombre</strong>
+                <span class="cred-role">Nombre del club</span>
+            </div>
+            <span class="cred-pass">${clubName}</span>
+        </div>
+        <div class="credential-item">
+            <div class="user-info">
+                <strong>👤 Presidente</strong>
+                <span class="cred-role">Para hoja de gastos</span>
+            </div>
+            <span class="cred-pass">${president}</span>
+        </div>
+        <div class="credential-item">
+            <div class="user-info">
+                <strong>🪪 DNI Presidente</strong>
+                <span class="cred-role">Para hoja de gastos</span>
+            </div>
+            <span class="cred-pass">${dniPresident}</span>
+        </div>
+        <hr style="border:none;border-top:1px solid #c8e6c9;margin:8px 0;">
+        ${users.map(u => `
+        <div class="credential-item">
+            <div class="user-info">
+                <strong>${u.username}</strong>
+                <span class="cred-role"><span class="role-badge ${roleClass[u.role] || ''}">${roleLabel[u.role] || u.role}</span></span>
+            </div>
+            <span class="cred-pass">${u.password}</span>
+        </div>`).join('')}
+    `;
+
+    output.style.display = 'block';
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Guardar para copiar
+    output.dataset.copyData = `CREDENCIALES CLUB: ${clubName}\nCódigo: ${clubCode}\nPresidente: ${president}\nDNI Presidente: ${dniPresident}\n\nUSUARIOS:\n` +
+        users.map(u => `  [${(roleLabel[u.role] || u.role).toUpperCase()}] Usuario: ${u.username}  Contraseña: ${u.password}`).join('\n');
+}
+
+function copiarCredenciales() {
+    const text = document.getElementById('credentials-output').dataset.copyData || '';
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.btn-copy-all');
+        btn.textContent = '✅ ¡Copiado!';
+        setTimeout(() => { btn.textContent = '📋 Copiar todas las credenciales'; }, 2000);
+    });
+}
+
+function limpiarFormCrear() {
+    ['new-club-code','new-club-name','new-president','new-dni-president'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('new-color-primary').value   = '#004d40';
+    document.getElementById('new-color-secondary').value = '#1b5e20';
+    document.getElementById('new-text-color').value      = '#f5f5f5';
+    document.getElementById('new-accent-color').value    = '#26a69a';
+    document.getElementById('num-lider').value = '1';
+    document.getElementById('num-admin').value = '0';
+    document.getElementById('num-voluntario').value = '0';
+    document.getElementById('preview-usuarios').style.display = 'none';
+    document.getElementById('credentials-output').style.display = 'none';
+    document.getElementById('alert-crear').innerHTML = '';
+    updateColorPreview();
+}
+
+// ============================================================
+// LISTA Y EDICIÓN DE CLUBES
+// ============================================================
+function renderClubesList() {
+    const container = document.getElementById('clubes-list');
+    if (allClubs.length === 0) {
+        container.innerHTML = '<div class="alert alert-error">No hay clubes registrados.</div>';
+        return;
+    }
+
+    container.innerHTML = allClubs.map(club => {
+        const usersClub = allUsers.filter(u => u.clubCode === club.club_code);
+        const lideres   = usersClub.filter(u => u.role === 'lider');
+        const admins    = usersClub.filter(u => u.role === 'administrador');
+        const vols      = usersClub.filter(u => u.role === 'voluntario');
+
+        return `
+        <div class="card" style="border-left: 5px solid ${club.color_primary || '#004d40'};">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+                <div>
+                    <h3 style="margin-bottom:6px;">${club.club_name} <span style="font-size:0.8rem;color:#888;font-weight:400;">(${club.club_code})</span></h3>
+                    <p style="font-size:0.88rem;color:#555;">👤 Presidente: <strong>${club.nom_presidente || '—'}</strong> &nbsp;·&nbsp; 🪪 DNI: <strong>${club.dni_presidente || '—'}</strong></p>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-edit" onclick="editarClub('${club.club_code}')">✏️ Editar colores/nombre</button>
+                    <button class="btn-danger" onclick="eliminarClub('${club.club_code}','${club.club_name}')">🗑 Eliminar</button>
+                </div>
+            </div>
+
+            <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+                <span>Colores:</span>
+                <span class="color-dot" style="background:${club.color_primary}"></span>
+                <span style="font-size:0.8rem;">${club.color_primary}</span>
+                <span class="color-dot" style="background:${club.color_secondary}"></span>
+                <span style="font-size:0.8rem;">${club.color_secondary}</span>
+                <span class="color-dot" style="background:${club.accent_color}"></span>
+                <span style="font-size:0.8rem;">${club.accent_color}</span>
+            </div>
+
+            <div style="margin-top:16px;">
+                <strong style="font-size:0.88rem;">Usuarios (${usersClub.length}):</strong>
+                <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
+                    ${lideres.map(u => `<span><span class="role-badge role-lider">LÍDER</span> ${u.username} ${u.fullName ? '· '+u.fullName : ''}</span>`).join('')}
+                    ${admins.map(u => `<span><span class="role-badge role-admin">ADMIN</span> ${u.username} ${u.fullName ? '· '+u.fullName : ''}</span>`).join('')}
+                    ${vols.map(u => `<span><span class="role-badge role-voluntario">VOLUNTARIO</span> ${u.username} ${u.fullName ? '· '+u.fullName : ''}</span>`).join('')}
+                    ${usersClub.length === 0 ? '<span style="color:#888;font-size:0.85rem;">Sin usuarios aún</span>' : ''}
+                </div>
+            </div>
+
+            <!-- Añadir usuarios a este club -->
+            <details style="margin-top:16px;">
+                <summary style="cursor:pointer;font-size:0.88rem;color:#1a237e;font-weight:600;">➕ Añadir usuarios a este club</summary>
+                <div style="margin-top:14px;background:#f8f9ff;border-radius:10px;border:1.5px solid #e8eaf6;padding:16px;">
+                    <p style="font-size:0.83rem;color:#666;margin:0 0 14px 0;">Indica cuántos usuarios de cada rol quieres añadir. Los nombres y contraseñas se generan automáticamente.</p>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px;">
+                        <div class="form-group">
+                            <label><span class="role-badge role-lider">LÍDER</span> Nº líderes</label>
+                            <input type="number" id="add-num-lider-${club.club_code}" value="0" min="0" max="10" style="width:70px;" oninput="previewNuevosUsuarios('${club.club_code}')">
+                        </div>
+                        <div class="form-group">
+                            <label><span class="role-badge role-admin">ADMIN</span> Nº admins</label>
+                            <input type="number" id="add-num-admin-${club.club_code}" value="0" min="0" max="10" style="width:70px;" oninput="previewNuevosUsuarios('${club.club_code}')">
+                        </div>
+                        <div class="form-group">
+                            <label><span class="role-badge role-voluntario">VOLUNTARIO</span> Nº voluntarios</label>
+                            <input type="number" id="add-num-vol-${club.club_code}" value="0" min="0" max="50" style="width:70px;" oninput="previewNuevosUsuarios('${club.club_code}')">
+                        </div>
+                    </div>
+                    <div id="add-preview-${club.club_code}" style="display:none;margin-bottom:14px;">
+                        <p style="font-size:0.83rem;font-weight:600;color:#1a237e;margin:0 0 8px 0;">👁 Usuarios que se crearán:</p>
+                        <div id="add-preview-lista-${club.club_code}"></div>
+                    </div>
+                    <button class="btn-success" style="padding:10px 20px;" onclick="añadirUsuariosAClub('${club.club_code}')">✅ Crear usuarios</button>
+                </div>
+                <div id="add-user-msg-${club.club_code}" style="margin-top:10px;font-size:0.85rem;"></div>
+                <div id="add-cred-${club.club_code}" style="display:none;" class="credentials-box">
+                    <h4>✅ Usuarios creados — Credenciales</h4>
+                    <div id="add-cred-lista-${club.club_code}"></div>
+                    <button class="btn-copy-all" onclick="copiarCredencialesClub('${club.club_code}')">📋 Copiar credenciales</button>
+                </div>
+            </details>
+        </div>`;
+    }).join('');
+}
+
+function previewNuevosUsuarios(clubCode) {
+    const numLider = parseInt(document.getElementById(`add-num-lider-${clubCode}`).value) || 0;
+    const numAdmin = parseInt(document.getElementById(`add-num-admin-${clubCode}`).value) || 0;
+    const numVol   = parseInt(document.getElementById(`add-num-vol-${clubCode}`).value)   || 0;
+
+    const previewDiv = document.getElementById(`add-preview-${clubCode}`);
+    const listaDiv   = document.getElementById(`add-preview-lista-${clubCode}`);
+
+    // Calcular cuántos usuarios de cada rol ya existen para continuar la numeración
+    const existentes = allUsers.filter(u => u.clubCode === clubCode);
+    const existLider = existentes.filter(u => u.role === 'lider').length;
+    const existAdmin = existentes.filter(u => u.role === 'administrador').length;
+    const existVol   = existentes.filter(u => u.role === 'voluntario').length;
+
+    const prefix = clubCode.toLowerCase();
+    const usuarios = [];
+    for (let i = 1; i <= numLider; i++) usuarios.push({ username: `lider_${prefix}_${existLider + i}`, password: generarPassword(), role: 'lider' });
+    for (let i = 1; i <= numAdmin; i++) usuarios.push({ username: `admin_${prefix}_${existAdmin + i}`, password: generarPassword(), role: 'administrador' });
+    for (let i = 1; i <= numVol;   i++) usuarios.push({ username: `vol_${prefix}_${existVol + i}`,   password: generarPassword(), role: 'voluntario' });
+
+    if (usuarios.length === 0) { previewDiv.style.display = 'none'; return; }
+
+    const roleClass = { lider: 'role-lider', administrador: 'role-admin', voluntario: 'role-voluntario' };
+    const roleLabel = { lider: 'LÍDER', administrador: 'ADMIN', voluntario: 'VOLUNTARIO' };
+
+    listaDiv.innerHTML = usuarios.map(u => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #e8eaf6;font-size:0.86rem;">
+            <span><span class="role-badge ${roleClass[u.role]}">${roleLabel[u.role]}</span> &nbsp;<strong>${u.username}</strong></span>
+            <span style="font-family:monospace;background:#fff;padding:3px 10px;border-radius:6px;border:1px solid #c5cae9;">${u.password}</span>
+        </div>`).join('');
+
+    // Guardar en dataset para usar al crear
+    previewDiv.dataset.usuarios = JSON.stringify(usuarios);
+    previewDiv.style.display = 'block';
+}
+
+async function añadirUsuariosAClub(clubCode) {
+    const previewDiv = document.getElementById(`add-preview-${clubCode}`);
+    const msgEl      = document.getElementById(`add-user-msg-${clubCode}`);
+    const credBox    = document.getElementById(`add-cred-${clubCode}`);
+    const credLista  = document.getElementById(`add-cred-lista-${clubCode}`);
+
+    const usuarios = previewDiv.dataset.usuarios ? JSON.parse(previewDiv.dataset.usuarios) : [];
+    if (usuarios.length === 0) {
+        msgEl.innerHTML = '<span style="color:#c62828">Indica cuántos usuarios quieres añadir primero.</span>';
+        return;
+    }
+
+    const headers = await getSuperadminHeaders();
+    const creados = [];
+    const fallidos = [];
+
+    for (const u of usuarios) {
+        try {
+            const res = await fetch('/api/users', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ username: u.username, password: u.password, clubCode, role: u.role })
+            });
+            if (res.ok) creados.push(u);
+            else { const e = await res.json(); fallidos.push({ ...u, error: e.error || 'Error' }); }
+        } catch(e) { fallidos.push({ ...u, error: e.message }); }
+    }
+
+    // Resetear inputs
+    ['add-num-lider', 'add-num-admin', 'add-num-vol'].forEach(id => {
+        const el = document.getElementById(`${id}-${clubCode}`);
+        if (el) el.value = '0';
+    });
+    previewDiv.style.display = 'none';
+    delete previewDiv.dataset.usuarios;
+
+    let msg = '';
+    if (creados.length > 0) msg += `<span style="color:#2e7d32">✅ ${creados.length} usuario(s) creado(s).</span> `;
+    if (fallidos.length > 0) msg += `<span style="color:#c62828">❌ ${fallidos.length} fallido(s): ${fallidos.map(u => u.username).join(', ')}</span>`;
+    msgEl.innerHTML = msg;
+
+    if (creados.length > 0) {
+        const roleLabel = { lider: 'LÍDER', administrador: 'ADMIN', voluntario: 'VOLUNTARIO' };
+        const roleClass = { lider: 'role-lider', administrador: 'role-admin', voluntario: 'role-voluntario' };
+        credLista.innerHTML = creados.map(u => `
+            <div class="credential-item">
+                <div class="user-info">
+                    <strong>${u.username}</strong>
+                    <span class="cred-role"><span class="role-badge ${roleClass[u.role]}">${roleLabel[u.role]}</span></span>
+                </div>
+                <span class="cred-pass">${u.password}</span>
+            </div>`).join('');
+        credBox.style.display = 'block';
+        credBox.dataset.copyData = 'NUEVOS USUARIOS — Club: ' + clubCode + '\n' +
+            creados.map(u => '[' + (roleLabel[u.role]||u.role) + '] ' + u.username + '  /  ' + u.password).join('\n');
+    }
+
+    await cargarDatos();
+    renderClubesList();
+}
+
+function copiarCredencialesClub(clubCode) {
+    const text = document.getElementById(`add-cred-${clubCode}`)?.dataset.copyData || '';
+    navigator.clipboard.writeText(text).then(() => {
+        const btns = document.querySelectorAll('.btn-copy-all');
+        btns.forEach(b => { if (b.onclick?.toString().includes(clubCode)) { b.textContent = '✅ ¡Copiado!'; setTimeout(() => { b.textContent = '📋 Copiar credenciales'; }, 2000); } });
+    });
+}
+
+
+
+async function editarClub(clubCode) {
+    const club = allClubs.find(c => c.club_code === clubCode);
+    if (!club) return;
+
+    // Crear un modal para editar el club
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5); display: flex; align-items: center;
+        justify-content: center; z-index: 9999;
+    `;
+
+    const form = document.createElement('div');
+    form.style.cssText = `
+        background: #fff; border-radius: 12px; padding: 32px;
+        width: 90%; max-width: 600px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        max-height: 90vh; overflow-y: auto;
+    `;
+
+    form.innerHTML = `
+        <h2 style="color: #1a237e; margin-bottom: 20px;">Editar Club: ${club.club_name}</h2>
+        
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Nombre del club *</label>
+                <input type="text" id="edit-club-name" value="${club.club_name}" placeholder="Ej: Club Deportivo Valencia">
+            </div>
+            <div class="form-group">
+                <label>Nombre del presidente *</label>
+                <input type="text" id="edit-president" value="${club.nom_presidente || ''}" placeholder="Ej: Juan García López">
+            </div>
+            <div class="form-group">
+                <label>DNI del presidente *</label>
+                <input type="text" id="edit-dni-president" value="${club.dni_presidente || ''}" placeholder="Ej: 23847146X">
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <label style="font-size:0.85rem;font-weight:600;color:#444;display:block;margin-bottom:12px;">Colores corporativos del club</label>
+            <div class="color-row">
+                <div class="color-picker-group">
+                    <label>Color primario</label>
+                    <input type="color" id="edit-color-primary" value="${club.color_primary || '#004d40'}">
+                </div>
+                <div class="color-picker-group">
+                    <label>Color secundario</label>
+                    <input type="color" id="edit-color-secondary" value="${club.color_secondary || '#1b5e20'}">
+                </div>
+                <div class="color-picker-group">
+                    <label>Color texto</label>
+                    <input type="color" id="edit-text-color" value="${club.text_color || '#f5f5f5'}">
+                </div>
+                <div class="color-picker-group">
+                    <label>Color acento</label>
+                    <input type="color" id="edit-accent-color" value="${club.accent_color || '#26a69a'}">
+                </div>
+            </div>
+            <div style="margin-top:14px;padding:16px;border-radius:10px;transition:all 0.3s;" id="edit-color-preview">
+                <span style="font-size:0.85rem;">Vista previa del tema del club</span>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap;">
+            <button class="btn-success" onclick="guardarCambiosClub('${clubCode}')">✅ Guardar cambios</button>
+            <button class="btn-secondary" onclick="cerrarModalEdicion()">❌ Cancelar</button>
+        </div>
+    `;
+
+    modal.appendChild(form);
+    document.body.appendChild(modal);
+
+    // Guardar referencia del modal
+    window.currentEditModal = modal;
+
+    // Actualizar preview de colores
+    const updatePreview = () => {
+        const p = document.getElementById('edit-color-primary').value;
+        const s = document.getElementById('edit-color-secondary').value;
+        const t = document.getElementById('edit-text-color').value;
+        const a = document.getElementById('edit-accent-color').value;
+        const prev = document.getElementById('edit-color-preview');
+        prev.style.background = `linear-gradient(135deg, ${p}, ${s})`;
+        prev.style.color = t;
+        prev.innerHTML = `<strong style="color:${t}">Vista previa del club</strong>
+            <span style="background:${a};color:#fff;padding:4px 14px;border-radius:16px;font-size:0.82rem;margin-left:12px;">Botón de ejemplo</span>`;
+    };
+
+    ['edit-color-primary', 'edit-color-secondary', 'edit-text-color', 'edit-accent-color'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updatePreview);
+    });
+
+    updatePreview();
+
+    // Cerrar modal al hacer clic fuera
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) cerrarModalEdicion();
+    });
+}
+
+function cerrarModalEdicion() {
+    if (window.currentEditModal) {
+        window.currentEditModal.remove();
+        delete window.currentEditModal;
+    }
+}
+
+async function guardarCambiosClub(clubCode) {
+    const clubName = document.getElementById('edit-club-name').value.trim();
+    const president = document.getElementById('edit-president').value.trim();
+    const dniPresident = document.getElementById('edit-dni-president').value.trim();
+    const colorP = document.getElementById('edit-color-primary').value;
+    const colorS = document.getElementById('edit-color-secondary').value;
+    const textColor = document.getElementById('edit-text-color').value;
+    const accentColor = document.getElementById('edit-accent-color').value;
+
+    if (!clubName || !president || !dniPresident) {
+        alert('⚠️ Nombre del club, presidente y DNI del presidente son obligatorios.');
+        return;
+    }
+
+    const headers = await getSuperadminHeaders();
+    try {
+        const res = await fetch(`/api/clubs/${clubCode}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({
+                club_name: clubName,
+                nom_presidente: president,
+                dni_presidente: dniPresident,
+                color_primary: colorP,
+                color_secondary: colorS,
+                text_color: textColor,
+                accent_color: accentColor
+            })
+        });
+
+        if (res.ok) {
+            cerrarModalEdicion();
+            await cargarDatos();
+            renderClubesList();
+            document.getElementById('alert-clubes').innerHTML =
+                '<div class="alert alert-success">✅ Club actualizado correctamente con todos los cambios.</div>';
+            setTimeout(() => { document.getElementById('alert-clubes').innerHTML = ''; }, 3000);
+        } else {
+            const err = await res.json();
+            alert('Error: ' + (err.message || 'No se pudo actualizar'));
+        }
+    } catch(e) {
+        alert('Error de red: ' + e.message);
+    }
+}
+
+async function eliminarClub(clubCode, clubName) {
+    if (!confirm(`¿Seguro que quieres eliminar el club "${clubName}" (${clubCode})?\n\nEsta acción no se puede deshacer y eliminará el club de la base de datos.`)) return;
+
+    const headers = await getSuperadminHeaders();
+    try {
+        const res = await fetch(`/api/clubs/${clubCode}`, { method: 'DELETE', headers });
+        if (res.ok) {
+            await cargarDatos();
+            renderClubesList();
+            document.getElementById('alert-clubes').innerHTML =
+                `<div class="alert alert-success">✅ Club "${clubName}" eliminado.</div>`;
+            setTimeout(() => { document.getElementById('alert-clubes').innerHTML = ''; }, 3000);
+        } else {
+            alert('No se pudo eliminar el club.');
+        }
+    } catch(e) {
+        alert('Error de red: ' + e.message);
+    }
+}
+</script>
+</body>
+</html>

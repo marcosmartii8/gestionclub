@@ -3,37 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interfaz Personalizada</title>
+    <title>Interfaz Personalizada - tuGestClub</title>
     <link rel="stylesheet" href="css/interfaz_personalizada.css">
 </head>
 <body>
+    <div class="background-shapes">
+        <div class="shape-1"></div>
+        <div class="shape-2"></div>
+    </div>
+
     <div class="container">
-        <div class="title" id="welcome-message">Bienvenido</div>
-        <div id="club-message"></div>
-        <div class="button-container">
-            <button class="button" id="perfil-button">Mi Perfil</button>
-            <button class="button" id="view-users-button" style="display: none;">Ver Usuarios</button>
-            <button class="button" id="view-forms-button" style="display: none;">Ver Formularios</button>
-            <button class="button" id="formulario-fin-mes-button" style="display: none;">Formulario Fin de Mes</button>
-            <button class="button" id="hojas-button" style="display: none;">Hojas</button>
-            <button class="button" id="ver-gastos-button" style="display: none;">Ver Gastos</button>
-            <button class="button" id="gestion-button" style="display:none;">Gestión</button>
+        <div class="header-section">
+            <div class="logo-badge">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="24" cy="24" r="22" fill="#26a69a" opacity="0.2"/>
+                    <path d="M24 10L30 18H18L24 10Z" fill="#004d40"/>
+                    <path d="M18 22H30L26 32H22L18 22Z" fill="#26a69a"/>
+                </svg>
+            </div>
+            <div class="title" id="welcome-message">Bienvenido</div>
+            <div id="club-message" class="club-message"></div>
         </div>
-        <button class="logout-button" id="logout-button">Cerrar Sesión</button>
+
+        <div class="button-container">
+            <button class="button" id="perfil-button">👤 Mi Perfil</button>
+            <button class="button" id="view-users-button" style="display: none;">👥 Ver Usuarios</button>
+            <button class="button" id="view-forms-button" style="display: none;">📋 Ver Formularios</button>
+            <button class="button" id="formulario-fin-mes-button" style="display: none;">📝 Formulario Fin de Mes</button>
+            <button class="button" id="hojas-button" style="display: none;">📄 Hojas</button>
+            <button class="button" id="ver-gastos-button" style="display: none;">💰 Ver Gastos</button>
+            <button class="button" id="gestion-button" style="display:none;">⚙️ Gestión</button>
+        </div>
+
+        <button class="logout-button" id="logout-button">🚪 Cerrar Sesión</button>
         <div class="footer">© 2025 tuGestClub. Todos los derechos reservados.</div>
     </div>
+
+    <script src="js/club-themes.js"></script>
+    <script src="js/auth-utils.js"></script>
     <script src="js/interfaz_personalizada.js"></script>
-    <script>
-    if (localStorage.getItem('clubCode') === '82801') {
-        document.body.style.background = 'yellow';
-        document.body.style.color = '#333';
-    }
-    if (localStorage.getItem('clubCode') === '1234') {
-        document.body.style.background = '#ffcccc';
-        document.body.style.color = '#333';
-    }
-    </script>
-</body>
-</html>
 </body>
 </html>

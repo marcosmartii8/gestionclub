@@ -3,41 +3,41 @@ const username = params.get('nombre');
 
 if (!username) {
     alert('Error: Usuario no identificado.');
-    window.location.href = 'inicio_app1.html';
+    window.location.href = 'index.html';
 }
 
 const userData = JSON.parse(localStorage.getItem(username));
 
 if (userData) {
-    // Mensajes por club
+    // Mensajes por club - Obtener nombre del club desde la base de datos
     const welcomeMessage = document.getElementById('welcome-message');
     const clubMessage = document.getElementById('club-message');
 
-    switch (userData.clubCode) {
-        case '1337':
-            welcomeMessage.textContent = "TAVERNES BLANQUES C.F.";
-            clubMessage.textContent = "Panel de gestión para el club Tavernes Blanques.";
-            break;
-        case '1234':
-            welcomeMessage.textContent = "ALBORAYA UD.";
-            clubMessage.textContent = "Panel de gestión para el club Alboraya UD.";
-            break;
-        case '2828':
-            welcomeMessage.textContent = "TORRENT C.F.";
-            clubMessage.textContent = "Panel de gestión para el club Torrent CF.";
-            break;
-        case '2024':
-            welcomeMessage.textContent = "TBCFFORMA";
-            clubMessage.textContent = "Panel de gestión para el club TBCFFORMA";
-            break;
-        case '82801':
-            welcomeMessage.textContent = "tuGestClub";
-            clubMessage.textContent = "Panel de gestión para el club tuGestClub.";
-            break;
-        default:
-            welcomeMessage.textContent = `Bienvenido, ${username}!`;
-            clubMessage.textContent = "Panel de gestión personalizado.";
+    // Función para cargar el nombre del club desde la API
+    async function loadClubName() {
+        try {
+            const response = await fetch('/api/clubs');
+            if (!response.ok) throw new Error('Error al cargar clubes');
+            
+            const clubs = await response.json();
+            const userClub = clubs.find(club => club.club_code === userData.clubCode);
+            
+            if (userClub) {
+                welcomeMessage.textContent = userClub.club_name;
+                clubMessage.textContent = `Panel de gestión para el club ${userClub.club_name}.`;
+            } else {
+                welcomeMessage.textContent = `Club ${userData.clubCode}`;
+                clubMessage.textContent = `Panel de gestión para el club ${userData.clubCode}.`;
+            }
+        } catch (error) {
+            console.error('Error al cargar el nombre del club:', error);
+            welcomeMessage.textContent = `Club ${userData.clubCode}`;
+            clubMessage.textContent = `Panel de gestión para el club ${userData.clubCode}.`;
+        }
     }
+
+    // Cargar el nombre del club
+    loadClubName();
 
     // Configuración de botones según rol
     const viewUsersButton = document.getElementById('view-users-button');
@@ -52,23 +52,38 @@ if (userData) {
         window.location.href = `editar_perfil.html?nombre=${encodeURIComponent(username)}`;
     };
 
-    if (['lider','administrador'].includes(userData.role)) {
+    // Mostrar botones según rol
+    if (userData.role === 'voluntario') {
+        // Solo mostrar Mi Perfil y Formulario Fin de Mes para voluntarios
+        perfilButton.style.display = 'inline-block';
+        formularioFinMesButton.style.display = 'inline-block';
+        viewUsersButton.style.display = 'none';
+        viewFormsButton.style.display = 'none';
+        hojasButton.style.display = 'none';
+        verGastosButton.style.display = 'none';
+        gestionButton.style.display = 'none';
+    } else if (['lider','administrador'].includes(userData.role)) {
         viewUsersButton.style.display = 'inline-block';
         viewFormsButton.style.display = 'inline-block';
         viewUsersButton.onclick = () => window.location.href = `ver_usuarios.html?nombre=${encodeURIComponent(username)}`;
         viewFormsButton.onclick = () => window.location.href = `visualizar_formularios.html?nombre=${encodeURIComponent(username)}`;
-    }
-
-    if (userData.role === 'administrador') {
-        hojasButton.style.display = 'none';
-        formularioFinMesButton.style.display = 'none';
-
-    } else if (userData.role === 'voluntario') {
-        hojasButton.style.display = 'none';
-        formularioFinMesButton.style.display = 'inline-block';
-    } else {
-        hojasButton.style.display = 'inline-block';
-        formularioFinMesButton.style.display = 'inline-block';
+        
+        if (userData.role === 'administrador') {
+            hojasButton.style.display = 'none';
+            formularioFinMesButton.style.display = 'none';
+        } else {
+            hojasButton.style.display = 'inline-block';
+            formularioFinMesButton.style.display = 'inline-block';
+        }
+        
+        verGastosButton.style.display = 'inline-block';
+        verGastosButton.onclick = () => window.location.href = `ver_gastos.html?nombre=${encodeURIComponent(username)}`;
+        
+        // Botón Gestión solo para lider de 82801
+        if (userData.role === 'lider' && userData.clubCode === '82801') {
+            gestionButton.style.display = 'inline-block';
+            gestionButton.onclick = validateLeaderPassword;
+        }
     }
 
     // Botón Hojas
@@ -80,23 +95,17 @@ if (userData) {
     formularioFinMesButton.onclick = () => {
         window.location.href = `formularios.html?nombre=${encodeURIComponent(username)}`;
     };
-
-    verGastosButton.style.display = (userData.role === 'voluntario') ? 'none' : 'inline-block';
-    verGastosButton.onclick = () => window.location.href = `ver_gastos.html?nombre=${encodeURIComponent(username)}`;
-
-    // Botón Gestión solo para lider de 82801
-    if (userData.role === 'lider' && userData.clubCode === '82801') {
-        gestionButton.style.display = 'inline-block';
-        gestionButton.onclick = validateLeaderPassword;
-    } else {
-        gestionButton.style.display = 'none';
-    }
 }
 
 // Logout
 document.getElementById('logout-button').onclick = () => {
     if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
-        window.location.href = "inicio_app1.html";
+        if (window.AuthUtils && typeof window.AuthUtils.logout === 'function') {
+            window.AuthUtils.logout({ loginPath: 'nueva_interfaz_inicio_sesion.html' });
+            return;
+        }
+
+        window.location.href = "nueva_interfaz_inicio_sesion.html";
     }
 };
 

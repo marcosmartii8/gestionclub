@@ -8,36 +8,88 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="title">Hojas</div>
-        <div class="select-group">
-            <div class="select-block">
-                <label for="user-select">Selecciona un usuario:</label>
-                <select id="user-select">
-                    <option value="">-- Selecciona usuario --</option>
-                </select>
-            </div>
-            <div class="select-block" id="forms-section" style="display:none;">
-                <label for="form-select">Selecciona un formulario:</label>
-                <select id="form-select">
-                    <option value="">-- Selecciona formulario --</option>
-                </select>
-            </div>
-        </div>
-        <div id="form-details"></div>
-        <button id="generate-pdf-btn" class="action-btn" style="display:none;">Generar PDF</button>
-        <button class="back-button" onclick="goBack()">Volver</button>
+    <div class="background-shapes">
+        <div class="shape-1"></div>
+        <div class="shape-2"></div>
     </div>
+
+    <div class="container">
+        <div class="header-section">
+            <div class="logo-badge">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="#26a69a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    <path d="M14 2v6h6" stroke="#26a69a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <h1 class="title">📄 Hojas de Registro</h1>
+        </div>
+        
+        <!-- Sección de filtros para generación masiva -->
+        <div class="filters-section">
+            <h3>📦 Generar PDFs en Lote</h3>
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label for="filter-user">👤 Usuario:</label>
+                    <select id="filter-user">
+                        <option value="all">Todos</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label for="filter-year">📅 Año:</label>
+                    <select id="filter-year">
+                        <option value="all">Todos</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label for="filter-month">📆 Mes:</label>
+                    <select id="filter-month">
+                        <option value="all">Todos</option>
+                        <option value="0">Enero</option>
+                        <option value="1">Febrero</option>
+                        <option value="2">Marzo</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Mayo</option>
+                        <option value="5">Junio</option>
+                        <option value="6">Julio</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Septiembre</option>
+                        <option value="9">Octubre</option>
+                        <option value="10">Noviembre</option>
+                        <option value="11">Diciembre</option>
+                    </select>
+                </div>
+            </div>
+            <button id="generate-batch-pdf-btn" class="button-batch">🎯 Generar PDFs Seleccionados</button>
+            <div id="batch-status" class="batch-status"></div>
+        </div>
+
+        <div class="separator"></div>
+
+        <!-- Sección individual (existente) -->
+        <div class="individual-section">
+            <h3>📋 Generar PDF Individual</h3>
+            <div class="select-group">
+                <div class="select-block">
+                    <label for="user-select">👤 Selecciona un usuario:</label>
+                    <select id="user-select">
+                        <option value="">-- Selecciona usuario --</option>
+                    </select>
+                </div>
+                <div class="select-block" id="forms-section" style="display:none;">
+                    <label for="form-select">📝 Selecciona un formulario:</label>
+                    <select id="form-select">
+                        <option value="">-- Selecciona formulario --</option>
+                    </select>
+                </div>
+            </div>
+            <div id="form-details"></div>
+            <button id="generate-pdf-btn" class="button-generate" style="display:none;">📥 Generar PDF Individual</button>
+        </div>
+
+        <button class="button-back" onclick="goBack()">← Volver</button>
+    </div>
+    <script src="js/club-themes.js"></script>
+    <script src="js/auth-utils.js"></script>
     <script src="js/hojas.js"></script>
-    <script>
-    if (localStorage.getItem('clubCode') === '82801') {
-        document.body.style.background = 'yellow';
-        document.body.style.color = '#333';
-    }
-    if (localStorage.getItem('clubCode') === '1234') {
-        document.body.style.background = '#ffcccc';
-        document.body.style.color = '#333';
-    }
-    </script>
 </body>
 </html>

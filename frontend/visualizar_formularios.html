@@ -7,35 +7,61 @@
     <link rel="stylesheet" href="css/visualizar_formularios.css">
 </head>
 <body>
+    <div class="background-shapes">
+        <div class="shape-1"></div>
+        <div class="shape-2"></div>
+    </div>
+
     <div class="container">
-        <div class="title">Formularios Registrados</div>
-        <div class="filters">
-            <label for="filter-year">Año:</label>
-            <select id="filter-year">
-                <option value="all">Todos</option>
-            </select>
-            <label for="filter-month">Mes:</label>
-            <select id="filter-month">
-                <option value="all">Todos</option>
-                <option value="0">Enero</option>
-                <option value="1">Febrero</option>
-                <option value="2">Marzo</option>
-                <option value="3">Abril</option>
-                <option value="4">Mayo</option>
-                <option value="5">Junio</option>
-                <option value="6">Julio</option>
-                <option value="7">Agosto</option>
-                <option value="8">Septiembre</option>
-                <option value="9">Octubre</option>
-                <option value="10">Noviembre</option>
-                <option value="11">Diciembre</option>
-            </select>
-            <label for="filter-username">Usuario:</label>
-            <select id="filter-username">
-                <option value="all">Todos</option>
-            </select>
-            <button onclick="applyFilters()">Filtrar</button>
+        <div class="header-section">
+            <div class="logo-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#004d40" width="44" height="44">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                    <line x1="16" y1="13" x2="8" y2="13" stroke="#004d40" stroke-width="2"/>
+                    <line x1="16" y1="17" x2="8" y2="17" stroke="#004d40" stroke-width="2"/>
+                    <line x1="10" y1="9" x2="8" y2="9" stroke="#004d40" stroke-width="2"/>
+                </svg>
+            </div>
+            <h1 class="title">📋 Formularios</h1>
         </div>
+
+        <div class="filters-section">
+            <h3>🔍 Filtros de Búsqueda</h3>
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label for="filter-year">📅 Año:</label>
+                    <select id="filter-year">
+                        <option value="all">Todos</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label for="filter-month">📆 Mes:</label>
+                    <select id="filter-month">
+                        <option value="all">Todos</option>
+                        <option value="0">Enero</option>
+                        <option value="1">Febrero</option>
+                        <option value="2">Marzo</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Mayo</option>
+                        <option value="5">Junio</option>
+                        <option value="6">Julio</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Septiembre</option>
+                        <option value="9">Octubre</option>
+                        <option value="10">Noviembre</option>
+                        <option value="11">Diciembre</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label for="filter-username">👤 Usuario:</label>
+                    <select id="filter-username">
+                        <option value="all">Todos</option>
+                    </select>
+                </div>
+            </div>
+            <button class="button-filter" onclick="applyFilters()">🔍 Filtrar</button>
+        </div>
+
         <div class="table-wrapper">
             <table id="forms-table">
                 <thead>
@@ -44,30 +70,23 @@
                         <th onclick="sortTable(1)">Año</th>
                         <th onclick="sortTable(2)">Mes</th>
                         <th onclick="sortTable(3)">Asistencia</th>
-                        <th onclick="sortTable(4)">Desplazamientos</th>
+                        <th onclick="sortTable(4)">Semanas Mes</th>
                         <th onclick="sortTable(5)">Detalles Desplazamientos</th>
-                        <th onclick="sortTable(6)">Gastos Transporte</th>
-                        <th onclick="sortTable(7)">Detalles Transporte</th>
-                        <th onclick="sortTable(8)">Dietas</th>
-                        <th onclick="sortTable(9)">Detalles Dietas</th>
+                        <th onclick="sortTable(6)">Detalles Transporte</th>
+                        <th onclick="sortTable(7)">Detalles Dietas</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="forms-table-body"></tbody>
             </table>
         </div>
-        <button class="back-button" onclick="goBack()">Atrás</button>
+
+        <button class="button-back" onclick="goBack()">← Volver</button>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/club-themes.js"></script>
+    <script src="js/auth-utils.js"></script>
     <script src="js/visualizar_formularios.js"></script>
-    <script>
-    if (localStorage.getItem('clubCode') === '82801') {
-        document.body.style.background = 'yellow';
-        document.body.style.color = '#333';
-    }
-    if (localStorage.getItem('clubCode') === '1234') {
-        document.body.style.background = '#ffcccc';
-        document.body.style.color = '#333';
-    }
-    </script>
 </body>
 </html>

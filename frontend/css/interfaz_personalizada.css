@@ -1,111 +1,366 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
     font-family: 'Roboto', sans-serif;
-    background: linear-gradient(135deg, #004d40 0%, #1b5e20 100%);
-    color: #f5f5f5;
+    background: linear-gradient(135deg, #004d40 0%, #1b5e20 50%, #00695c 100%);
+    color: #333;
     min-height: 100vh;
     margin: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding: 20px;
+    position: relative;
+    overflow-x: hidden;
 }
+
+/* Background animated shapes */
+.background-shapes {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.shape-1 {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: rgba(38, 166, 154, 0.08);
+    border-radius: 50%;
+    top: -100px;
+    right: -100px;
+    animation: float 8s ease-in-out infinite;
+}
+
+.shape-2 {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: rgba(26, 35, 126, 0.06);
+    border-radius: 50%;
+    bottom: -50px;
+    left: -50px;
+    animation: float 6s ease-in-out infinite reverse;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(30px); }
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .container {
     position: relative;
     z-index: 1;
     width: 95vw;
     max-width: 900px;
-    background: rgba(255, 255, 255, 0.98);
+    background: rgba(255, 255, 255, 0.99);
     border-radius: 22px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.18);
-    padding: 48px 32px 36px 32px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    padding: 48px 40px 36px 40px;
     text-align: center;
     margin: 0 auto;
+    animation: slideInDown 0.8s ease-out;
+    backdrop-filter: blur(10px);
 }
-.title {
-    font-size: 2.3rem;
-    font-weight: 800;
-    margin-bottom: 0.5rem;
-    color: #004d40;
-    letter-spacing: 1.5px;
-    text-shadow: 0 2px 8px #b2dfdb80;
+
+.header-section {
+    margin-bottom: 32px;
+    animation: slideInDown 0.8s ease-out 0.1s both;
 }
-#club-message {
-    margin-bottom: 18px;
-    font-size: 1.25rem;
-    color: #388e3c;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-}
-.button-container {
+
+.logo-badge {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+    border-radius: 50%;
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     justify-content: center;
-    gap: 28px;
-    margin-top: 28px;
+    box-shadow: 0 8px 24px rgba(38, 166, 154, 0.2);
+    border: 3px solid #c8e6c9;
 }
+
+.title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0 0 8px 0;
+    color: #004d40;
+    letter-spacing: 1px;
+}
+
+.club-message {
+    margin: 0 0 16px 0;
+    font-size: 1.1rem;
+    color: #388e3c;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    line-height: 1.4;
+}
+
+.button-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-top: 32px;
+    animation: slideInUp 0.8s ease-out 0.2s both;
+}
+
 .button {
-    padding: 18px 38px;
-    font-size: 1.2rem;
-    font-weight: bold;
+    padding: 18px 28px;
+    font-size: 1.05rem;
+    font-weight: 700;
     color: #fff;
-    background: linear-gradient(90deg, #26a69a 60%, #004d40 100%);
+    background: linear-gradient(135deg, #26a69a 0%, #00897b 100%);
     border: none;
     border-radius: 14px;
     cursor: pointer;
-    transition: background 0.3s, transform 0.2s;
-    box-shadow: 0 2px 8px rgba(38,166,154,0.15);
-    margin-bottom: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(38, 166, 154, 0.3);
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.3px;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
+
+.button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.button:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
 .button:hover {
-    background: linear-gradient(90deg, #004d40 60%, #26a69a 100%);
-    transform: scale(1.06);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(38, 166, 154, 0.4);
 }
+
+.button:active {
+    transform: translateY(-1px);
+}
+
 .logout-button {
     margin-top: 32px;
-    padding: 16px 38px;
-    font-size: 1.1rem;
-    font-weight: bold;
+    padding: 14px 32px;
+    font-size: 1rem;
+    font-weight: 700;
     color: #fff;
-    background: #e74c3c;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
     border: none;
     border-radius: 12px;
     cursor: pointer;
-    transition: background 0.3s, transform 0.2s;
-    box-shadow: 0 2px 8px rgba(231,76,60,0.13);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.3px;
+    animation: slideInUp 0.8s ease-out 0.3s both;
 }
+
+.logout-button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.logout-button:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
 .logout-button:hover {
-    background: #c0392b;
-    transform: scale(1.06);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
 }
+
+.logout-button:active {
+    transform: translateY(-1px);
+}
+
 .footer {
-    margin-top: 38px;
-    font-size: 1rem;
+    margin-top: 32px;
+    font-size: 0.9rem;
     color: #888;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
+    animation: slideInUp 0.8s ease-out 0.4s both;
 }
-@media (max-width: 700px) {
+
+/* Responsive para tablets */
+@media (max-width: 768px) {
+    body {
+        justify-content: flex-start;
+        padding: 16px 12px;
+    }
+
     .container {
-        padding: 18px 2vw 18px 2vw;
-        max-width: 98vw;
+        padding: 32px 24px;
+        width: min(94vw, 560px);
+        border-radius: 18px;
+        max-height: calc(100vh - 32px);
+        overflow-y: auto;
     }
+
+    .header-section {
+        margin-bottom: 24px;
+    }
+
+    .logo-badge {
+        width: 75px;
+        height: 75px;
+        margin: 0 auto 16px;
+    }
+    
     .title {
-        font-size: 1.5rem;
+        font-size: 2rem;
+        margin-bottom: 6px;
     }
+    
+    .club-message {
+        font-size: 1rem;
+        margin-bottom: 12px;
+    }
+    
+    .button-container {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 20px;
+    }
+    
     .button {
         font-size: 1rem;
-        padding: 10px 18px;
+        padding: 14px 20px;
+        border-radius: 12px;
+        min-height: 48px;
     }
-@media (max-width: 700px) {
-    .container {
-        padding: 18px 2vw 18px 2vw;
-        max-width: 98vw;
+    
+    .logout-button {
+        font-size: 0.95rem;
+        padding: 12px 20px;
+        margin-top: 20px;
+        min-height: 44px;
     }
-    .title {
-        font-size: 1.5rem;
-    }
-    .button {
-        font-size: 1rem;
-        padding: 10px 18px;
+    
+    .footer {
+        font-size: 0.82rem;
+        margin-top: 20px;
     }
 }
+
+/* Responsive para móviles */
+@media (max-width: 480px) {
+    body {
+        padding: 12px 8px;
+    }
+    
+    .container {
+        padding: 24px 18px;
+        width: 95vw;
+        border-radius: 16px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        max-height: calc(100vh - 24px);
+    }
+
+    .header-section {
+        margin-bottom: 20px;
+    }
+
+    .logo-badge {
+        width: 65px;
+        height: 65px;
+        margin: 0 auto 14px;
+    }
+    
+    .title {
+        font-size: 1.6rem;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+    }
+    
+    .club-message {
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+    }
+    
+    .button-container {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-top: 16px;
+    }
+    
+    .button {
+        font-size: 0.95rem;
+        padding: 12px 16px;
+        border-radius: 10px;
+        min-height: 44px;
+        box-shadow: 0 3px 10px rgba(38, 166, 154, 0.25);
+    }
+    
+    .button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(38, 166, 154, 0.35);
+    }
+    
+    .logout-button {
+        font-size: 0.9rem;
+        padding: 11px 16px;
+        margin-top: 16px;
+        min-height: 42px;
+        border-radius: 10px;
+    }
+    
+    .footer {
+        font-size: 0.75rem;
+        margin-top: 16px;
+        line-height: 1.4;
+    }
 }

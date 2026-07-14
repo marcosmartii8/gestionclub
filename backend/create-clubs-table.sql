@@ -8,13 +8,31 @@ CREATE TABLE IF NOT EXISTS clubs (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Insertar los clubes existentes que encontramos en el código
-INSERT INTO clubs (club_code, club_name) VALUES
-  ('1234', 'Club 1234'),
-  ('1337', 'Club 1337'),
-  ('2222', 'Club 2222'),
-  ('82801', 'Club 82801')
-ON CONFLICT (club_code) DO NOTHING;
+-- Insertar los clubes existentes que encontramos en el código.
+-- Forma idempotente compatible: inserta solo si no existe el club.
+INSERT INTO clubs (club_code, club_name)
+SELECT '1234', 'Club 1234'
+WHERE NOT EXISTS (
+  SELECT 1 FROM clubs WHERE club_code = '1234'
+);
+
+INSERT INTO clubs (club_code, club_name)
+SELECT '1337', 'Club 1337'
+WHERE NOT EXISTS (
+  SELECT 1 FROM clubs WHERE club_code = '1337'
+);
+
+INSERT INTO clubs (club_code, club_name)
+SELECT '2222', 'Club 2222'
+WHERE NOT EXISTS (
+  SELECT 1 FROM clubs WHERE club_code = '2222'
+);
+
+INSERT INTO clubs (club_code, club_name)
+SELECT '82801', 'Club 82801'
+WHERE NOT EXISTS (
+  SELECT 1 FROM clubs WHERE club_code = '82801'
+);
 
 -- Verificar los datos insertados
 SELECT * FROM clubs ORDER BY club_code;

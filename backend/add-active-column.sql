@@ -3,7 +3,7 @@
 
 -- Agregar columna 'active' con valor por defecto true
 ALTER TABLE users 
-ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;
+ADD COLUMN active BOOLEAN DEFAULT true;
 
 -- Actualizar todos los usuarios existentes para que estén activos por defecto
 UPDATE users 

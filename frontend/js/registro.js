@@ -10,48 +10,40 @@ async function handleRegistration(event) {
         alert('Usuario y contraseña son obligatorios.');
         return;
     }
+    
+    if (password.length < 8) {
+        alert('La contraseña debe tener al menos 8 caracteres.');
+        return;
+    }
+    
     if (password !== repeat) {
         alert('Las contraseñas no coinciden.');
         return;
     }
 
-    const payload = {
-        username,
-        password,
-        clubCode,
-        role,
-        fullName: ''
-    };
-
     try {
-        const res = await fetch('/api/users', {
+        const payload = {
+            username,
+            password,
+            clubCode,
+            role
+        };
+        const response = await fetch('/api/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        if (res.ok) {
-            // sincronizar localStorage con nuevo usuario
-            try { localStorage.setItem(username, JSON.stringify(payload)); } catch(e) {}
-            const usuarios = JSON.parse(localStorage.getItem('usuarios_registrados') || '[]');
-            usuarios.push(payload);
-            try { localStorage.setItem('usuarios_registrados', JSON.stringify(usuarios)); } catch(e) {}
-            alert('Registro completado.');
-            window.location.href = 'interfaz_lider.html';
+        if (!response.ok) {
+            const errorData = await response.json();
+            alert(errorData.error || 'Error al registrar usuario.');
             return;
         }
-        const data = await res.json();
-        alert('Error registro: ' + (data.error || res.statusText));
+        const result = await response.json();
+        localStorage.setItem('usuario', JSON.stringify(result.user));
+        alert('Registro completado.');
+        window.location.href = 'interfaz_lider.html';
     } catch (err) {
-        // Fallback: guardar en localStorage
-        if (localStorage.getItem(username)) {
-            alert('El usuario ya existe (fallback).');
-            return;
-        }
-        localStorage.setItem(username, JSON.stringify(payload));
-        const usuarios = JSON.parse(localStorage.getItem('usuarios_registrados') || '[]');
-        usuarios.push(payload);
-        localStorage.setItem('usuarios_registrados', JSON.stringify(usuarios));
-        alert('Registrado (fallback) correctamente.');
+        alert('Error en el registro: ' + (err.message || 'Error de conexión.'));
         window.location.href = 'interfaz_lider.html';
     }
 }

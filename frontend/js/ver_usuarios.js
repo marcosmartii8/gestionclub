@@ -1,4 +1,14 @@
 let sortDirection = {}; // Para controlar la dirección de ordenación por columna
+let allUsers = []; // Almacenar todos los usuarios cargados
+let currentFilter = 'todos'; // Filtro actual
+
+function getAuthHeaders(extraHeaders = {}) {
+    if (window.AuthUtils && typeof window.AuthUtils.getAuthHeaders === 'function') {
+        return window.AuthUtils.getAuthHeaders({ extraHeaders });
+    }
+
+    return { ...extraHeaders };
+}
 
 function sortTable(columnIndex) {
     const table = document.getElementById('user-table');
@@ -24,117 +34,233 @@ async function loadUsers() {
     const tableBody = document.getElementById('user-table-body');
     tableBody.innerHTML = '';
 
-    // obtener el clubCode del usuario actual (guardado en login)
     const currentClub = localStorage.getItem('clubCode') || '';
+    const currentRole = localStorage.getItem('role') || '';
+    
+    console.log('👤 Cargando usuarios - Rol:', currentRole, 'Club:', currentClub);
 
     try {
-        const res = await fetch('/api/users');
-        if (!res.ok) throw new Error('API users error');
+        const res = await fetch('/api/users', {
+            headers: getAuthHeaders()
+        });
+        if (!res.ok) throw new Error('Error al cargar usuarios');
         let users = await res.json();
 
-        // Filtrar por clubCode: solo mostrar usuarios del mismo club
-        users = users.filter(u => (u.clubcode || u.clubCode || '') === currentClub);
+        console.log('📊 Usuarios recibidos de Supabase:', users.length);
 
-        // Sincronizar con localStorage: actualizar entrada por usuario y lista usuarios_registrados
-        const usuariosLocal = [];
-        users.forEach(user => {
-            // store canonical object
-            try { localStorage.setItem(user.username, JSON.stringify(user)); } catch(e) { /* ignore storage errors */ }
-            usuariosLocal.push(user);
+        // Filtrar por clubCode y excluir líderes
+        users = users.filter(u => {
+            const userClub = u.clubCode || '';
+            const userRole = (u.role || '').toLowerCase().trim();
+            const isNotLeader = userRole !== 'lider' && userRole !== 'líder';
+            return userClub === currentClub && isNotLeader;
+        });
+
+        console.log('✅ Usuarios filtrados:', users.length);
+
+        // Guardar todos los usuarios para filtrado
+        allUsers = users;
+
+        if (users.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #666;">No hay usuarios registrados</td></tr>';
+            return;
+        }
+
+        // Aplicar filtro actual
+        renderUsers(filterUsersByAccess(users, currentFilter));
+    } catch (err) {
+        console.error('❌ Error cargando usuarios:', err);
+        tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: red;">Error al cargar usuarios</td></tr>';
+    }
+}
+
+function filterUsersByAccess(users, filter) {
+    switch(filter) {
+        case 'permitidos':
+            return users.filter(u => u.active !== false);
+        case 'denegados':
+            return users.filter(u => u.active === false);
+        case 'todos':
+        default:
+            return users;
+    }
+}
+
+function filterUsers(filter) {
+    currentFilter = filter;
+    
+    // Actualizar botones activos
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.getElementById(`btn-${filter}`).classList.add('active');
+    
+    // Aplicar filtro
+    const filteredUsers = filterUsersByAccess(allUsers, filter);
+    renderUsers(filteredUsers);
+}
+
+function renderUsers(users) {
+    const tableBody = document.getElementById('user-table-body');
+    tableBody.innerHTML = '';
+    
+    if (users.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #666;">No hay usuarios con este filtro</td></tr>';
+        return;
+    }
+    
+    users.forEach(user => {
+            const encoded = encodeURIComponent(user.username);
+            const isActive = user.active !== false;
+            const accessButtonText = isActive ? 'Denegar Acceso' : 'Permitir Acceso';
+            const accessButtonClass = isActive ? 'deny-access-btn' : 'allow-access-btn';
             const row = document.createElement('tr');
+            row.id = `user-row-${encoded}`;
             row.innerHTML = `
-                <td>${user.username || ''}</td>
-                <td>${user.fullname || user.fullName || ''}</td>
+                <td><strong>${user.username || ''}</strong></td>
+                <td>${user.fullName || ''}</td>
                 <td>${user.email || ''}</td>
                 <td>${user.dni || ''}</td>
+                <td>${user.phone || ''}</td>
                 <td>${user.address || ''}</td>
                 <td>${user.km || ''}</td>
-                <td>${user.password ? '••••' : ''}</td>
-                <td>${user.clubcode || user.clubCode || ''}</td>
+                <td>${user.clubCode || ''}</td>
                 <td>${user.role || ''}</td>
                 <td>
-                    <button onclick="editUser('${encodeURIComponent(user.username)}')">Editar</button>
-                    <button onclick="deleteUser('${encodeURIComponent(user.username)}')">Borrar</button>
+                    <button onclick="editUser('${encoded}')" style="background: #0288d1; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 5px;">
+                        ✏️ Editar
+                    </button>
+                    <button onclick="toggleUserAccess('${encoded}')" class="${accessButtonClass}" id="access-btn-${encoded}">
+                        ${accessButtonText}
+                    </button>
                 </td>
             `;
             tableBody.appendChild(row);
         });
-        try { localStorage.setItem('usuarios_registrados', JSON.stringify(usuariosLocal)); } catch(e) {}
-        return;
-    } catch (err) {
-        // Fallback localStorage: mostrar solo usuarios del mismo club
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (!key) continue;
-            try {
-                const userData = JSON.parse(localStorage.getItem(key));
-                if (userData && userData.username) {
-                    const userClub = (userData.clubCode || userData.clubcode || '');
-                    if (userClub !== currentClub) continue; // <-- filtrado aquí
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${userData.username || ''}</td>
-                        <td>${userData.fullName || ''}</td>
-                        <td>${userData.email || ''}</td>
-                        <td>${userData.dni || ''}</td>
-                        <td>${userData.address || ''}</td>
-                        <td>${userData.phone || ''}</td>
-                        <td>${userData.password ? '••••' : ''}</td>
-                        <td>${userData.clubCode || ''}</td>
-                        <td>${userData.role || ''}</td>
-                        <td>
-                            <button onclick="editUser('${encodeURIComponent(key)}')">Editar</button>
-                            <button onclick="deleteUser('${encodeURIComponent(key)}')">Borrar</button>
-                        </td>
-                    `;
-                    tableBody.appendChild(row);
-                }
-            } catch(e) { /* ignore non-json keys */ }
+}
+
+async function editUser(encodedKey) {
+    const username = decodeURIComponent(encodedKey);
+    
+    try {
+        // Obtener los datos actuales del usuario
+        const res = await fetch('/api/users', {
+            headers: getAuthHeaders()
+        });
+        if (!res.ok) throw new Error('Error al cargar usuario');
+        const users = await res.json();
+        
+        const user = users.find(u => u.username === username);
+        if (!user) {
+            alert('Usuario no encontrado');
+            return;
         }
+        
+        // Mostrar el modal con los datos actuales
+        document.getElementById('editUsername').value = user.username;
+        document.getElementById('editPassword').value = '';
+        document.getElementById('originalUsername').value = user.username;
+        document.getElementById('editModal').style.display = 'block';
+        
+    } catch (err) {
+        console.error('Error cargando usuario:', err);
+        alert('Error al cargar los datos del usuario');
     }
 }
 
-function editUser(encodedKey) {
-    const key = decodeURIComponent(encodedKey);
-    window.location.href = `editar_perfil.html?nombre=${encodeURIComponent(key)}&referrer=gestion_usuarios`;
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
 }
 
-async function deleteUser(encodedKey) {
-    const key = decodeURIComponent(encodedKey);
-    if (!confirm('¿Seguro que quieres borrar este usuario?')) return;
-
+async function saveUserChanges(event) {
+    event.preventDefault();
+    
+    const originalUsername = document.getElementById('originalUsername').value;
+    const newUsername = document.getElementById('editUsername').value.trim();
+    const newPassword = document.getElementById('editPassword').value.trim();
+    
+    if (!newUsername) {
+        alert('El nombre de usuario es obligatorio');
+        return;
+    }
+    
+    if (newPassword && newPassword.length < 8) {
+        alert('La contraseña debe tener al menos 8 caracteres');
+        return;
+    }
+    
     try {
-        const res = await fetch(`/api/users/${encodeURIComponent(key)}`, { method: 'DELETE' });
-        if (res.ok) {
-            // sincronizar localStorage tras borrado exitoso
-            localStorage.removeItem(key);
-            let usuarios = JSON.parse(localStorage.getItem('usuarios_registrados') || '[]');
-            usuarios = usuarios.filter(u => u.username !== key);
-            try { localStorage.setItem('usuarios_registrados', JSON.stringify(usuarios)); } catch(e) {}
-            alert('Usuario borrado.');
-            loadUsers();
-            return;
+        const payload = {
+            username: newUsername
+        };
+
+        if (newPassword) {
+            payload.password = newPassword;
         }
-        const data = await res.json();
-        alert('Error borrando: ' + (data.error || res.statusText));
+
+        const res = await fetch(`/api/users/${originalUsername}`, {
+            method: 'PUT',
+            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(payload)
+        });
+        
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || 'Error al actualizar usuario');
+        }
+        
+        alert('Usuario actualizado correctamente');
+        closeEditModal();
+        await loadUsers(); // Recargar la tabla
+        
     } catch (err) {
-        // Fallback localStorage
-        localStorage.removeItem(key);
-        let usuarios = JSON.parse(localStorage.getItem('usuarios_registrados') || '[]');
-        usuarios = usuarios.filter(u => u.username !== key);
-        try { localStorage.setItem('usuarios_registrados', JSON.stringify(usuarios)); } catch(e) {}
-        alert('Usuario borrado (fallback).');
-        loadUsers();
+        console.error('Error actualizando usuario:', err);
+        alert('Error al actualizar usuario: ' + err.message);
+    }
+}
+
+async function toggleUserAccess(encodedKey) {
+    const username = decodeURIComponent(encodedKey);
+    
+    try {
+        const response = await fetch(`/api/users/${username}/toggle-access`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Actualizar el botón
+            const button = document.getElementById(`access-btn-${encodedKey}`);
+            if (button) {
+                if (data.active) {
+                    button.textContent = 'Denegar Acceso';
+                    button.className = 'deny-access-btn';
+                } else {
+                    button.textContent = 'Permitir Acceso';
+                    button.className = 'allow-access-btn';
+                }
+            }
+            
+            alert(data.message);
+        } else {
+            const error = await response.json();
+            alert(error.message || 'Error al cambiar el estado de acceso del usuario');
+        }
+    } catch (error) {
+        console.error('Error cambiando estado de acceso:', error);
+        alert('Error al cambiar el estado de acceso del usuario');
     }
 }
 
 function redirectToPersonalizedInterface() {
     const params = new URLSearchParams(window.location.search);
     const username = params.get('nombre');
-    const userData = JSON.parse(localStorage.getItem(username));
 
-    if (userData) {
-        window.location.href = `interfaz_personalizada.html?nombre=${encodeURIComponent(userData.username)}`;
+    if (username) {
+        // Redirigir directamente con el parámetro que ya tenemos
+        window.location.href = `interfaz_personalizada.html?nombre=${encodeURIComponent(username)}`;
     } else {
         alert('Error: Usuario no identificado.');
         window.location.href = 'inicio_app1.html';
@@ -142,15 +268,142 @@ function redirectToPersonalizedInterface() {
 }
 
 function exportToExcel() {
-    const table = document.getElementById('user-table');
-    const rows = Array.from(table.rows);
-    const data = rows.map(row => Array.from(row.cells).map(cell => cell.innerText));
+    try {
+        const table = document.getElementById('user-table');
+        const rows = Array.from(table.rows);
+        
+        // Preparar datos: excluir columna de acciones
+        let datos = [];
+        
+        // Obtener headers (sin la columna de acciones)
+        const headers = Array.from(rows[0].cells).slice(0, -1).map(cell => cell.innerText);
+        
+        // Obtener datos (sin la columna de acciones)
+        rows.slice(1).forEach(row => {
+            const rowData = {};
+            Array.from(row.cells).slice(0, -1).forEach((cell, index) => {
+                rowData[headers[index]] = cell.innerText;
+            });
+            datos.push(rowData);
+        });
+        
+        if (datos.length === 0) {
+            alert('No hay datos para exportar');
+            return;
+        }
+        
+        // Intentar usar XLSX si está disponible
+        if (typeof XLSX !== 'undefined') {
+            try {
+                const ws = XLSX.utils.json_to_sheet(datos);
+                
+                // Aplicar estilos a los headers
+                const headerStyle = {
+                    fill: { fgColor: { rgb: "FF004D40" } },
+                    font: { bold: true, color: { rgb: "FFFFFFFF" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: {
+                        top: { style: "thin", color: { rgb: "FF000000" } },
+                        bottom: { style: "thin", color: { rgb: "FF000000" } },
+                        left: { style: "thin", color: { rgb: "FF000000" } },
+                        right: { style: "thin", color: { rgb: "FF000000" } }
+                    }
+                };
+                
+                // Aplicar estilos a datos
+                const dataStyle = {
+                    alignment: { horizontal: "left", vertical: "center" },
+                    border: {
+                        top: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                        bottom: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                        left: { style: "thin", color: { rgb: "FFD3D3D3" } },
+                        right: { style: "thin", color: { rgb: "FFD3D3D3" } }
+                    }
+                };
+                
+                // Aplicar formato a headers
+                headers.forEach((header, colIndex) => {
+                    const cellAddress = XLSX.utils.encode_col(colIndex) + '1';
+                    ws[cellAddress].s = headerStyle;
+                });
+                
+                // Aplicar formato a datos
+                datos.forEach((row, rowIndex) => {
+                    headers.forEach((header, colIndex) => {
+                        const cellAddress = XLSX.utils.encode_col(colIndex) + (rowIndex + 2);
+                        if (ws[cellAddress]) {
+                            ws[cellAddress].s = dataStyle;
+                        }
+                    });
+                });
+                
+                // Ajustar ancho de columnas
+                const wscols = headers.map(() => ({ wch: 15 }));
+                ws['!cols'] = wscols;
+                
+                // Fijar la fila de headers
+                ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+                
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Usuarios');
+                
+                const hoy = new Date();
+                const nombreArchivo = `Usuarios_${hoy.toISOString().slice(0,10)}.xlsx`;
+                XLSX.writeFile(wb, nombreArchivo);
+                return;
+            } catch (error) {
+                console.error('Error con XLSX:', error);
+            }
+        }
+        
+        // Si XLSX no funciona, generar CSV
+        generarCSVUsuarios(datos);
+    } catch (error) {
+        console.error('Error al exportar:', error);
+        alert('Error al exportar usuarios');
+    }
+}
 
-    const worksheet = XLSX.utils.aoa_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Usuarios');
-    XLSX.writeFile(workbook, 'usuarios.xlsx');
+function generarCSVUsuarios(datos) {
+    const cabeceras = Object.keys(datos[0]);
+    let csv = cabeceras.join(';') + '\n';
+    
+    datos.forEach(row => {
+        const valores = cabeceras.map(cabecera => {
+            let valor = row[cabecera] || '';
+            valor = String(valor).replace(/"/g, '""');
+            if (valor.includes(';') || valor.includes('\n') || valor.includes('"')) {
+                valor = '"' + valor + '"';
+            }
+            return valor;
+        });
+        csv += valores.join(';') + '\n';
+    });
+    
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const hoy = new Date();
+    const nombreArchivo = `Usuarios_${hoy.toISOString().slice(0,10)}.csv`;
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', nombreArchivo);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // Cargar usuarios al iniciar
 loadUsers();
+
+// Cerrar modal al hacer clic fuera de él
+window.onclick = function(event) {
+    const modal = document.getElementById('editModal');
+    if (event.target === modal) {
+        closeEditModal();
+    }
+}

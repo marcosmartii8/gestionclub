@@ -21,8 +21,7 @@ document.getElementById('save-btn').addEventListener('click', () => {
     const updatedUser = {
         username: document.getElementById('username').value,
         role: document.getElementById('role').value,
-        clubCode: document.getElementById('club-code').value,
-        password: userData.password // Mantener la contraseña
+        clubCode: document.getElementById('club-code').value
     };
     localStorage.setItem(updatedUser.username, JSON.stringify(updatedUser));
     alert('Datos guardados correctamente.');

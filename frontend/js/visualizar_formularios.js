@@ -2,6 +2,21 @@ const params = new URLSearchParams(window.location.search);
         const username = params.get('nombre');
         const currentUserData = JSON.parse(localStorage.getItem(username));
 
+        function getAuthHeaders(extraHeaders = {}) {
+            if (window.AuthUtils && typeof window.AuthUtils.getAuthHeaders === 'function') {
+                return window.AuthUtils.getAuthHeaders({ userHint: username, extraHeaders });
+            }
+
+            return { ...extraHeaders };
+        }
+
+        function handleAuthFailure(response) {
+            if (window.AuthUtils && typeof window.AuthUtils.handleAuthFailure === 'function') {
+                return window.AuthUtils.handleAuthFailure(response);
+            }
+            return false;
+        }
+
         if (!currentUserData || !currentUserData.clubCode) {
             alert('Error: Código del club no encontrado.');
             window.location.href = 'inicio_app1.html';
@@ -9,52 +24,155 @@ const params = new URLSearchParams(window.location.search);
 
         const currentClubCode = currentUserData.clubCode;
         let sortDirection = {}; // Track sort direction for each column
+        let allFormularios = []; // Cache de todos los formularios
+        let allUsers = {}; // Cache de usuarios
 
-        function loadForms() {
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/users', {
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) {
+                    if (handleAuthFailure(response)) return;
+                    throw new Error(`Error HTTP ${response.status}`);
+                }
+
+                const rawUsers = await response.json();
+                const users = Array.isArray(rawUsers) ? rawUsers : [];
+                
+                // Guardar usuarios en cache
+                users.forEach(user => {
+                    allUsers[user.username] = user;
+                });
+                
+                // Poblar el select de usuarios del mismo club y con rol de voluntario
+                const userSelect = document.getElementById('filter-username');
+                const clubUsers = users.filter(u => u.clubCode === currentClubCode && u.role === 'voluntario');
+                
+                clubUsers.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.username;
+                    option.textContent = user.fullname || user.fullName || user.username;
+                    userSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error cargando usuarios:', error);
+            }
+        }
+
+        function populateYearFilterFromAPI() {
+            const yearSet = new Set();
+            
+            // Obtener años únicos de allFormularios
+            allFormularios.forEach(formData => {
+                if (formData.clubCode === currentClubCode) {
+                    yearSet.add(formData.year.toString());
+                }
+            });
+
+            const yearFilter = document.getElementById('filter-year');
+            // Limpiar opciones existentes excepto "Todos"
+            while (yearFilter.options.length > 1) {
+                yearFilter.remove(1);
+            }
+            
+            // Agregar años ordenados
+            Array.from(yearSet).sort().forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearFilter.appendChild(option);
+            });
+        }
+
+        async function loadForms() {
             const tableBody = document.getElementById('forms-table-body');
             tableBody.innerHTML = ''; // Clear existing rows
 
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith('formData_')) {
-                    const formData = JSON.parse(localStorage.getItem(key));
-                    if (formData.clubCode === currentClubCode) {
-                        const [_, formUser, year, month] = key.split('_');
-                        const userData = JSON.parse(localStorage.getItem(formUser));
-                        const fullName = userData?.fullName || formUser;
+            try {
+                const response = await fetch('/api/formularios', {
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) {
+                    if (handleAuthFailure(response)) return;
+                    throw new Error(`Error HTTP ${response.status}`);
+                }
+
+                const rawFormularios = await response.json();
+                allFormularios = Array.isArray(rawFormularios) ? rawFormularios : [];
+                
+                // Filtrar formularios del mismo club
+                const clubForms = allFormularios.filter(formData => formData.clubCode === currentClubCode);
+                
+                let i = 0;
+                for (const formData of clubForms) {
+                    const formUser = formData.username;
+                    const year = formData.year;
+                    const month = formData.month;
+                    
+                    // Obtener datos del usuario
+                    const userResponse = await fetch(`/api/users/${formUser}`, {
+                        headers: getAuthHeaders()
+                    });
+                    const userData = userResponse.ok ? await userResponse.json() : null;
+                    const fullName = userData?.fullname || userData?.fullName || formUser;
 
                         // --- Desplazamientos detalles con botón desplegable ---
                         const matchDetailsId = `match-details-${i}`;
+                        const hasMatches = formData.matches && formData.matches.length > 0;
+                        const matchDetailsContent = hasMatches 
+                            ? formData.matches.map(match => `Fecha: ${match.date}, Localidad: ${match.locality}, Equipo: ${match.place}, Km: ${match.km}`).join('<br>')
+                            : '<em style="color: #999;">No hay datos</em>';
                         const matchDetailsHtml = `
                             <button type="button" onclick="toggleDetails('${matchDetailsId}')">Ver</button>
                             <div id="${matchDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
-                                ${(formData.matches?.map(match => `Fecha: ${match.date}, Localidad: ${match.locality}, Equipo: ${match.place}, Km: ${match.km}`).join('<br>') || '')}
+                                ${matchDetailsContent}
                             </div>
                         `;
 
                         // --- Transporte detalles con botón desplegable (mostrar archivo si existe) ---
                         const transportDetailsId = `transport-details-${i}`;
+                        const hasTransport = formData.transportExpenses && formData.transportExpenses.length > 0;
+                        const transportDetailsContent = hasTransport
+                            ? formData.transportExpenses.map(expense => {
+                                let fileUrl = expense.url || expense.fileUrl || (typeof expense.file === 'string' ? expense.file : (expense.file && expense.file.url)) || null;
+                                let fileType = expense.type || (expense.file && typeof expense.file === 'object' ? expense.file.type : '');
+                                let fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
+                                let fileLink = '';
+                                if (fileUrl) {
+                                    fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #0288d1;">${fileIcon} Ver archivo</a>`;
+                                }
+                                return `Fecha: ${expense.date}, Concepto: ${expense.concept || ''}, Importe: ${expense.amount}€${fileLink}`;
+                            }).join('<br>')
+                            : '<em style="color: #999;">No hay datos</em>';
                         const transportDetailsHtml = `
                             <button type="button" onclick="toggleDetails('${transportDetailsId}')">Ver</button>
                             <div id="${transportDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
-                                ${(formData.transportExpenses?.map(expense =>
-                                    `Fecha: ${expense.date}, Concepto: ${expense.concept}, Importe: ${expense.amount}` +
-                                    (expense.file ? `<br><a href="${expense.file}" target="_blank">Archivo</a>` : '') +
-                                    (expense.ticket ? `<br><a href="${expense.ticket}" target="_blank">Ticket</a>` : '')
-                                ).join('<br>') || '')}
+                                ${transportDetailsContent}
                             </div>
                         `;
 
                         // --- Dietas detalles con botón desplegable (mostrar archivo si existe) ---
                         const dietDetailsId = `diet-details-${i}`;
+                        const hasDiets = formData.dietExpenses && formData.dietExpenses.length > 0;
+                        const dietDetailsContent = hasDiets
+                            ? formData.dietExpenses.map(expense => {
+                                let fileUrl = expense.url || expense.fileUrl || (typeof expense.file === 'string' ? expense.file : (expense.file && expense.file.url)) || null;
+                                let fileType = expense.type || (expense.file && typeof expense.file === 'object' ? expense.file.type : '');
+                                let fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
+                                let fileLink = '';
+                                if (fileUrl) {
+                                    fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #f57c00;">${fileIcon} Ver archivo</a>`;
+                                }
+                                return `Fecha: ${expense.date}, Concepto: ${expense.concept || ''}, Importe: ${expense.amount}€${fileLink}`;
+                            }).join('<br>')
+                            : '<em style="color: #999;">No hay datos</em>';
                         const dietDetailsHtml = `
                             <button type="button" onclick="toggleDetails('${dietDetailsId}')">Ver</button>
                             <div id="${dietDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
-                                ${(formData.dietExpenses?.map(expense =>
-                                    `Fecha: ${expense.date}, Concepto: ${expense.concept}, Importe: ${expense.amount}` +
-                                    (expense.file ? `<br><a href="${expense.file}" target="_blank">Archivo</a>` : '') +
-                                    (expense.ticket ? `<br><a href="${expense.ticket}" target="_blank">Ticket</a>` : '')
-                                ).join('<br>') || '')}
+                                ${dietDetailsContent}
                             </div>
                         `;
 
@@ -64,104 +182,141 @@ const params = new URLSearchParams(window.location.search);
                             <td>${year}</td>
                             <td>${new Date(0, month).toLocaleString('es-ES', { month: 'long' })}</td>
                             <td>${formData.trainingAttendance || ''}</td>
-                            <td>${formData.matches?.length || 0}</td>
+                            <td>${formData.weeksInMonth || formData.semanas || 0}</td>
                             <td>
                                 ${matchDetailsHtml}
                             </td>
-                            <td>${formData.transportExpenses?.length || 0}</td>
                             <td>
                                 ${transportDetailsHtml}
                             </td>
-                            <td>${formData.dietExpenses?.length || 0}</td>
                             <td>
                                 ${dietDetailsHtml}
                             </td>
                             <td>
-                                <button onclick="editForm('${key}')">Editar</button>
-                                <button onclick="deleteForm('${key}')">Borrar</button>
+                                <button onclick="editForm('${formUser}', ${year}, ${month})">Editar</button>
+                                <button onclick="deleteForm('${formUser}', ${year}, ${month})">Borrar</button>
                             </td>
                         `;
                         tableBody.appendChild(row);
-                    }
+                        i++;
                 }
+            } catch (error) {
+                console.error('Error cargando formularios:', error);
+                alert('Error al cargar los formularios');
             }
+            
+            // Poblar filtro de años después de cargar formularios
+            populateYearFilterFromAPI();
         }
 
         function applyFilters() {
             const filterYear = document.getElementById('filter-year').value;
             const filterMonth = document.getElementById('filter-month').value;
-            const filterUsername = document.getElementById('filter-username').value.trim().toLowerCase();
+            const filterUsername = document.getElementById('filter-username').value;
 
             const tableBody = document.getElementById('forms-table-body');
             tableBody.innerHTML = ''; // Clear existing rows
 
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith('formData_')) {
-                    const formData = JSON.parse(localStorage.getItem(key));
-                    if (formData.clubCode === currentClubCode) {
-                        const [_, formUser, year, month] = key.split('_');
-                        const matchesFilters =
-                            (filterYear === 'all' || filterYear === year) &&
-                            (filterMonth === 'all' || parseInt(filterMonth) === parseInt(month)) &&
-                            (filterUsername === 'all' || formUser.toLowerCase().includes(filterUsername));
+            // Filtrar formularios del mismo club
+            const clubForms = allFormularios.filter(formData => formData.clubCode === currentClubCode);
 
-                        if (matchesFilters) {
-                            const matchDetailsId = `match-details-filter-${i}`;
-                            const matchDetailsHtml = `
-                                <button type="button" onclick="toggleDetails('${matchDetailsId}')">Ver</button>
-                                <div id="${matchDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
-                                    ${(formData.matches?.map(match => `Fecha: ${match.date}, Localidad: ${match.locality}, Equipo: ${match.place}, Km: ${match.km}`).join('<br>') || '')}
-                                </div>
-                            `;
-                            const transportDetailsId = `transport-details-filter-${i}`;
-                            const transportDetailsHtml = `
-                                <button type="button" onclick="toggleDetails('${transportDetailsId}')">Ver</button>
-                                <div id="${transportDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
-                                    ${(formData.transportExpenses?.map(expense =>
-                                        `Fecha: ${expense.date}, Concepto: ${expense.concept}, Importe: ${expense.amount}` +
-                                        (expense.file ? `<br><a href="${expense.file}" target="_blank">Archivo</a>` : '') +
-                                        (expense.ticket ? `<br><a href="${expense.ticket}" target="_blank">Ticket</a>` : '')
-                                    ).join('<br>') || '')}
-                                </div>
-                            `;
-                            const dietDetailsId = `diet-details-filter-${i}`;
-                            const dietDetailsHtml = `
-                                <button type="button" onclick="toggleDetails('${dietDetailsId}')">Ver</button>
-                                <div id="${dietDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
-                                    ${(formData.dietExpenses?.map(expense =>
-                                        `Fecha: ${expense.date}, Concepto: ${expense.concept}, Importe: ${expense.amount}` +
-                                        (expense.file ? `<br><a href="${expense.file}" target="_blank">Archivo</a>` : '') +
-                                        (expense.ticket ? `<br><a href="${expense.ticket}" target="_blank">Ticket</a>` : '')
-                                    ).join('<br>') || '')}
-                                </div>
-                            `;
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>${formUser}</td>
-                                <td>${year}</td>
-                                <td>${new Date(0, month).toLocaleString('es-ES', { month: 'long' })}</td>
-                                <td>${formData.trainingAttendance || ''}</td>
-                                <td>${formData.matches?.length || 0}</td>
-                                <td>
-                                    ${matchDetailsHtml}
-                                </td>
-                                <td>${formData.transportExpenses?.length || 0}</td>
-                                <td>
-                                    ${transportDetailsHtml}
-                                </td>
-                                <td>${formData.dietExpenses?.length || 0}</td>
-                                <td>
-                                    ${dietDetailsHtml}
-                                </td>
-                                <td>
-                                    <button onclick="editForm('${key}')">Editar</button>
-                                    <button onclick="deleteForm('${key}')">Borrar</button>
-                                </td>
-                            `;
-                            tableBody.appendChild(row);
-                        }
-                    }
+            let i = 0;
+            for (const formData of clubForms) {
+                const formUser = formData.username;
+                const year = formData.year.toString();
+                const month = formData.month.toString();
+                
+                const matchesFilters =
+                    (filterYear === 'all' || filterYear === year) &&
+                    (filterMonth === 'all' || filterMonth === month) &&
+                    (filterUsername === 'all' || filterUsername === formUser);
+
+                if (matchesFilters) {
+                    const userData = allUsers[formUser];
+                    const fullName = userData?.fullname || userData?.fullName || formUser;
+
+                    const matchDetailsId = `match-details-filter-${i}`;
+                    const hasMatches = formData.matches && formData.matches.length > 0;
+                    const matchDetailsContent = hasMatches
+                        ? formData.matches.map(match => `Fecha: ${match.date}, Localidad: ${match.locality}, Equipo: ${match.place}, Km: ${match.km}`).join('<br>')
+                        : '<em style="color: #999;">No hay datos</em>';
+                    const matchDetailsHtml = `
+                        <button type="button" onclick="toggleDetails('${matchDetailsId}')">Ver</button>
+                        <div id="${matchDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
+                            ${matchDetailsContent}
+                        </div>
+                    `;
+                    const transportDetailsId = `transport-details-filter-${i}`;
+                    const hasTransport = formData.transportExpenses && formData.transportExpenses.length > 0;
+                    const transportDetailsContent = hasTransport
+                        ? formData.transportExpenses.map(expense => {
+                            let fileLink = '';
+                            if (expense.file) {
+                                const fileUrl = typeof expense.file === 'string' ? expense.file : expense.file.url;
+                                const fileType = typeof expense.file === 'object' ? expense.file.type : '';
+                                const fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
+                                
+                                if (fileUrl) {
+                                    fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #0288d1;">${fileIcon} Ver archivo</a>`;
+                                }
+                            }
+                            
+                            return `Fecha: ${expense.date}, Concepto: ${expense.concept || ''}, Importe: ${expense.amount}€${fileLink}`;
+                        }).join('<br>')
+                        : '<em style="color: #999;">No hay datos</em>';
+                    const transportDetailsHtml = `
+                        <button type="button" onclick="toggleDetails('${transportDetailsId}')">Ver</button>
+                        <div id="${transportDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
+                            ${transportDetailsContent}
+                        </div>
+                    `;
+                    const dietDetailsId = `diet-details-filter-${i}`;
+                    const hasDiets = formData.dietExpenses && formData.dietExpenses.length > 0;
+                    const dietDetailsContent = hasDiets
+                        ? formData.dietExpenses.map(expense => {
+                            let fileLink = '';
+                            if (expense.file) {
+                                const fileUrl = typeof expense.file === 'string' ? expense.file : expense.file.url;
+                                const fileType = typeof expense.file === 'object' ? expense.file.type : '';
+                                const fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
+                                
+                                if (fileUrl) {
+                                    fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #f57c00;">${fileIcon} Ver archivo</a>`;
+                                }
+                            }
+                            
+                            return `Fecha: ${expense.date}, Concepto: ${expense.concept}, Importe: ${expense.amount}€${fileLink}`;
+                        }).join('<br>')
+                        : '<em style="color: #999;">No hay datos</em>';
+                    const dietDetailsHtml = `
+                        <button type="button" onclick="toggleDetails('${dietDetailsId}')">Ver</button>
+                        <div id="${dietDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
+                            ${dietDetailsContent}
+                        </div>
+                    `;
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${fullName}</td>
+                        <td>${year}</td>
+                        <td>${new Date(0, formData.month).toLocaleString('es-ES', { month: 'long' })}</td>
+                        <td>${formData.trainingAttendance || ''}</td>
+                        <td>${formData.weeksInMonth || formData.semanas || 0}</td>
+                        <td>
+                            ${matchDetailsHtml}
+                        </td>
+                        <td>
+                            ${transportDetailsHtml}
+                        </td>
+                        <td>
+                            ${dietDetailsHtml}
+                        </td>
+                        <td>
+                            <button onclick="editForm('${formUser}', ${formData.year}, ${formData.month})">Editar</button>
+                            <button onclick="deleteForm('${formUser}', ${formData.year}, ${formData.month})">Borrar</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                    i++;
                 }
             }
         }
@@ -235,28 +390,60 @@ const params = new URLSearchParams(window.location.search);
             });
         }
 
-        function editForm(key) {
-            const formData = JSON.parse(localStorage.getItem(key));
-            if (formData) {
-                // El mes y el año estarán preestablecidos y solo se podrá editar el resto de campos
-                const modalHtml = `
-                    <div id="edit-form-modal" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); z-index: 1000; color: black; max-height: 80vh; overflow-y: auto;">
-                        <h2>Editar Formulario</h2>
-                        <form id="edit-form">
-                            <label style="color: black;">Año:</label>
-                            <input type="number" id="edit-year" value="${formData.year}" readonly>
-                            <label style="color: black;">Mes:</label>
-                            <select id="edit-month" disabled>
-                                <option value="${formData.month}" selected>${new Date(0, formData.month).toLocaleString('es-ES', { month: 'long' })}</option>
-                            </select>
-                            <label style="color: black;">Asistencia entrenamientos y partidos:</label>
-                            <input type="number" id="edit-trainingAttendance" value="${formData.trainingAttendance}">
-                            <h3>Desplazamientos fuera del club:</h3>
-                            <div id="edit-awayMatches">
-                                ${(formData.matches || []).map((match, index) => `
-                                    <div id="away-match-${index}">
-                                        <label>Fecha:</label>
-                                        <input type="date" value="${match.date}">
+        async function editForm(formUser, year, month) {
+            try {
+                const response = await fetch(`/api/formularios/${formUser}`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) {
+                    if (handleAuthFailure(response)) return;
+                    throw new Error(`Error HTTP ${response.status}`);
+                }
+
+                const rawFormularios = await response.json();
+                const formularios = Array.isArray(rawFormularios) ? rawFormularios : [];
+                let formData = formularios.find(f => f.year === year && f.month === month);
+
+                if (formData) {
+                    // Normalizar campos para compatibilidad
+                    formData = {
+                        ...formData,
+                        trainingAttendance: formData.trainingAttendance ?? formData.asistencia ?? 0,
+                        matches: formData.matches ?? formData.desplazamientos ?? [],
+                        transportExpenses: formData.transportExpenses ?? formData.gastosTransporte ?? formData.gastos_transporte ?? [],
+                        dietExpenses: formData.dietExpenses ?? formData.gastosDietas ?? formData.gastos_dietas ?? [],
+                        weeksInMonth: formData.weeksInMonth ?? formData.semanas ?? 0
+                    };
+                    // Almacenar archivos existentes en una variable global accesible, robusto para todos los campos posibles
+                    window.existingFilesData = {
+                        transport: formData.transportExpenses ? formData.transportExpenses.map(e => {
+                            // Extraer la URL del archivo de cualquier campo posible
+                            return e.fileUrl || e.url || (typeof e.file === 'string' ? e.file : (e.file && e.file.url ? e.file.url : null)) || null;
+                        }) : [],
+                        diet: formData.dietExpenses ? formData.dietExpenses.map(e => {
+                            return e.fileUrl || e.url || (typeof e.file === 'string' ? e.file : (e.file && e.file.url ? e.file.url : null)) || null;
+                        }) : []
+                    };
+                    // El mes y el año estarán preestablecidos y solo se podrá editar el resto de campos
+                    const modalHtml = `
+                        <div id="edit-form-modal" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); z-index: 1000; color: black; max-height: 80vh; overflow-y: auto;">
+                            <h2>Editar Formulario</h2>
+                            <form id="edit-form">
+                                <label style="color: black;">Año:</label>
+                                <input type="number" id="edit-year" value="${formData.year}" readonly>
+                                <label style="color: black;">Mes:</label>
+                                <select id="edit-month" disabled>
+                                    <option value="${formData.month}" selected>${new Date(0, formData.month).toLocaleString('es-ES', { month: 'long' })}</option>
+                                </select>
+                                <label style="color: black;">Asistencia entrenamientos y partidos:</label>
+                                <input type="number" id="edit-trainingAttendance" value="${formData.trainingAttendance}">
+                                <h3>Desplazamientos fuera del club:</h3>
+                                <div id="edit-awayMatches">
+                                    ${(formData.matches || []).map((match, index) => `
+                                        <div id="away-match-${index}">
+                                            <label>Fecha:</label>
+                                            <input type="date" value="${match.date}">
                                         <label>Localidad:</label>
                                         <input type="text" value="${match.locality}">
                                         <label>Equipo:</label>
@@ -270,55 +457,62 @@ const params = new URLSearchParams(window.location.search);
                             <button type="button" onclick="addAwayMatch()">Añadir Desplazamiento</button>
                             <h3>Gastos Transporte:</h3>
                             <div id="edit-transportExpenses">
-                                ${(formData.transportExpenses || []).map((expense, index) => `
-                                    <div id="transport-expense-${index}">
+                                ${(formData.transportExpenses || []).map((expense, index) => {
+                                    let fileUrl = expense.url || expense.fileUrl || (expense.file ? (typeof expense.file === 'string' ? expense.file : expense.file.url) : null);
+                                    let fileName = fileUrl ? fileUrl.split('/').pop() : '';
+                                    return `
+                                    <div id="transport-expense-${index}" style="border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px;" data-file-index="${index}">
                                         <label>Fecha:</label>
                                         <input type="date" value="${expense.date}">
                                         <label>Concepto:</label>
                                         <input type="text" value="${expense.concept || ''}">
                                         <label>Importe:</label>
                                         <input type="number" value="${expense.amount}">
+                                        <label>Ticket/Factura:</label>
+                                        <input type="file" accept="image/*,application/pdf">
+                                        ${fileUrl ? `<a href="${fileUrl}" target="_blank" style="color:#0288d1;">Ver actual (${fileName})</a>` : '<span style="color:#888;">No hay archivo</span>'}
                                         <button type="button" onclick="removeElement('transport-expense-${index}')">Eliminar</button>
                                     </div>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </div>
                             <button type="button" onclick="addTransportExpense()">Añadir Gasto Transporte</button>
                             <h3>Gastos en Dietas:</h3>
                             <div id="edit-dietExpenses">
-                                ${(formData.dietExpenses || []).map((expense, index) => `
-                                    <div id="diet-expense-${index}">
+                                ${(formData.dietExpenses || []).map((expense, index) => {
+                                    let fileUrl = expense.url || expense.fileUrl || (expense.file ? (typeof expense.file === 'string' ? expense.file : expense.file.url) : null);
+                                    let fileName = fileUrl ? fileUrl.split('/').pop() : '';
+                                    return `
+                                    <div id="diet-expense-${index}" style="border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px;" data-file-index="${index}">
                                         <label>Fecha:</label>
                                         <input type="date" value="${expense.date}">
                                         <label>Concepto:</label>
                                         <input type="text" value="${expense.concept || ''}">
                                         <label>Importe:</label>
                                         <input type="number" value="${expense.amount}">
+                                        <label>Ticket/Factura:</label>
+                                        <input type="file" accept="image/*,application/pdf">
+                                        ${fileUrl ? `<a href="${fileUrl}" target="_blank" style="color:#f57c00;">Ver actual (${fileName})</a>` : '<span style="color:#888;">No hay archivo</span>'}
                                         <button type="button" onclick="removeElement('diet-expense-${index}')">Eliminar</button>
                                     </div>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </div>
                             <button type="button" onclick="addDietExpense()">Añadir Gasto en Dietas</button>
-                            <h3>Tickets:</h3>
-                            <div>
-                                <label>Subir ticket de transporte:</label>
-                                <input type="file" id="edit-transportTicket" accept="image/*,application/pdf">
-                                ${formData.transportTicket ? `<a href="${formData.transportTicket}" target="_blank">Ver ticket actual</a>` : ''}
-                            </div>
-                            <div>
-                                <label>Subir ticket de dietas:</label>
-                                <input type="file" id="edit-dietTicket" accept="image/*,application/pdf">
-                                ${formData.dietTicket ? `<a href="${formData.dietTicket}" target="_blank">Ver ticket actual</a>` : ''}
-                            </div>
                             <label>Marcar semanas que tiene el mes:</label>
                             <select id="edit-weeksInMonth">
                                 ${[1, 2, 3, 4, 5].map(week => `<option value="${week}" ${week == formData.weeksInMonth ? 'selected' : ''}>${week} semana${week > 1 ? 's' : ''}</option>`).join('')}
                             </select>
-                            <button type="button" onclick="saveEditedForm('${key}')">Guardar</button>
+                            <button type="button" onclick="saveEditedForm('${formUser}', ${year}, ${month})">Guardar</button>
                             <button type="button" onclick="closeEditForm()">Cancelar</button>
                         </form>
                     </div>
                 `;
                 document.body.insertAdjacentHTML('beforeend', modalHtml);
+                }
+            } catch (error) {
+                console.error('Error cargando formulario:', error);
+                alert('Error al cargar el formulario para editar');
             }
         }
 
@@ -344,8 +538,13 @@ const params = new URLSearchParams(window.location.search);
         function addTransportExpense() {
             const container = document.getElementById('edit-transportExpenses');
             const index = container.children.length;
+            if (!window.existingFilesData) window.existingFilesData = { transport: [], diet: [] };
+            window.existingFilesData.transport[index] = null;
+            
             const div = document.createElement('div');
             div.id = `transport-expense-${index}`;
+            div.style.cssText = 'border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px;';
+            div.setAttribute('data-file-index', index);
             div.innerHTML = `
                 <label>Fecha:</label>
                 <input type="date">
@@ -353,6 +552,9 @@ const params = new URLSearchParams(window.location.search);
                 <input type="text">
                 <label>Importe:</label>
                 <input type="number">
+                <label>Ticket/Factura:</label>
+                <input type="file" accept="image/*,application/pdf">
+                <span style="color:#888;">No hay archivo</span>
                 <button type="button" onclick="removeElement('transport-expense-${index}')">Eliminar</button>
             `;
             container.appendChild(div);
@@ -361,8 +563,13 @@ const params = new URLSearchParams(window.location.search);
         function addDietExpense() {
             const container = document.getElementById('edit-dietExpenses');
             const index = container.children.length;
+            if (!window.existingFilesData) window.existingFilesData = { transport: [], diet: [] };
+            window.existingFilesData.diet[index] = null;
+            
             const div = document.createElement('div');
             div.id = `diet-expense-${index}`;
+            div.style.cssText = 'border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px;';
+            div.setAttribute('data-file-index', index);
             div.innerHTML = `
                 <label>Fecha:</label>
                 <input type="date">
@@ -370,62 +577,150 @@ const params = new URLSearchParams(window.location.search);
                 <input type="text">
                 <label>Importe:</label>
                 <input type="number">
+                <label>Ticket/Factura:</label>
+                <input type="file" accept="image/*,application/pdf">
+                <span style="color:#888;">No hay archivo</span>
                 <button type="button" onclick="removeElement('diet-expense-${index}')">Eliminar</button>
             `;
             container.appendChild(div);
         }
 
-        function saveEditedForm(key) {
-            const updatedFormData = {
-                year: document.getElementById('edit-year').value,
-                month: document.getElementById('edit-month').value,
-                trainingAttendance: document.getElementById('edit-trainingAttendance').value,
-                matches: Array.from(document.querySelectorAll('#edit-awayMatches > div')).map(div => ({
-                    date: div.children[1].value,
-                    locality: div.children[3].value,
-                    place: div.children[5].value,
-                    km: div.children[7].value
-                })),
-                transportExpenses: Array.from(document.querySelectorAll('#edit-transportExpenses > div')).map(div => ({
-                    date: div.children[1].value,
-                    concept: div.children[3].value,
-                    amount: div.children[5].value
-                })),
-                dietExpenses: Array.from(document.querySelectorAll('#edit-dietExpenses > div')).map(div => ({
-                    date: div.children[1].value,
-                    concept: div.children[3].value,
-                    amount: div.children[5].value
-                })),
-                weeksInMonth: document.getElementById('edit-weeksInMonth').value,
-                transportTicket: null,
-                dietTicket: null,
-                clubCode: currentClubCode // Ensure the club code is preserved
-            };
-
-            // Guardar archivos como base64 para persistencia entre páginas
-            const transportTicketInput = document.getElementById('edit-transportTicket');
-            const dietTicketInput = document.getElementById('edit-dietTicket');
-            const oldFormData = JSON.parse(localStorage.getItem(key)) || {};
-            function fileToBase64(file) {
-                return new Promise((resolve, reject) => {
-                    if (!file) return resolve(null);
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
+        function removeElement(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.remove();
             }
-            Promise.all([
-                transportTicketInput.files[0] ? fileToBase64(transportTicketInput.files[0]) : oldFormData.transportTicket || null,
-                dietTicketInput.files[0] ? fileToBase64(dietTicketInput.files[0]) : oldFormData.dietTicket || null
-            ]).then(([transportTicketBase64, dietTicketBase64]) => {
-                updatedFormData.transportTicket = transportTicketBase64;
-                updatedFormData.dietTicket = dietTicketBase64;
-                localStorage.setItem(key, JSON.stringify(updatedFormData));
-                alert('Formulario actualizado exitosamente.');
-                loadForms();
-                closeEditForm();
-            });
+        }
+
+        async function saveEditedForm(formUser, year, month) {
+            try {
+                // Mostrar mensaje de progreso
+                const saveButton = event.target;
+                const originalText = saveButton.textContent;
+                saveButton.textContent = 'Guardando...';
+                saveButton.disabled = true;
+
+                // Recoger datos del formulario
+                const matches = Array.from(document.querySelectorAll('#edit-awayMatches > div')).map(div => {
+                    const inputs = div.querySelectorAll('input[type="date"], input[type="text"], input[type="number"]');
+                    return {
+                        date: inputs[0].value,
+                        locality: inputs[1].value,
+                        place: inputs[2].value,
+                        km: inputs[3].value
+                    };
+                });
+                
+                // Recoger gastos de transporte (mantener o subir archivos)
+                const transportExpenses = await Promise.all(Array.from(document.querySelectorAll('#edit-transportExpenses > div')).map(async (div, idx) => {
+                    const fileIndex = parseInt(div.dataset.fileIndex);
+                    const existingFile = window.existingFilesData?.transport?.[fileIndex] || null;
+                    const inputs = div.querySelectorAll('input[type="date"], input[type="text"], input[type="number"]');
+                    const expense = {
+                        date: inputs[0].value,
+                        concept: inputs[1].value,
+                        amount: parseFloat(inputs[2].value)
+                    };
+                    const fileInput = div.querySelector('input[type="file"]');
+                    if (fileInput && fileInput.files && fileInput.files[0]) {
+                        // Subir archivo nuevo a Supabase
+                        try {
+                            const uploadResult = await window.uploadFileToSupabase(fileInput.files[0], 'gastos_transporte');
+                            if (uploadResult && uploadResult.url) {
+                                expense.fileUrl = uploadResult.url;
+                                expense.file = uploadResult.url;
+                                expense.url = uploadResult.url;
+                            }
+                        } catch (e) {
+                            alert('Error subiendo archivo de transporte: ' + e.message);
+                        }
+                    } else if (existingFile) {
+                        // Guardar la URL anterior en todos los campos posibles
+                        expense.fileUrl = existingFile;
+                        expense.file = existingFile;
+                        expense.url = existingFile;
+                    }
+                    return expense;
+                }));
+
+                // Recoger gastos de dietas (mantener o subir archivos)
+                const dietExpenses = await Promise.all(Array.from(document.querySelectorAll('#edit-dietExpenses > div')).map(async (div, idx) => {
+                    const fileIndex = parseInt(div.dataset.fileIndex);
+                    const existingFile = window.existingFilesData?.diet?.[fileIndex] || null;
+                    const inputs = div.querySelectorAll('input[type="date"], input[type="text"], input[type="number"]');
+                    const expense = {
+                        date: inputs[0].value,
+                        concept: inputs[1].value,
+                        amount: parseFloat(inputs[2].value)
+                    };
+                    const fileInput = div.querySelector('input[type="file"]');
+                    if (fileInput && fileInput.files && fileInput.files[0]) {
+                        // Subir archivo nuevo a Supabase
+                        try {
+                            const uploadResult = await window.uploadFileToSupabase(fileInput.files[0], 'gastos_dietas');
+                            if (uploadResult && uploadResult.url) {
+                                expense.fileUrl = uploadResult.url;
+                                expense.file = uploadResult.url;
+                                expense.url = uploadResult.url;
+                            }
+                        } catch (e) {
+                            alert('Error subiendo archivo de dietas: ' + e.message);
+                        }
+                    } else if (existingFile) {
+                        // Guardar la URL anterior en todos los campos posibles
+                        expense.fileUrl = existingFile;
+                        expense.file = existingFile;
+                        expense.url = existingFile;
+                    }
+                    return expense;
+                }));
+
+                const updatedFormData = {
+                    username: formUser,
+                    year: parseInt(year),
+                    month: parseInt(month),
+                    asistencia: parseInt(document.getElementById('edit-trainingAttendance').value) || 0,
+                    desplazamientos: matches,
+                    gastosTransporte: transportExpenses,
+                    gastosDietas: dietExpenses,
+                    semanas: parseInt(document.getElementById('edit-weeksInMonth').value) || 4
+                };
+
+                console.log('💾 Guardando formulario editado:', updatedFormData);
+
+                const response = await fetch('/api/formularios', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(updatedFormData)
+                });
+
+                if (response.ok) {
+                    alert('Formulario actualizado exitosamente.');
+                    loadForms();
+                    closeEditForm();
+                } else {
+                    if (handleAuthFailure(response)) return;
+
+                    let errorData = {};
+                    try {
+                        errorData = await response.json();
+                    } catch (_) {
+                        errorData = {};
+                    }
+                    console.error('Error del servidor:', errorData);
+                    alert('Error al actualizar el formulario: ' + (errorData.message || 'Error desconocido'));
+                    saveButton.textContent = originalText;
+                    saveButton.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error guardando formulario:', error);
+                alert('Error al guardar el formulario: ' + error.message);
+                const saveButton = document.querySelector('#edit-form button[onclick*="saveEditedForm"]');
+                if (saveButton) {
+                    saveButton.textContent = 'Guardar';
+                    saveButton.disabled = false;
+                }
+            }
         }
 
         function closeEditForm() {
@@ -435,20 +730,34 @@ const params = new URLSearchParams(window.location.search);
             }
         }
 
-        function deleteForm(key) {
+        async function deleteForm(formUser, year, month) {
             const confirmation = confirm("¿Estás seguro de que quieres borrar este formulario?");
             if (confirmation) {
-                localStorage.removeItem(key); // Remove the form from localStorage
-                loadForms(); // Reload the table to reflect changes
-                alert("Formulario borrado exitosamente.");
+                try {
+                    const response = await fetch(`/api/formularios/${formUser}/${year}/${month}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (response.ok) {
+                        loadForms();
+                        alert("Formulario borrado exitosamente.");
+                    } else {
+                        if (handleAuthFailure(response)) return;
+                        alert("Error al borrar el formulario.");
+                    }
+                } catch (error) {
+                    console.error('Error eliminando formulario:', error);
+                    alert("Error al borrar el formulario.");
+                }
             }
         }
 
         // Call the function to populate the username filter on page load
-        populateUserFilter();
+        loadUsers();
 
         // Call the function to populate the year filter on page load
-        populateYearFilter();
+        // populateYearFilter(); // Ya no es necesario, los años se obtienen de allFormularios
 
         loadForms();
 

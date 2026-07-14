@@ -19,24 +19,12 @@
                 <input type="password" id="password" name="password" required>
             </div>
             <button type="submit" class="button">Iniciar Sesión</button>
-            <a href="inicio_app1.html" class="back-to-home">Volver</a>
+            <a href="index.html" class="back-to-home">Volver</a>
         </form>
     </div>
+    <script src="js/supabase.js"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth-utils.js"></script>
     <script src="js/inicio_sesion_otro.js"></script>
-    <script>
-document.getElementById('login-form').addEventListener('submit', function(event) {
-    event.preventDefault();
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const userData = JSON.parse(localStorage.getItem(username));
-    if (userData && userData.password === password) {
-        localStorage.setItem('clubCode', userData.clubCode || '');
-        alert("Inicio de sesión exitoso.");
-        window.location.href = `interfaz_personalizada.html?nombre=${encodeURIComponent(userData.username)}`;
-    } else {
-        alert("Nombre de usuario o contraseña incorrectos. Por favor, inténtalo de nuevo.");
-    }
-});
-</script>
 </body>
 </html>

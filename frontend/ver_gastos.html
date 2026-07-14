@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ver Gastos - tuGestClub</title>
     <link rel="stylesheet" href="css/ver_gastos.css">
 </head>
@@ -41,18 +42,15 @@
             </div>
         </div>
         <div id="gastos-table"></div>
-        <button class="back-button" onclick="goBack()">Volver</button>
+        <div class="buttons-container">
+            <button class="back-button" onclick="goBack()">Volver</button>
+            <button class="export-button" onclick="exportarAExcel()">📊 Exportar a Excel</button>
+        </div>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/shim.min.js"></script>
+    <script src="js/club-themes.js"></script>
+    <script src="js/auth-utils.js"></script>
     <script src="js/ver_gastos.js"></script>
-    <script>
-    if (localStorage.getItem('clubCode') === '82801') {
-        document.body.style.background = 'yellow';
-        document.body.style.color = '#333';
-    }
-    if (localStorage.getItem('clubCode') === '1234') {
-        document.body.style.background = '#ffcccc';
-        document.body.style.color = '#333';
-    }
-    </script>
 </body>
 </html>

@@ -7,23 +7,45 @@
     <link rel="stylesheet" href="css/ver_usuarios.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.13/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/shim.min.js"></script>
 </head>
 <body>
+    <div class="background-shapes">
+        <div class="shape-1"></div>
+        <div class="shape-2"></div>
+    </div>
+
     <div class="container">
-        <div class="title">Usuarios Registrados</div>
+        <div class="header-section">
+            <div class="logo-badge">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="#26a69a"/>
+                </svg>
+            </div>
+            <h1 class="title">👥 Usuarios Registrados</h1>
+        </div>
+        
+        <!-- Filtros -->
+        <div class="filter-container">
+            <label>Filtrar por:</label>
+            <button class="filter-btn active" onclick="filterUsers('todos')" id="btn-todos">Todos</button>
+            <button class="filter-btn" onclick="filterUsers('permitidos')" id="btn-permitidos">✅ Acceso Permitido</button>
+            <button class="filter-btn" onclick="filterUsers('denegados')" id="btn-denegados">❌ Acceso Denegado</button>
+        </div>
+        
         <div class="table-container">
             <table id="user-table">
                 <thead>
                     <tr>
-                        <th onclick="sortTable(0)">Nombre de Usuario</th>
+                        <th onclick="sortTable(0)">Usuario</th>
                         <th onclick="sortTable(1)">Nombre Completo</th>
-                        <th onclick="sortTable(2)">Correo Electrónico</th>
+                        <th onclick="sortTable(2)">Email</th>
                         <th onclick="sortTable(3)">DNI</th>
-                        <th onclick="sortTable(4)">Dirección</th>
-                        <th onclick="sortTable(5)">Kilómetros</th>
-                        <th onclick="sortTable(6)">Contraseña</th>
-                        <th onclick="sortTable(7)">Código del Club</th>
+                        <th onclick="sortTable(4)">Teléfono</th>
+                        <th onclick="sortTable(5)">Dirección</th>
+                        <th onclick="sortTable(6)">Km</th>
+                        <th onclick="sortTable(7)">Club</th>
                         <th onclick="sortTable(8)">Rol</th>
                         <th>Acciones</th>
                     </tr>
@@ -33,19 +55,39 @@
                 </tbody>
             </table>
         </div>
-        <button class="back-button" onclick="redirectToPersonalizedInterface()">Atrás</button>
-        <button class="export-button" onclick="exportToExcel()">Exportar a Excel</button>
+
+        <div class="button-group">
+            <button class="button-back" onclick="redirectToPersonalizedInterface()">← Atrás</button>
+            <button class="button-export" onclick="exportToExcel()">📊 Exportar a Excel</button>
+        </div>
     </div>
+
+    <!-- Modal para editar usuario y contraseña -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditModal()">&times;</span>
+            <h2>✏️ Editar Usuario</h2>
+            <form id="editForm" onsubmit="saveUserChanges(event)">
+                <div class="form-group">
+                    <label for="editUsername">Nombre de Usuario:</label>
+                    <input type="text" id="editUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="editPassword">Nueva contraseña:</label>
+                    <input type="text" id="editPassword" minlength="8" placeholder="Mínimo 8 caracteres" required>
+                    <small style="color: #666; font-size: 0.85rem;">Si la cambias, debe tener al menos 8 caracteres y ser única.</small>
+                </div>
+                <input type="hidden" id="originalUsername">
+                <div class="modal-buttons">
+                    <button type="submit" class="save-btn">💾 Guardar</button>
+                    <button type="button" class="cancel-btn" onclick="closeEditModal()">✕ Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/club-themes.js"></script>
+    <script src="js/auth-utils.js"></script>
     <script src="js/ver_usuarios.js"></script>
-    <script>
-    if (localStorage.getItem('clubCode') === '82801') {
-        document.body.style.background = 'yellow';
-        document.body.style.color = '#333';
-    }
-    if (localStorage.getItem('clubCode') === '1234') {
-        document.body.style.background = '#ffcccc';
-        document.body.style.color = '#333';
-    }
-    </script>
 </body>
 </html>

@@ -5,17 +5,27 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "start:dev": "nodemon src/server.js"
+    "start": "node src/server-supabase.js",
+    "start:dev": "nodemon src/server-supabase.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.94.1",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.2.0",
     "pg": "^8.16.3"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "node-fetch": "^2.7.0",
+    "nodemon": "^3.1.14"
   }
 }

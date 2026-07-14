@@ -1,18 +1,28 @@
+
 import express from "express";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const envPath = path.resolve(__dirname, '../.env');
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else {
+  dotenv.config();
+}
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Frontend static folder
 const frontendPath = path.resolve(__dirname, "../../frontend");
@@ -24,6 +34,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
 );
 
+// Configuración JWT
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-me';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '12h';
+
 // ========== LOGIN ==========
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
@@ -33,12 +47,38 @@ app.post('/api/login', async (req, res) => {
       .from('users')
       .select('*')
       .eq('username', username)
-      .eq('password', password)
       .single();
 
     if (error || !data) {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
+
+    // Verificar contraseña con bcrypt
+    const storedPassword = data.password || '';
+    let validPassword = false;
+
+    if (storedPassword.startsWith('$2')) {
+      // Es un hash bcrypt
+      validPassword = await bcrypt.compare(password, storedPassword);
+    } else {
+      // Comparación en texto plano (fallback para contraseñas antiguas)
+      validPassword = storedPassword === password;
+    }
+
+    if (!validPassword) {
+      return res.status(401).json({ message: 'Credenciales inválidas' });
+    }
+
+    // Generar token JWT
+    const token = jwt.sign(
+      {
+        username: data.username,
+        role: data.role,
+        clubCode: data.club_code
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
 
     res.json({
       user: {
@@ -51,7 +91,10 @@ app.post('/api/login', async (req, res) => {
         address: data.address,
         phone: data.phone,
         km: data.km
-      }
+      },
+      token: token,
+      tokenType: 'Bearer',
+      expiresIn: JWT_EXPIRES_IN
     });
   } catch (error) {
     console.error('Error en login:', error);
@@ -167,12 +210,12 @@ app.put('/api/users/:username', async (req, res) => {
         km: km ? parseInt(km) : null
       })
       .eq('username', req.params.username)
-      .select()
-      .single();
+      .select();
 
     if (error) throw error;
 
-    res.json({ message: 'Usuario actualizado exitosamente', user: data });
+    // data es un array, devolvemos el primer usuario actualizado
+    res.json({ message: 'Usuario actualizado exitosamente', user: data && data[0] });
   } catch (error) {
     console.error('Error al actualizar usuario:', error);
     res.status(400).json({ message: 'Error al actualizar usuario', error: error.message });
@@ -249,24 +292,60 @@ app.get('/api/formularios', async (req, res) => {
       return res.status(500).json({ message: 'Error al obtener formularios', error: formError.message });
     }
 
-    // Mapear los formularios con el club_code correspondiente
-    const formularios = formulariosData.map(form => ({
-      username: form.username,
-      year: form.year,
-      month: form.month,
-      clubCode: userClubMap[form.username] || null,
-      trainingAttendance: form.asistencia || 0,
-      matches: form.desplazamientos || [],
-      transportExpenses: form.gastos_transporte || [],
-      dietExpenses: form.gastos_dietas || [],
-      weeksInMonth: form.semanas || 0,
-      // También incluir los nombres antiguos por compatibilidad
-      asistencia: form.asistencia,
-      desplazamientos: form.desplazamientos,
-      gastosTransporte: form.gastos_transporte,
-      gastosDietas: form.gastos_dietas,
-      semanas: form.semanas
-    }));
+    // Mapear los formularios con el club_code correspondiente y desplazamientos
+    const formularios = await Promise.all(
+      formulariosData.map(async (form) => {
+        // Obtener desplazamientos para este formulario
+        const { data: desplazamientosData, error: despError } = await supabase
+          .from('desplazamientos')
+          .select('*')
+          .eq('formulario_id', form.id)
+          .order('fecha', { ascending: true });
+
+        // Obtener gastos de transporte para este formulario
+        const { data: gastosData, error: gastosError } = await supabase
+          .from('gastos_transporte')
+          .select('*')
+          .eq('formulario_id', form.id)
+          .order('fecha', { ascending: true });
+
+        if (despError) console.error('Error obteniendo desplazamientos:', despError);
+        if (gastosError) console.error('Error obteniendo gastos:', gastosError);
+
+        // Mapear a formato esperado por frontend
+        const desplazamientos = (desplazamientosData || []).map(desp => ({
+          date: desp.fecha,
+          locality: desp.localidad,
+          place: desp.lugar,
+          km: desp.km.toString()
+        }));
+
+        const gastosTransporte = (gastosData || []).map(gasto => ({
+          date: gasto.fecha,
+          concept: gasto.concepto,
+          amount: gasto.importe.toString(),
+          fileUrl: gasto.archivo
+        }));
+
+        return {
+          username: form.username,
+          year: form.year,
+          month: form.month,
+          clubCode: userClubMap[form.username] || null,
+          trainingAttendance: form.asistencia || 0,
+          matches: desplazamientos,
+          transportExpenses: gastosTransporte,
+          dietExpenses: form.gastos_dietas || [],
+          weeksInMonth: form.semanas || 0,
+          // También incluir los nombres antiguos por compatibilidad
+          asistencia: form.asistencia,
+          desplazamientos: desplazamientos,
+          gastosTransporte: gastosTransporte,
+          gastosDietas: form.gastos_dietas,
+          semanas: form.semanas
+        };
+      })
+    );
 
     res.json(formularios);
   } catch (error) {
@@ -286,16 +365,51 @@ app.get('/api/formularios/:username', async (req, res) => {
 
     if (error) throw error;
 
-    const formularios = data.map(form => ({
-      username: form.username,
-      year: form.year,
-      month: form.month,
-      asistencia: form.asistencia,
-      desplazamientos: form.desplazamientos,
-      gastosTransporte: form.gastos_transporte,
-      gastosDietas: form.gastos_dietas,
-      semanas: form.semanas
-    }));
+    // Obtener desplazamientos para cada formulario
+    const formularios = await Promise.all(
+      data.map(async (form) => {
+        const { data: desplazamientosData, error: despError } = await supabase
+          .from('desplazamientos')
+          .select('*')
+          .eq('formulario_id', form.id)
+          .order('fecha', { ascending: true });
+
+        const { data: gastosData, error: gastosError } = await supabase
+          .from('gastos_transporte')
+          .select('*')
+          .eq('formulario_id', form.id)
+          .order('fecha', { ascending: true });
+
+        if (despError) console.error('Error obteniendo desplazamientos:', despError);
+        if (gastosError) console.error('Error obteniendo gastos:', gastosError);
+
+        // Mapear los datos a los campos esperados por el frontend
+        const desplazamientos = (desplazamientosData || []).map(desp => ({
+          date: desp.fecha,
+          locality: desp.localidad,
+          place: desp.lugar,
+          km: desp.km.toString()
+        }));
+
+        const gastosTransporte = (gastosData || []).map(gasto => ({
+          date: gasto.fecha,
+          concept: gasto.concepto,
+          amount: gasto.importe.toString(),
+          fileUrl: gasto.archivo
+        }));
+
+        return {
+          username: form.username,
+          year: form.year,
+          month: form.month,
+          asistencia: form.asistencia,
+          desplazamientos: desplazamientos,
+          gastosTransporte: gastosTransporte,
+          gastosDietas: form.gastos_dietas,
+          semanas: form.semanas
+        };
+      })
+    );
 
     res.json(formularios);
   } catch (error) {
@@ -308,27 +422,133 @@ app.post('/api/formularios', async (req, res) => {
   const { username, year, month, asistencia, desplazamientos, gastosTransporte, gastosDietas, semanas } = req.body;
 
   try {
-    const { data, error } = await supabase
+    console.log('📝 Guardando formulario:', { username, year, month });
+    console.log('📍 Desplazamientos recibidos:', desplazamientos);
+    console.log('💰 Gastos de transporte recibidos:', gastosTransporte);
+
+    // 1. Guardar o actualizar el formulario principal
+    const { data: formData, error: formError } = await supabase
       .from('formularios')
       .upsert({
         username,
         year,
         month,
         asistencia: asistencia || 0,
-        desplazamientos: desplazamientos || [],
-        gastos_transporte: gastosTransporte || [],
+        gastos_transporte: null,
         gastos_dietas: gastosDietas || [],
         semanas: semanas || 0,
+        desplazamientos: [],
         updated_at: new Date().toISOString()
       }, { onConflict: 'username,year,month' })
       .select()
       .single();
 
-    if (error) throw error;
+    if (formError) throw formError;
 
-    res.json({ message: 'Formulario guardado exitosamente', formulario: data });
+    console.log('✅ Formulario guardado con ID:', formData?.id);
+
+    // 2. Eliminar y guardar desplazamientos
+    const { error: deleteDesplError } = await supabase
+      .from('desplazamientos')
+      .delete()
+      .eq('formulario_id', formData.id);
+
+    if (deleteDesplError) console.error('❌ Error eliminando desplazamientos anteriores:', deleteDesplError);
+
+    if (desplazamientos && desplazamientos.length > 0) {
+      const desplazamientosData = desplazamientos.map(desp => ({
+        formulario_id: formData.id,
+        fecha: desp.date,
+        km: parseFloat(desp.km) || 0,
+        lugar: desp.place,
+        localidad: desp.locality
+      }));
+
+      console.log('📤 Insertando desplazamientos:', desplazamientosData);
+
+      const { error: insertDesplError, data: insertDesplData } = await supabase
+        .from('desplazamientos')
+        .insert(desplazamientosData)
+        .select();
+
+      if (insertDesplError) {
+        console.error('❌ Error insertando desplazamientos:', insertDesplError);
+        throw insertDesplError;
+      }
+      console.log('✅ Desplazamientos insertados:', insertDesplData);
+    } else {
+      console.log('ℹ️ No hay desplazamientos para insertar');
+    }
+
+    // 3. Eliminar y guardar gastos de transporte
+    const { error: deleteGastosError } = await supabase
+      .from('gastos_transporte')
+      .delete()
+      .eq('formulario_id', formData.id);
+
+    if (deleteGastosError) console.error('❌ Error eliminando gastos anteriores:', deleteGastosError);
+
+    if (gastosTransporte && gastosTransporte.length > 0) {
+      const gastosData = gastosTransporte.map(gasto => ({
+        formulario_id: formData.id,
+        fecha: gasto.date,
+        importe: parseFloat(gasto.amount) || 0,
+        concepto: gasto.concept,
+        archivo: gasto.fileUrl || null
+      }));
+
+      console.log('📤 Insertando gastos de transporte:', gastosData);
+
+      const { error: insertGastosError, data: insertGastosData } = await supabase
+        .from('gastos_transporte')
+        .insert(gastosData)
+        .select();
+
+      if (insertGastosError) {
+        console.error('❌ Error insertando gastos de transporte:', insertGastosError);
+        throw insertGastosError;
+      }
+      console.log('✅ Gastos de transporte insertados:', insertGastosData);
+    } else {
+      console.log('ℹ️ No hay gastos de transporte para insertar');
+    }
+
+    // 4. Eliminar y guardar gastos de dietas
+    const { error: deleteGastosDietasError } = await supabase
+      .from('gastos_dietas')
+      .delete()
+      .eq('formulario_id', formData.id);
+
+    if (deleteGastosDietasError) console.error('❌ Error eliminando gastos de dietas anteriores:', deleteGastosDietasError);
+
+    if (gastosDietas && gastosDietas.length > 0) {
+      const gastosDietasData = gastosDietas.map(gasto => ({
+        formulario_id: formData.id,
+        fecha: gasto.date,
+        importe: parseFloat(gasto.amount) || 0,
+        concepto: gasto.concept,
+        archivo: gasto.fileUrl || null
+      }));
+
+      console.log('📤 Insertando gastos de dietas:', gastosDietasData);
+
+      const { error: insertGastosDietasError, data: insertGastosDietasData } = await supabase
+        .from('gastos_dietas')
+        .insert(gastosDietasData)
+        .select();
+
+      if (insertGastosDietasError) {
+        console.error('❌ Error insertando gastos de dietas:', insertGastosDietasError);
+        throw insertGastosDietasError;
+      }
+      console.log('✅ Gastos de dietas insertados:', insertGastosDietasData);
+    } else {
+      console.log('ℹ️ No hay gastos de dietas para insertar');
+    }
+
+    res.json({ message: 'Formulario guardado exitosamente', formulario: formData });
   } catch (error) {
-    console.error('Error al guardar formulario:', error);
+    console.error('❌ Error al guardar formulario:', error);
     res.status(400).json({ message: 'Error al guardar formulario', error: error.message });
   }
 });

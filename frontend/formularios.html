@@ -9,43 +9,161 @@
 <body>
     <div class="form-container">
         <h2 id="user-title">Formulario Mensual</h2>
-        <button class="form-button" onclick="toggleForm()">Formulario</button>
-        <table class="data-table" id="dataTable">
-            <thead>
-                <tr>
-                    <th>Año</th>
-                    <th>Mes</th>
-                    <th>Asistencia entrenamientos y partidos</th>
-                    <th>Desplazamientos fuera del club</th>
-                    <th>Detalles de partidos</th>
-                    <th>Gasto Transporte</th>
-                    <th>Detalles Gasto Transporte</th>
-                    <th>Gasto en Dietas</th>
-                    <th>Detalles Gasto en Dietas</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <button class="button-create" onclick="toggleForm()">✏️ Crear Nuevo Formulario</button>
+        
+        <div class="table-wrapper">
+            <table class="data-table" id="dataTable">
+                <thead>
+                    <tr>
+                        <th data-full-text="Año">Año</th>
+                        <th data-full-text="Mes">Mes</th>
+                        <th data-full-text="Días de Asistencia">Días Asist.</th>
+                        <th data-full-text="Desplazamientos (Fecha, Localidad, Equipo, Km)">Desplazamientos</th>
+                        <th data-full-text="Gastos Transporte (Fecha, Concepto, Importe)">Gastos Transporte</th>
+                        <th data-full-text="Gastos Dietas (Fecha, Concepto, Importe)">Gastos Dietas</th>
+                        <th data-full-text="Semanas">Semanas</th>
+                        <th data-full-text="Acciones">Editar</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 
-    <button class="back-button" onclick="redirectToPersonalizedInterface()">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <button class="button-back" onclick="redirectToPersonalizedInterface()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px; margin-right: 8px;">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
         Volver
     </button>
 
+   <script src="js/club-themes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth-utils.js"></script>
     <script src="js/formularios.js"></script>
     <script>
-    if (localStorage.getItem('clubCode') === '82801') {
-        document.body.style.background = 'yellow';
-        document.body.style.color = '#333';
-    }
-    if (localStorage.getItem('clubCode') === '1234') {
-        document.body.style.background = '#ffcccc';
-        document.body.style.color = '#333';
-    }
+    // Tooltip para títulos de columnas en móvil
+    window.addEventListener('load', function() {
+        const headers = document.querySelectorAll('.data-table th');
+        const cells = document.querySelectorAll('.data-table td');
+        
+        // Función para mostrar tooltip
+        function showTooltip(element, text, isHeader = false) {
+            // Remover tooltip existente
+            const existingTooltip = document.querySelector('.column-tooltip');
+            if (existingTooltip) {
+                existingTooltip.remove();
+            }
+            
+            // Crear nuevo tooltip
+            const tooltip = document.createElement('div');
+            tooltip.className = 'column-tooltip';
+            tooltip.textContent = text;
+            
+            // Estilo diferente para encabezados y celdas
+            const backgroundColor = isHeader ? 'rgba(0, 77, 64, 0.95)' : 'rgba(255, 255, 255, 0.98)';
+            const textColor = isHeader ? 'white' : '#333';
+            
+            tooltip.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: ${backgroundColor};
+                color: ${textColor};
+                padding: 15px 20px;
+                border-radius: 8px;
+                font-size: 14px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                max-width: 90%;
+                text-align: center;
+                word-wrap: break-word;
+                border: ${isHeader ? 'none' : '2px solid #004d40'};
+            `;
+            
+            document.body.appendChild(tooltip);
+            
+            // Remover al hacer clic en el tooltip o fuera de él
+            const removeTooltip = function(event) {
+                tooltip.remove();
+                document.removeEventListener('click', removeTooltip);
+            };
+            
+            setTimeout(() => {
+                document.addEventListener('click', removeTooltip);
+            }, 100);
+            
+            // Auto-remover después de 4 segundos
+            setTimeout(() => {
+                if (tooltip.parentNode) {
+                    tooltip.remove();
+                    document.removeEventListener('click', removeTooltip);
+                }
+            }, 4000);
+        }
+        
+        // Tooltip para encabezados
+        headers.forEach(header => {
+            header.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const fullText = this.getAttribute('data-full-text');
+                
+                if (fullText) {
+                    showTooltip(this, fullText, true);
+                }
+            });
+        });
+        
+        // Añadir listeners a todas las celdas de la tabla
+        const observer = new MutationObserver(function() {
+            const allCells = document.querySelectorAll('.data-table td');
+            allCells.forEach(cell => {
+                // Evitar añadir múltiples listeners
+                if (!cell.dataset.tooltipEnabled) {
+                    cell.dataset.tooltipEnabled = 'true';
+                    cell.style.cursor = 'pointer';
+                    
+                    cell.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const text = this.textContent.trim();
+                        
+                        // Solo mostrar si hay texto
+                        if (text && text.length > 0) {
+                            showTooltip(this, text, false);
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Observar cambios en la tabla
+        const tableBody = document.querySelector('.data-table tbody');
+        if (tableBody) {
+            observer.observe(tableBody, { childList: true, subtree: true });
+            // Ejecutar inmediatamente para celdas existentes
+            observer.disconnect();
+            observer.observe(tableBody, { childList: true, subtree: true });
+            
+            const allCells = document.querySelectorAll('.data-table td');
+            allCells.forEach(cell => {
+                if (!cell.dataset.tooltipEnabled) {
+                    cell.dataset.tooltipEnabled = 'true';
+                    cell.style.cursor = 'pointer';
+                    
+                    cell.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const text = this.textContent.trim();
+                        
+                        if (text && text.length > 0) {
+                            showTooltip(this, text, false);
+                        }
+                    });
+                }
+            });
+        }
+    });
     </script>
 </body>
 </html>

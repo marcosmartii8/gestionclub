@@ -9,36 +9,33 @@ document.getElementById('login-form')?.addEventListener('submit', async function
     }
 
     try {
-        const res = await fetch('/api/login', {
+        const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
-        const data = await res.json();
-        if (res.ok && data.user) {
-            const user = data.user;
-            const clubCode = user.clubcode || user.clubCode || '';
-            localStorage.setItem('clubCode', clubCode);
-            localStorage.setItem(user.username, JSON.stringify(user));
-            alert('Inicio de sesión exitoso.');
-            window.location.href = `interfaz_personalizada.html?nombre=${encodeURIComponent(user.username)}`;
+        if (!response.ok) {
+            const errorData = await response.json();
+            alert(errorData.error || 'Nombre de usuario o contraseña incorrectos.');
             return;
+        }
+        const result = await response.json();
+        // Guardar datos de usuario en localStorage
+        if (window.AuthUtils && typeof window.AuthUtils.setSessionFromLogin === 'function') {
+            window.AuthUtils.setSessionFromLogin(result.user, result.token || '');
         } else {
-            if (res.status === 401) {
-                alert('Nombre de usuario o contraseña incorrectos.');
-                return;
+            localStorage.setItem('usuario', JSON.stringify(result.user));
+            localStorage.setItem('username', result.user.username || '');
+            localStorage.setItem('role', result.user.role || '');
+            localStorage.setItem('clubCode', result.user.clubCode || '');
+            if (result.token) {
+                localStorage.setItem('accessToken', result.token);
             }
-            throw new Error(data.error || 'Login API error');
         }
+        alert('Inicio de sesión exitoso.');
+        window.location.href = `interfaz_personalizada.html?nombre=${encodeURIComponent(result.user.username)}`;
     } catch (err) {
-        // Fallback: comprobar localStorage legacy
-        const userData = JSON.parse(localStorage.getItem(username));
-        if (userData && userData.password === password) {
-            localStorage.setItem('clubCode', userData.clubCode || userData.clubcode || '');
-            alert('Inicio de sesión (fallback) exitoso.');
-            window.location.href = `interfaz_personalizada.html?nombre=${encodeURIComponent(userData.username || username)}`;
-            return;
-        }
+        console.error('Error en login:', err);
         alert('No se pudo iniciar sesión: ' + (err.message || 'Error de conexión.'));
     }
 });

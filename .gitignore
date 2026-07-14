@@ -1,0 +1,11 @@
+# Secrets and environment files
+backend/.env
+*.env
+!.env.example
+
+# Node.js
+backend/node_modules/
+
+# Logs
+*.log
+npm-debug.log*
