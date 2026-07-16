@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -84,6 +85,7 @@ const __dirname = path.dirname(__filename);
 // Frontend static folder
 const frontendPath = path.resolve(__dirname, "../../frontend");
 console.log('Serving frontend from:', frontendPath);
+console.log('Index.html exists:', fs.existsSync(path.join(frontendPath, 'index.html')));
 app.use(express.static(frontendPath));
 
 // Ruta raíz - servir index.html
