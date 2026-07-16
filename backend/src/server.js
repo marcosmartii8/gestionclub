@@ -81,9 +81,12 @@ app.use((req, res, next) => {
 
 // Frontend static folder
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const frontendPath = path.resolve(__dirname, "../../frontend");
+// En Railway: /app/backend/src -> necesitamos /app/frontend
+// En local: proyecto/backend/src -> necesitamos proyecto/frontend
+const frontendPath = path.join(__dirname, '../../frontend');
 console.log('__dirname:', __dirname);
 console.log('Serving frontend from:', frontendPath);
+console.log('Index.html path:', path.join(frontendPath, 'index.html'));
 console.log('Index.html exists:', fs.existsSync(path.join(frontendPath, 'index.html')));
 app.use(express.static(frontendPath));
 
