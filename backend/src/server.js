@@ -123,7 +123,8 @@ function mapUserForClient(user, includeActive = false) {
     dni: user.dni || '',
     address: user.address || '',
     phone: user.phone || '',
-    km: user.km ? user.km.toString() : ''
+    km: user.km ? user.km.toString() : '',
+    leftAt: user.left_at || null
   };
 
   if (includeActive) {
@@ -352,6 +353,10 @@ app.post('/api/login', async (req, res) => {
     // Verificar si el usuario está activo
     if (data.active !== true) {
       return res.status(403).json({ error: 'Acceso denegado. Usuario desactivado.' });
+    }
+    
+    if (data.left_at !== null) {
+      return res.status(403).json({ error: 'Ya no perteneces a este club.' });
     }
 
     res.json({
@@ -584,6 +589,57 @@ app.delete('/api/users/:username', requireRole(['lider']), async (req, res) => {
   }
 });
 
+// Eliminar permanentemente un ex-miembro junto con todos sus formularios
+app.delete('/api/users/:username/permanent', requireRole(['lider', 'administrador']), async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    // Verificar que el usuario existe y tiene left_at (es ex-miembro)
+    const { data: userData, error: fetchError } = await supabase
+      .from('users')
+      .select('username, left_at')
+      .eq('username', username)
+      .single();
+
+    if (fetchError || !userData) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    if (!userData.left_at) {
+      return res.status(400).json({ message: 'Solo se pueden eliminar permanentemente ex-miembros dados de baja' });
+    }
+
+    // Obtener IDs de formularios del usuario
+    const { data: formularios } = await supabase
+      .from('formularios')
+      .select('id')
+      .eq('username', username);
+
+    const formularioIds = (formularios || []).map(f => f.id);
+
+    if (formularioIds.length > 0) {
+      // Eliminar subtablas en orden
+      await supabase.from('desplazamientos').delete().in('formulario_id', formularioIds);
+      await supabase.from('gastos_transporte').delete().in('formulario_id', formularioIds);
+      await supabase.from('gastos_dietas').delete().in('formulario_id', formularioIds);
+      await supabase.from('formularios').delete().in('id', formularioIds);
+    }
+
+    // Eliminar el usuario
+    const { error: deleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('username', username);
+
+    if (deleteError) throw deleteError;
+
+    res.json({ message: `Usuario ${username} y sus formularios eliminados permanentemente` });
+  } catch (error) {
+    console.error('Error al eliminar usuario permanentemente:', error);
+    res.status(500).json({ message: 'Error al eliminar usuario', error: error.message });
+  }
+});
+
 // Endpoint para cambiar el estado activo del usuario
 app.patch('/api/users/:username/toggle-access', requireRole(['lider', 'administrador']), async (req, res) => {
   try {
@@ -619,6 +675,42 @@ app.patch('/api/users/:username/toggle-access', requireRole(['lider', 'administr
   } catch (error) {
     console.error('Error al cambiar estado de acceso:', error);
     res.status(500).json({ message: 'Error al cambiar estado de acceso', error: error.message });
+  }
+});
+// Dar de baja a un usuario del club (sin borrar)
+app.patch('/api/users/:username/leave', requireRole(['lider', 'administrador']), async (req, res) => {
+  try {
+    const { username } = req.params;
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    const { error } = await supabase
+      .from('users')
+      .update({ left_at: today })
+      .eq('username', username);
+
+    if (error) throw error;
+
+    res.json({ message: 'Usuario dado de baja del club', leftAt: today });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al dar de baja', error: error.message });
+  }
+});
+
+// Readmitir a un usuario al club
+app.patch('/api/users/:username/readmit', requireRole(['lider', 'administrador']), async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    const { error } = await supabase
+      .from('users')
+      .update({ left_at: null })
+      .eq('username', username);
+
+    if (error) throw error;
+
+    res.json({ message: 'Usuario readmitido en el club' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al readmitir', error: error.message });
   }
 });
 

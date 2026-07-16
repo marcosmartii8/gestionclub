@@ -1,6 +1,6 @@
 let sortDirection = {}; // Para controlar la dirección de ordenación por columna
 let allUsers = []; // Almacenar todos los usuarios cargados
-let currentFilter = 'todos'; // Filtro actual
+let currentFilter = 'activos'; // Filtro actual
 
 function getAuthHeaders(extraHeaders = {}) {
     if (window.AuthUtils && typeof window.AuthUtils.getAuthHeaders === 'function') {
@@ -76,10 +76,12 @@ async function loadUsers() {
 
 function filterUsersByAccess(users, filter) {
     switch(filter) {
-        case 'permitidos':
-            return users.filter(u => u.active !== false);
+        case 'activos':
+            return users.filter(u => u.active !== false && !u.leftAt);
+        case 'exmiembros':
+            return users.filter(u => u.leftAt);
         case 'denegados':
-            return users.filter(u => u.active === false);
+            return users.filter(u => u.active === false && !u.leftAt);
         case 'todos':
         default:
             return users;
@@ -103,7 +105,7 @@ function filterUsers(filter) {
 function renderUsers(users) {
     const tableBody = document.getElementById('user-table-body');
     tableBody.innerHTML = '';
-    
+   
     if (users.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #666;">No hay usuarios con este filtro</td></tr>';
         return;
@@ -114,6 +116,13 @@ function renderUsers(users) {
             const isActive = user.active !== false;
             const accessButtonText = isActive ? 'Denegar Acceso' : 'Permitir Acceso';
             const accessButtonClass = isActive ? 'deny-access-btn' : 'allow-access-btn';
+            const isFormerMember = !!user.leftAt;
+            const membershipBtn = isFormerMember
+              ? `<button onclick="readmitUser('${encoded}')" style="background:#388e3c;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;margin-right:5px;">↩ Readmitir</button>`
+              : `<button onclick="leaveUser('${encoded}')" style="background:#f57c00;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;margin-right:5px;">🚪 Dar de baja</button>`;
+            const deleteBtn = isFormerMember
+              ? `<button onclick="deleteUserPermanently('${encoded}')" style="background:#c62828;color:white;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;margin-right:5px;">🗑️ Eliminar</button>`
+              : '';
             const row = document.createElement('tr');
             row.id = `user-row-${encoded}`;
             row.innerHTML = `
@@ -130,6 +139,8 @@ function renderUsers(users) {
                     <button onclick="editUser('${encoded}')" style="background: #0288d1; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 5px;">
                         ✏️ Editar
                     </button>
+                    ${membershipBtn}
+                    ${deleteBtn}
                     <button onclick="toggleUserAccess('${encoded}')" class="${accessButtonClass}" id="access-btn-${encoded}">
                         ${accessButtonText}
                     </button>
@@ -397,6 +408,51 @@ function generarCSVUsuarios(datos) {
     document.body.removeChild(link);
 }
 
+async function deleteUserPermanently(encodedKey) {
+    const username = decodeURIComponent(encodedKey);
+    if (!confirm(`⚠️ ELIMINAR DEFINITIVAMENTE a ${username}\n\nSe borrarán el usuario y TODOS sus formularios. Esta acción no se puede deshacer.\n\n¿Continuar?`)) return;
+    try {
+        const res = await fetch(`/api/users/${username}/permanent`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!res.ok) throw new Error((await res.json()).message);
+        await loadUsers();
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function leaveUser(encodedKey) {
+    const username = decodeURIComponent(encodedKey);
+    if (!confirm(`¿Dar de baja a ${username} del club? Sus datos se conservarán.`)) return;
+    try {
+        const res = await fetch(`/api/users/${username}/leave`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
+        if (!res.ok) throw new Error((await res.json()).message);
+        await loadUsers();
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function readmitUser(encodedKey) {
+    const username = decodeURIComponent(encodedKey);
+    if (!confirm(`¿Readmitir a ${username} en el club?`)) return;
+    try {
+        const res = await fetch(`/api/users/${username}/readmit`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
+        if (!res.ok) throw new Error((await res.json()).message);
+        await loadUsers();
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
 // Cargar usuarios al iniciar
 loadUsers();
 
@@ -407,3 +463,4 @@ window.onclick = function(event) {
         closeEditModal();
     }
 }
+

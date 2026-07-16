@@ -29,9 +29,10 @@
         <!-- Filtros -->
         <div class="filter-container">
             <label>Filtrar por:</label>
-            <button class="filter-btn active" onclick="filterUsers('todos')" id="btn-todos">Todos</button>
-            <button class="filter-btn" onclick="filterUsers('permitidos')" id="btn-permitidos">✅ Acceso Permitido</button>
+            <button class="filter-btn active" onclick="filterUsers('activos')" id="btn-activos">✅ Activos</button>
+            <button class="filter-btn" onclick="filterUsers('exmiembros')" id="btn-exmiembros">🚪 Ex-miembros</button>
             <button class="filter-btn" onclick="filterUsers('denegados')" id="btn-denegados">❌ Acceso Denegado</button>
+            <button class="filter-btn" onclick="filterUsers('todos')" id="btn-todos">Todos</button>
         </div>
         
         <div class="table-container">
