@@ -86,9 +86,9 @@ const frontendPath = path.resolve(__dirname, "../../frontend");
 console.log('Serving frontend from:', frontendPath);
 app.use(express.static(frontendPath));
 
-// Ruta raíz - redirigir a inicio
+// Ruta raíz - servir inicio_app.html
 app.get('/', (req, res) => {
-  res.redirect('/inicio_app.html');
+  res.sendFile(path.join(frontendPath, 'inicio_app.html'));
 });
 
 // Inicializar Supabase
