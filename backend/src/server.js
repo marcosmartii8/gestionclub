@@ -79,23 +79,41 @@ app.use((req, res, next) => {
   next();
 });
 
-// Frontend static folder - RADICAL FIX
-const frontendPath = '/app/frontend';
-console.log('🔥 USANDO /app/frontend HARDCODEADO 🔥');
-console.log('Serving frontend from:', frontendPath);
-const indexPath = path.join(frontendPath, 'index.html');
-console.log('Buscando index.html en:', indexPath);
-console.log('Index.html exists:', fs.existsSync(indexPath));
-if (fs.existsSync(frontendPath)) {
+// Frontend static folder - INTELIGENTE: buscar en múltiples rutas
+const possiblePaths = [
+  '/app/frontend',
+  '/frontend',
+  path.join(process.cwd(), 'frontend'),
+  path.join(__dirname, '../../frontend'),
+];
+
+let frontendPath = null;
+console.log('🔍 Buscando carpeta frontend en posibles rutas...');
+for (const testPath of possiblePaths) {
+  const indexPath = path.join(testPath, 'index.html');
+  console.log(`  → Probando: ${testPath} ... index.html exists: ${fs.existsSync(indexPath)}`);
+  if (fs.existsSync(indexPath)) {
+    frontendPath = testPath;
+    console.log(`✅ ¡ENCONTRADO! Frontend en: ${frontendPath}`);
+    break;
+  }
+}
+
+if (frontendPath) {
   app.use(express.static(frontendPath));
-  console.log('✅ Frontend servido exitosamente');
+  console.log('✅ Frontend servido exitosamente desde:', frontendPath);
 } else {
-  console.log('❌ Carpeta frontend NO EXISTE');
+  console.log('❌ ERROR: Carpeta frontend NO ENCONTRADA en ninguna ruta');
+  console.log('   Rutas probadas:', possiblePaths);
 }
 
 // Ruta raíz - servir index.html
 app.get('/', (req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  if (frontendPath) {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  } else {
+    res.status(500).send('Frontend no encontrado');
+  }
 });
 
 // Inicializar Supabase
