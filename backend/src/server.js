@@ -10,11 +10,14 @@ import fs from 'fs';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 
 const AUTHZ_ENFORCE = process.env.AUTHZ_ENFORCE === 'true';
 const AUTH_ALLOW_LEGACY_HEADERS = process.env.AUTH_ALLOW_LEGACY_HEADERS === 'true';
-const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,http://192.168.0.24:3000')
+const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://192.168.0.24:3000')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);

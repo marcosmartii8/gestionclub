@@ -13,7 +13,7 @@ const params = new URLSearchParams(window.location.search);
             }
 
             try {
-                const response = await fetch('http://localhost:3000/api/clubs');
+                const response = await fetch('/api/clubs');
                 if (!response.ok) throw new Error('Error al cargar clubes');
                 
                 const clubs = await response.json();

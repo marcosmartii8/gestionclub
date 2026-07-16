@@ -109,7 +109,7 @@
                 // Obtener nombre y dni del presidente según clubCode
                 let presidenteHtml = '';
                 try {
-                    const clubsResponse = await fetch('http://localhost:3000/api/clubs');
+                    const clubsResponse = await fetch('/api/clubs');
                     if (clubsResponse.ok) {
                         const clubs = await clubsResponse.json();
                         const userClub = clubs.find(club => club.club_code === userData.clubCode);
@@ -206,7 +206,7 @@
             // Obtener nombre del club personalizado desde la API
             let clubName = "Club no identificado";
             try {
-                const clubsResponse = await fetch('http://localhost:3000/api/clubs');
+                const clubsResponse = await fetch('/api/clubs');
                 if (clubsResponse.ok) {
                     const clubs = await clubsResponse.json();
                     const userClub = clubs.find(club => club.club_code === userData.clubCode);
@@ -695,7 +695,7 @@
             // Obtener nombre del club personalizado desde la API
             let clubName = "Club no identificado";
             try {
-                const clubsResponse = await fetch('http://localhost:3000/api/clubs');
+                const clubsResponse = await fetch('/api/clubs');
                 if (clubsResponse.ok) {
                     const clubs = await clubsResponse.json();
                     const userClub = clubs.find(club => club.club_code === userData.clubCode);
