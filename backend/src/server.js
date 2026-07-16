@@ -79,12 +79,19 @@ app.use((req, res, next) => {
   next();
 });
 
-// Frontend static folder
-console.log('Starting server initialization...');
+// Frontend static folder - RADICAL FIX
 const frontendPath = '/app/frontend';
+console.log('🔥 USANDO /app/frontend HARDCODEADO 🔥');
 console.log('Serving frontend from:', frontendPath);
-console.log('Index.html exists:', fs.existsSync(path.join(frontendPath, 'index.html')));
-app.use(express.static(frontendPath));
+const indexPath = path.join(frontendPath, 'index.html');
+console.log('Buscando index.html en:', indexPath);
+console.log('Index.html exists:', fs.existsSync(indexPath));
+if (fs.existsSync(frontendPath)) {
+  app.use(express.static(frontendPath));
+  console.log('✅ Frontend servido exitosamente');
+} else {
+  console.log('❌ Carpeta frontend NO EXISTE');
+}
 
 // Ruta raíz - servir index.html
 app.get('/', (req, res) => {
