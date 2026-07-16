@@ -79,9 +79,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Frontend static folder - usar process.cwd() para consistencia en Railway
-const frontendPath = path.resolve(process.cwd(), "frontend");
-console.log('Current working directory:', process.cwd());
+// Frontend static folder
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const frontendPath = path.resolve(__dirname, "../../frontend");
+console.log('__dirname:', __dirname);
 console.log('Serving frontend from:', frontendPath);
 console.log('Index.html exists:', fs.existsSync(path.join(frontendPath, 'index.html')));
 app.use(express.static(frontendPath));
