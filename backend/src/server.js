@@ -83,7 +83,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Frontend static folder
-const frontendPath = path.resolve(__dirname, "../frontend");
+const frontendPath = path.resolve(__dirname, "../../frontend");
 console.log('Serving frontend from:', frontendPath);
 console.log('Index.html exists:', fs.existsSync(path.join(frontendPath, 'index.html')));
 app.use(express.static(frontendPath));
