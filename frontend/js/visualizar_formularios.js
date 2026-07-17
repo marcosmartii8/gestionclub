@@ -26,6 +26,131 @@ const params = new URLSearchParams(window.location.search);
         let sortDirection = {}; // Track sort direction for each column
         let allFormularios = []; // Cache de todos los formularios
         let allUsers = {}; // Cache de usuarios
+        let trackerLoadedOnce = false;
+
+        const monthNames = [
+            'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+        ];
+
+        function getDefaultTrackerPeriod() {
+            const now = new Date();
+            let year = now.getFullYear();
+            let month = now.getMonth();
+
+            if (now.getDate() <= 5) {
+                month -= 1;
+                if (month < 0) {
+                    month = 11;
+                    year -= 1;
+                }
+            }
+
+            return { year, month };
+        }
+
+        function getTrackerPeriodFromFilters() {
+            const yearValue = document.getElementById('filter-year').value;
+            const monthValue = document.getElementById('filter-month').value;
+
+            if (yearValue !== 'all' && monthValue !== 'all') {
+                return {
+                    year: parseInt(yearValue, 10),
+                    month: parseInt(monthValue, 10)
+                };
+            }
+
+            return getDefaultTrackerPeriod();
+        }
+
+        function renderUsersList(elementId, users, emptyText) {
+            const list = document.getElementById(elementId);
+            if (!list) return;
+
+            list.innerHTML = '';
+
+            if (!Array.isArray(users) || users.length === 0) {
+                const item = document.createElement('li');
+                item.textContent = emptyText;
+                list.appendChild(item);
+                return;
+            }
+
+            users.forEach((user) => {
+                const item = document.createElement('li');
+                item.textContent = user.fullName || user.username;
+                list.appendChild(item);
+            });
+        }
+
+        async function loadCompletionTracker() {
+            try {
+                const period = getTrackerPeriodFromFilters();
+                const response = await fetch(`/api/formularios/estado-mensual?year=${period.year}&month=${period.month}`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) {
+                    if (handleAuthFailure(response)) return;
+                    throw new Error(`Error HTTP ${response.status}`);
+                }
+
+                const tracker = await response.json();
+                const monthLabel = monthNames[tracker.month] || monthNames[period.month];
+
+                const periodEl = document.getElementById('tracker-period');
+                const totalEl = document.getElementById('metric-total');
+                const completedEl = document.getElementById('metric-completed');
+                const pendingEl = document.getElementById('metric-pending');
+
+                if (periodEl) periodEl.textContent = `Periodo: ${monthLabel} de ${tracker.year}`;
+                if (totalEl) totalEl.textContent = String(tracker.totalVoluntariosActivos || 0);
+                if (completedEl) completedEl.textContent = String(tracker.completadosCount || 0);
+                if (pendingEl) pendingEl.textContent = String(tracker.pendientesCount || 0);
+
+                renderUsersList('pending-users-list', tracker.pendientes, 'No hay usuarios pendientes.');
+                renderUsersList('completed-users-list', tracker.completados, 'Aún no hay usuarios completados.');
+            } catch (error) {
+                console.error('Error cargando seguimiento mensual:', error);
+            }
+        }
+
+        function isTrackerVisible() {
+            const tracker = document.getElementById('completion-tracker');
+            return !!(tracker && !tracker.classList.contains('tracker-hidden'));
+        }
+
+        async function toggleCompletionTracker() {
+            const tracker = document.getElementById('completion-tracker');
+            const button = document.getElementById('toggle-tracker-button');
+
+            if (!tracker || !button) {
+                return;
+            }
+
+            const willShow = tracker.classList.contains('tracker-hidden');
+
+            if (willShow) {
+                tracker.classList.remove('tracker-hidden');
+                const textEl = button.querySelector('.tracker-btn-text');
+                if (textEl) textEl.textContent = 'Seguimiento mensual';
+                button.classList.add('expanded');
+
+                if (!trackerLoadedOnce) {
+                    trackerLoadedOnce = true;
+                    await loadCompletionTracker();
+                } else {
+                    await loadCompletionTracker();
+                }
+            } else {
+                tracker.classList.add('tracker-hidden');
+                const textEl = button.querySelector('.tracker-btn-text');
+                if (textEl) textEl.textContent = 'Seguimiento mensual';
+                button.classList.remove('expanded');
+            }
+        }
+
+        window.toggleCompletionTracker = toggleCompletionTracker;
 
         async function loadUsers() {
             try {
@@ -207,6 +332,9 @@ const params = new URLSearchParams(window.location.search);
             
             // Poblar filtro de años después de cargar formularios
             populateYearFilterFromAPI();
+            if (isTrackerVisible()) {
+                loadCompletionTracker();
+            }
         }
 
         function applyFilters() {
@@ -318,6 +446,10 @@ const params = new URLSearchParams(window.location.search);
                     tableBody.appendChild(row);
                     i++;
                 }
+            }
+
+            if (isTrackerVisible()) {
+                loadCompletionTracker();
             }
         }
 
@@ -503,7 +635,7 @@ const params = new URLSearchParams(window.location.search);
                             <select id="edit-weeksInMonth">
                                 ${[1, 2, 3, 4, 5].map(week => `<option value="${week}" ${week == formData.weeksInMonth ? 'selected' : ''}>${week} semana${week > 1 ? 's' : ''}</option>`).join('')}
                             </select>
-                            <button type="button" onclick="saveEditedForm('${formUser}', ${year}, ${month})">Guardar</button>
+                            <button type="button" onclick="saveEditedForm(event, '${formUser}', ${year}, ${month})">Guardar</button>
                             <button type="button" onclick="closeEditForm()">Cancelar</button>
                         </form>
                     </div>
@@ -592,7 +724,7 @@ const params = new URLSearchParams(window.location.search);
             }
         }
 
-        async function saveEditedForm(formUser, year, month) {
+        async function saveEditedForm(event, formUser, year, month) {
             try {
                 // Mostrar mensaje de progreso
                 const saveButton = event.target;

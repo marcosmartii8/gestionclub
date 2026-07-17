@@ -338,6 +338,64 @@ body {
     transform: translateY(0);
 }
 
+.edit-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.complete-button {
+    background: linear-gradient(135deg, #43a047, #2e7d32);
+    color: #fff;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 3px 8px rgba(67, 160, 71, 0.3);
+    margin-top: 8px;
+}
+
+.complete-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(67, 160, 71, 0.4);
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+.status-completed {
+    background: #e8f5e9;
+    color: #1b5e20;
+    border: 1px solid #81c784;
+}
+
+.status-pending {
+    background: #fff3e0;
+    color: #e65100;
+    border: 1px solid #ffb74d;
+}
+
+.status-note {
+    margin-top: 6px;
+    font-size: 0.73rem;
+    color: #2e7d32;
+    font-weight: 600;
+}
+
+.status-note.warning {
+    color: #c62828;
+}
+
 .button-back {
     padding: 14px 32px;
     font-size: 1.05rem;

@@ -106,7 +106,7 @@ if (frontendPath) {
   app.use(express.static(frontendPath, { index: false }));
   console.log('✅ Frontend servido exitosamente desde:', frontendPath);
 } else {
-  console.log('❌ ERROR: Carpeta frontend NO ENCONTRADA en ninguna ruta');
+  console.log('ℹ️ Frontend no encontrado en este contenedor. Ejecutando en modo API-only (esperado en Railway + Hostinger).');
   console.log('   Rutas probadas:', possiblePaths);
 }
 
@@ -969,6 +969,9 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
       return {
         ...form,
         clubCode: userClubMap[form.username] || null,
+        completed: form.completado === true,
+        completedAt: form.completado_at || null,
+        completedBy: form.completado_by || null,
         matches,
         trainingAttendance: form.asistencia || 0,
         transportExpenses,
@@ -994,6 +997,109 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('❌ Error en /api/formularios:', error);
     res.status(500).json({ message: 'Error al obtener formularios', error: error.message });
+  }
+});
+
+app.get('/api/formularios/estado-mensual', requireRole(['lider', 'administrador']), async (req, res) => {
+  try {
+    const requester = req.requester || getRequesterIdentity(req);
+
+    if (!requester.clubCode) {
+      return res.status(400).json({ message: 'No se pudo determinar el club del solicitante' });
+    }
+
+    const now = new Date();
+    const queryYear = Number.parseInt(req.query?.year, 10);
+    const queryMonth = Number.parseInt(req.query?.month, 10);
+    const year = Number.isInteger(queryYear) ? queryYear : now.getFullYear();
+    const month = Number.isInteger(queryMonth) ? queryMonth : now.getMonth();
+
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 0 || month > 11) {
+      return res.status(400).json({ message: 'Parámetros year/month inválidos' });
+    }
+
+    const { data: usersData, error: usersError } = await supabase
+      .from('users')
+      .select('username, full_name, role, active, left_at, club_code')
+      .eq('club_code', requester.clubCode);
+
+    if (usersError) {
+      throw usersError;
+    }
+
+    const volunteerUsers = (usersData || []).filter((user) => {
+      const normalizedRole = (user.role || '').toLowerCase().trim();
+      const isVolunteer = normalizedRole === 'voluntario';
+      const isActive = user.active !== false;
+      const isCurrentMember = !user.left_at;
+      return isVolunteer && isActive && isCurrentMember;
+    });
+
+    if (volunteerUsers.length === 0) {
+      return res.json({
+        year,
+        month,
+        totalVoluntariosActivos: 0,
+        completadosCount: 0,
+        pendientesCount: 0,
+        completados: [],
+        pendientes: []
+      });
+    }
+
+    const usernames = volunteerUsers.map((user) => user.username);
+    const { data: formsData, error: formsError } = await supabase
+      .from('formularios')
+      .select('username, completado, completado_at')
+      .eq('year', year)
+      .eq('month', month)
+      .in('username', usernames);
+
+    if (formsError) {
+      throw formsError;
+    }
+
+    const completadosMap = new Map();
+    (formsData || []).forEach((form) => {
+      if (form.completado === true && form.username) {
+        completadosMap.set(form.username, form.completado_at || null);
+      }
+    });
+
+    const completados = [];
+    const pendientes = [];
+
+    volunteerUsers.forEach((user) => {
+      const userSummary = {
+        username: user.username,
+        fullName: user.full_name || user.username
+      };
+
+      if (completadosMap.has(user.username)) {
+        completados.push({
+          ...userSummary,
+          completedAt: completadosMap.get(user.username)
+        });
+      } else {
+        pendientes.push(userSummary);
+      }
+    });
+
+    completados.sort((a, b) => a.fullName.localeCompare(b.fullName, 'es'));
+    pendientes.sort((a, b) => a.fullName.localeCompare(b.fullName, 'es'));
+
+    res.json({
+      year,
+      month,
+      totalVoluntariosActivos: volunteerUsers.length,
+      completadosCount: completados.length,
+      pendientesCount: pendientes.length,
+      completados,
+      pendientes
+    });
+  } catch (error) {
+    console.error('❌ Error en /api/formularios/estado-mensual:', error);
+    res.status(500).json({ message: 'Error al obtener estado mensual de formularios', error: error.message });
   }
 });
 
@@ -1081,6 +1187,9 @@ app.get('/api/formularios/:username', requireAuthenticated, requireSelfOrRole('u
 
       return {
         ...form,
+        completed: form.completado === true,
+        completedAt: form.completado_at || null,
+        completedBy: form.completado_by || null,
         matches,
         trainingAttendance: form.asistencia || 0,
         transportExpenses,
@@ -1100,7 +1209,17 @@ app.get('/api/formularios/:username', requireAuthenticated, requireSelfOrRole('u
 });
 
 app.post('/api/formularios', requireAuthenticated, async (req, res) => {
-  const { username, year, month, asistencia, desplazamientos, gastosTransporte, gastosDietas, semanas } = req.body;
+  const {
+    username,
+    year,
+    month,
+    asistencia,
+    desplazamientos,
+    gastosTransporte,
+    gastosDietas,
+    semanas,
+    completado
+  } = req.body;
   const requester = req.requester || getRequesterIdentity(req);
 
   console.log('📝 Datos recibidos:', {
@@ -1126,10 +1245,43 @@ app.post('/api/formularios', requireAuthenticated, async (req, res) => {
       }
     }
 
+    const parsedYear = parseInt(year);
+    const parsedMonth = parseInt(month);
+
+    const { data: existingForm, error: existingFormError } = await supabase
+      .from('formularios')
+      .select('completado, completado_at, completado_by')
+      .eq('username', username)
+      .eq('year', parsedYear)
+      .eq('month', parsedMonth)
+      .maybeSingle();
+
+    if (existingFormError) {
+      throw existingFormError;
+    }
+
+    const completionRequested = typeof completado === 'boolean';
+    const completedValue = completionRequested
+      ? completado
+      : (existingForm?.completado === true);
+
+    let completedAtValue = existingForm?.completado_at || null;
+    let completedByValue = existingForm?.completado_by || null;
+
+    if (completionRequested) {
+      if (completedValue) {
+        completedAtValue = existingForm?.completado_at || new Date().toISOString();
+        completedByValue = existingForm?.completado_by || requester.username || username;
+      } else {
+        completedAtValue = null;
+        completedByValue = null;
+      }
+    }
+
     const formularioData = {
       username,
-      year: parseInt(year),
-      month: parseInt(month),
+      year: parsedYear,
+      month: parsedMonth,
       asistencia: parseInt(asistencia || 0),
       // La tabla formularios ya no es la fuente de verdad para desplazamientos.
       // Se gestionan en la tabla desplazamientos usando formulario_id.
@@ -1139,6 +1291,9 @@ app.post('/api/formularios', requireAuthenticated, async (req, res) => {
       // Los gastos de dietas se gestionan en la tabla gastos_dietas.
       gastos_dietas: [],
       semanas: parseInt(semanas || 0),
+      completado: completedValue,
+      completado_at: completedAtValue,
+      completado_by: completedByValue,
       updated_at: new Date().toISOString()
     };
 
@@ -1243,6 +1398,68 @@ app.post('/api/formularios', requireAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('❌ Error al guardar formulario:', error);
     res.status(400).json({ message: 'Error al guardar formulario', error: error.message });
+  }
+});
+
+app.patch('/api/formularios/:username/:year/:month/completar', requireAuthenticated, requireSelfOrRole('username', ['lider', 'administrador']), async (req, res) => {
+  const { username, year, month } = req.params;
+  const requester = req.requester || getRequesterIdentity(req);
+  const completed = req.body?.completed !== false;
+
+  try {
+    if (isManagerRole(requester.role)) {
+      const targetClubCode = await fetchUserClubCode(username);
+      if (requester.clubCode && targetClubCode && requester.clubCode !== targetClubCode) {
+        return res.status(403).json({ message: 'No autorizado para actualizar formularios de otro club' });
+      }
+    }
+
+    const { data: existingForm, error: existingFormError } = await supabase
+      .from('formularios')
+      .select('id')
+      .eq('username', username)
+      .eq('year', parseInt(year))
+      .eq('month', parseInt(month))
+      .maybeSingle();
+
+    if (existingFormError) throw existingFormError;
+
+    if (!existingForm) {
+      return res.status(404).json({ message: 'No se encontró el formulario para ese periodo' });
+    }
+
+    const updatePayload = {
+      completado: completed,
+      completado_at: completed ? new Date().toISOString() : null,
+      completado_by: completed ? (requester.username || username) : null,
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('formularios')
+      .update(updatePayload)
+      .eq('username', username)
+      .eq('year', parseInt(year))
+      .eq('month', parseInt(month))
+      .select('username, year, month, completado, completado_at, completado_by')
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      message: completed ? 'Formulario marcado como completado' : 'Formulario marcado como pendiente',
+      formulario: {
+        username: data.username,
+        year: data.year,
+        month: data.month,
+        completed: data.completado === true,
+        completedAt: data.completado_at || null,
+        completedBy: data.completado_by || null
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error al actualizar estado de completado:', error);
+    res.status(500).json({ message: 'Error al actualizar estado del formulario', error: error.message });
   }
 });
 

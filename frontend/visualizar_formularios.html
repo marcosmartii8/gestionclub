@@ -26,6 +26,44 @@
             <h1 class="title">📋 Formularios</h1>
         </div>
 
+        <div class="tracker-toggle-wrap">
+            <button id="toggle-tracker-button" class="button-filter button-toggle-tracker" onclick="toggleCompletionTracker()">
+                <span class="tracker-btn-text">Seguimiento mensual</span>
+                <span class="tracker-arrow" aria-hidden="true">▼</span>
+            </button>
+        </div>
+
+        <section class="completion-tracker tracker-hidden" id="completion-tracker">
+            <div class="tracker-header">
+                <h3>✅ Seguimiento mensual de entrega</h3>
+                <p id="tracker-period">Cargando periodo...</p>
+            </div>
+            <div class="tracker-metrics">
+                <div class="metric-card">
+                    <span class="metric-label">Voluntarios activos</span>
+                    <span class="metric-value" id="metric-total">0</span>
+                </div>
+                <div class="metric-card completed">
+                    <span class="metric-label">Completados</span>
+                    <span class="metric-value" id="metric-completed">0</span>
+                </div>
+                <div class="metric-card pending">
+                    <span class="metric-label">Pendientes</span>
+                    <span class="metric-value" id="metric-pending">0</span>
+                </div>
+            </div>
+            <div class="tracker-lists">
+                <div class="tracker-list">
+                    <h4>Usuarios pendientes</h4>
+                    <ul id="pending-users-list"></ul>
+                </div>
+                <div class="tracker-list">
+                    <h4>Usuarios completados</h4>
+                    <ul id="completed-users-list"></ul>
+                </div>
+            </div>
+        </section>
+
         <div class="filters-section">
             <h3>🔍 Filtros de Búsqueda</h3>
             <div class="filter-group">
@@ -85,9 +123,9 @@
         <button class="button-back" onclick="goBack()">← Volver</button>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-client.js"></script>
-    <script src="js/club-themes.js"></script>
-    <script src="js/auth-utils.js"></script>
-    <script src="js/visualizar_formularios.js"></script>
+    <script src="js/supabase-client.js?v=20260717a"></script>
+    <script src="js/club-themes.js?v=20260717a"></script>
+    <script src="js/auth-utils.js?v=20260717a"></script>
+    <script src="js/visualizar_formularios.js?v=20260717a"></script>
 </body>
 </html>

@@ -118,6 +118,133 @@ body {
     letter-spacing: 0.5px;
 }
 
+.tracker-toggle-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.button-toggle-tracker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 0;
+}
+
+.tracker-arrow {
+    font-size: 0.85rem;
+    transition: transform 0.25s ease;
+}
+
+.button-toggle-tracker.expanded .tracker-arrow {
+    transform: rotate(180deg);
+}
+
+.tracker-hidden {
+    display: none;
+}
+
+.completion-tracker {
+    background: linear-gradient(135deg, #f1f8e9, #e8f5e9);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    border: 1px solid #c8e6c9;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    animation: slideInDown 0.8s ease-out 0.18s both;
+}
+
+.tracker-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.tracker-header h3 {
+    margin: 0;
+    color: #1b5e20;
+    font-size: 1.15rem;
+}
+
+.tracker-header p {
+    margin: 0;
+    font-size: 0.92rem;
+    color: #33691e;
+    font-weight: 600;
+}
+
+.tracker-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.metric-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px 14px;
+    border: 1px solid #dcedc8;
+}
+
+.metric-card.completed {
+    border-color: #81c784;
+}
+
+.metric-card.pending {
+    border-color: #ffb74d;
+}
+
+.metric-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #455a64;
+    margin-bottom: 6px;
+    font-weight: 700;
+}
+
+.metric-value {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #004d40;
+}
+
+.tracker-lists {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.tracker-list {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+}
+
+.tracker-list h4 {
+    margin: 0 0 10px 0;
+    color: #004d40;
+    font-size: 0.95rem;
+}
+
+.tracker-list ul {
+    margin: 0;
+    padding-left: 18px;
+    max-height: 150px;
+    overflow: auto;
+}
+
+.tracker-list li {
+    margin-bottom: 6px;
+    font-size: 0.86rem;
+    color: #37474f;
+}
+
 .filters-section {
     background: linear-gradient(135deg, #e0f2f1, #b2dfdb);
     border-radius: 14px;
@@ -390,6 +517,18 @@ table tr:hover td {
     .button-filter {
         padding: 10px 20px;
         font-size: 0.9rem;
+    }
+
+    .button-toggle-tracker {
+        width: 100%;
+    }
+
+    .tracker-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .tracker-lists {
+        grid-template-columns: 1fr;
     }
 
     .table-wrapper {

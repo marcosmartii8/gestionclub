@@ -190,6 +190,35 @@ const params = new URLSearchParams(window.location.search);
             return false;
         }
 
+        function isWithinEditableWindow(year, month) {
+            const currentDate = new Date();
+            const selectedDate = new Date(year, month);
+            const firstDayOfCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const fifthDayOfCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 5);
+
+            if (selectedDate.getFullYear() === currentDate.getFullYear() && selectedDate.getMonth() === currentDate.getMonth()) {
+                return true;
+            }
+
+            if (selectedDate.getFullYear() === currentDate.getFullYear() && selectedDate.getMonth() === currentDate.getMonth() - 1) {
+                return currentDate <= fifthDayOfCurrentMonth;
+            }
+
+            if (selectedDate.getFullYear() === currentDate.getFullYear() - 1 && currentDate.getMonth() === 0 && selectedDate.getMonth() === 11) {
+                return currentDate <= fifthDayOfCurrentMonth;
+            }
+
+            if (selectedDate < firstDayOfCurrentMonth) {
+                return false;
+            }
+
+            if (selectedDate > currentDate) {
+                return false;
+            }
+
+            return false;
+        }
+
         async function generateDataTable() {
             dataTable.innerHTML = '';
             try {
@@ -209,7 +238,7 @@ const params = new URLSearchParams(window.location.search);
                 
                 if (formularios.length === 0) {
                     const row = document.createElement('tr');
-                    row.innerHTML = `<td colspan="8" style="text-align: center; color: #666;">No tienes formularios creados aún</td>`;
+                    row.innerHTML = `<td colspan="9" style="text-align: center; color: #666;">No tienes formularios creados aún</td>`;
                     dataTable.appendChild(row);
                     return;
                 }
@@ -225,18 +254,33 @@ const params = new URLSearchParams(window.location.search);
                     const gastosDietas = formData.gastosDietas || formData.dietExpenses || [];
                     const asistencia = formData.asistencia ?? formData.trainingAttendance ?? 0;
                     const semanas = formData.semanas ?? formData.weeksInMonth ?? 0;
+                    const isCompleted = formData.completed === true || formData.completado === true;
+                    const canEdit = isWithinEditableWindow(year, month);
+                    const monthLabel = new Date(0, month).toLocaleString('es-ES', { month: 'long' });
 
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${year}</td>
-                        <td>${new Date(0, month).toLocaleString('es-ES', { month: 'long' })}</td>
+                        <td>${monthLabel}</td>
                         <td>${asistencia}</td>
                         <td><button class="ver-btn" data-type="desplazamientos">Ver</button></td>
                         <td><button class="ver-btn" data-type="gastosTransporte">Ver</button></td>
                         <td><button class="ver-btn" data-type="gastosDietas">Ver</button></td>
                         <td>${semanas}</td>
                         <td>
-                            <button class="edit-button" data-year="${year}" data-month="${month}">✏️ Editar</button>
+                            <span class="status-badge ${isCompleted ? 'status-completed' : 'status-pending'}">
+                                ${isCompleted ? 'Completado' : 'Pendiente'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="edit-button" data-year="${year}" data-month="${month}" ${canEdit ? '' : 'disabled'}>
+                                ✏️ Editar
+                            </button>
+                            ${!isCompleted && canEdit
+                                ? `<button class="complete-button" data-year="${year}" data-month="${month}">✅ Marcar completado</button>`
+                                : ''}
+                            ${isCompleted ? '<div class="status-note">Entregado</div>' : ''}
+                            ${!canEdit ? '<div class="status-note warning">Fuera de plazo</div>' : ''}
                         </td>
                     `;
 
@@ -301,11 +345,20 @@ const params = new URLSearchParams(window.location.search);
 
                     // Evitar tooltip de celda al pulsar en "Editar"
                     const editBtn = row.querySelector('.edit-button');
-                    if (editBtn) {
+                    if (editBtn && !editBtn.disabled) {
                         editBtn.addEventListener('click', (e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             editForm(year, month);
+                        });
+                    }
+
+                    const completeBtn = row.querySelector('.complete-button');
+                    if (completeBtn) {
+                        completeBtn.addEventListener('click', async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            await markFormAsCompleted(year, month);
                         });
                     }
 
@@ -345,8 +398,43 @@ const params = new URLSearchParams(window.location.search);
             } catch (error) {
                 console.error('❌ Error cargando formularios:', error);
                 const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="8" style="text-align: center; color: red;">Error al cargar formularios</td>`;
+                row.innerHTML = `<td colspan="9" style="text-align: center; color: red;">Error al cargar formularios</td>`;
                 dataTable.appendChild(row);
+            }
+        }
+
+        async function markFormAsCompleted(year, month) {
+            const confirmed = confirm('¿Quieres marcar este formulario como completado?');
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/formularios/${username}/${year}/${month}/completar`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ completed: true })
+                });
+
+                if (!response.ok) {
+                    if (handleAuthFailure(response)) return;
+
+                    let errorData = {};
+                    try {
+                        errorData = await response.json();
+                    } catch (_) {
+                        errorData = {};
+                    }
+
+                    alert(errorData.message || 'No se pudo marcar el formulario como completado.');
+                    return;
+                }
+
+                alert('Formulario marcado como completado. Puedes seguir editando mientras esté dentro de plazo.');
+                await generateDataTable();
+            } catch (error) {
+                console.error('❌ Error marcando formulario como completado:', error);
+                alert('Error al marcar el formulario como completado.');
             }
         }
 
