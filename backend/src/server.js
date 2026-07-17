@@ -103,7 +103,7 @@ for (const testPath of possiblePaths) {
 }
 
 if (frontendPath) {
-  app.use(express.static(frontendPath));
+  app.use(express.static(frontendPath, { index: false }));
   console.log('✅ Frontend servido exitosamente desde:', frontendPath);
 } else {
   console.log('❌ ERROR: Carpeta frontend NO ENCONTRADA en ninguna ruta');
@@ -113,10 +113,26 @@ if (frontendPath) {
 // Ruta raíz - servir index.html
 app.get('/', (req, res) => {
   if (frontendPath) {
-    res.sendFile(path.join(frontendPath, 'index.html'));
+    res.sendFile(path.resolve(frontendPath, 'index.html'));
   } else {
-    res.status(500).send('Frontend no encontrado');
+    res.status(200).json({
+      status: 'ok',
+      service: 'tuGestClub backend',
+      frontend: 'not-configured'
+    });
   }
+});
+
+app.get('/index.html', (req, res) => {
+  if (frontendPath) {
+    res.sendFile(path.resolve(frontendPath, 'index.html'));
+  } else {
+    res.status(404).send('Frontend no encontrado en este entorno');
+  }
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 // Inicializar Supabase
