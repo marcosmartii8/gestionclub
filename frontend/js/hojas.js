@@ -298,14 +298,26 @@
             let fits = false;
             let doc, y;
 
+            function estimateWrappedLines(text, charsPerLine) {
+                const safeText = (text || '').toString();
+                if (!safeText) return 1;
+                return Math.max(1, Math.ceil(safeText.length / charsPerLine));
+            }
+
             // Función para estimar el alto total del contenido
             function estimateContentHeight(fontSize) {
                 let baseY = 15;
                 let y = baseY;
+                const scale = (fontSize / 11);
+                const addressLineCount = estimateWrappedLines(`Dirección: ${residenceAddress || ''}`, 82);
+                const emailLineCount = estimateWrappedLines(`Correo electrónico: ${userData.email || ''}`, 82);
+                const infoBoxHeight = (36 * scale)
+                    + ((addressLineCount - 1) * 6 * scale)
+                    + ((emailLineCount - 1) * 6 * scale);
                 y += 8; // título
                 y += 7; // club
                 y += 10; // cif
-                y += 38; // datos solicitante
+                y += infoBoxHeight + (2 * scale); // datos solicitante
                 y += 15; // resumen recorridos
                 y += 10; // resumen recorridos info
                 // Tabla de desplazamientos
@@ -373,19 +385,29 @@
             y += 10 * (fontSize / 11);
 
             // Datos del solicitante en caja
+            const infoScale = (fontSize / 11);
+            const contactLineHeight = 6 * infoScale;
+            const addressLines = doc.splitTextToSize(`Dirección: ${residenceAddress || ''}`, 176);
+            const emailLines = doc.splitTextToSize(`Correo electrónico: ${userData.email || ''}`, 176);
+            const addressStartY = y + (11 * infoScale);
+            const emailStartY = addressStartY + (addressLines.length * contactLineHeight);
+            const kmRowY = emailStartY + (emailLines.length * contactLineHeight);
+            const monthRowY = kmRowY + (7 * infoScale);
+            const infoBoxHeight = (monthRowY - y) + (6 * infoScale);
+
             doc.setFillColor(227, 242, 253); // colorBox
-            doc.roundedRect(8, y - 2, 194, 36 * (fontSize / 11), 3, 3, 'F');
+            doc.roundedRect(8, y - 2, 194, infoBoxHeight, 3, 3, 'F');
             doc.setFontSize(Math.max(fontSize - 3, minFontSize));
             doc.setTextColor(44, 62, 80);
             doc.setFont("helvetica", "normal");
             doc.text(`Nombre: ${userData.fullName || ''}`, 12, y + 4 * (fontSize / 11));
             doc.text(`DNI: ${userData.dni || ''}`, 100, y + 4 * (fontSize / 11));
-            doc.text(`Dirección: ${residenceAddress}`, 12, y + 11 * (fontSize / 11));
-            doc.text(`Correo electrónico: ${userData.email || ''}`, 100, y + 11 * (fontSize / 11));
-            doc.text(`Kilómetros hasta el club: ${residenceKm}`, 12, y + 18 * (fontSize / 11));
-            doc.text(`Año: ${year !== undefined ? year : ''}`, 100, y + 18 * (fontSize / 11));
-            doc.text(`Mes: ${month !== undefined && month !== '' ? new Date(0, month).toLocaleString('es-ES', { month: 'long' }) : ''}`, 12, y + 25 * (fontSize / 11));
-            y += 38 * (fontSize / 11);
+            doc.text(addressLines, 12, addressStartY);
+            doc.text(emailLines, 12, emailStartY);
+            doc.text(`Kilómetros hasta el club: ${residenceKm}`, 12, kmRowY);
+            doc.text(`Año: ${year !== undefined ? year : ''}`, 100, kmRowY);
+            doc.text(`Mes: ${month !== undefined && month !== '' ? new Date(0, month).toLocaleString('es-ES', { month: 'long' }) : ''}`, 12, monthRowY);
+            y += infoBoxHeight + (2 * infoScale);
 
             // Resumen de Recorridos en caja
             doc.setFillColor(224, 247, 250); // colorTableHeader
@@ -810,19 +832,28 @@
             y += 10;
 
             // Datos del solicitante en caja
+            const addressLines = doc.splitTextToSize(`Dirección: ${residenceAddress || ''}`, 176);
+            const emailLines = doc.splitTextToSize(`Correo electrónico: ${userData.email || ''}`, 176);
+            const contactLineHeight = 6;
+            const addressStartY = y + 11;
+            const emailStartY = addressStartY + (addressLines.length * contactLineHeight);
+            const kmRowY = emailStartY + (emailLines.length * contactLineHeight);
+            const monthRowY = kmRowY + 7;
+            const infoBoxHeight = (monthRowY - y) + 6;
+
             doc.setFillColor(227, 242, 253);
-            doc.roundedRect(8, y - 2, 194, 36, 3, 3, 'F');
+            doc.roundedRect(8, y - 2, 194, infoBoxHeight, 3, 3, 'F');
             doc.setFontSize(11);
             doc.setTextColor(44, 62, 80);
             doc.setFont("helvetica", "normal");
             doc.text(`Nombre: ${userData.fullName || ''}`, 12, y + 4);
             doc.text(`DNI: ${userData.dni || ''}`, 100, y + 4);
-            doc.text(`Dirección: ${residenceAddress}`, 12, y + 11);
-            doc.text(`Correo electrónico: ${userData.email || ''}`, 100, y + 11);
-            doc.text(`Kilómetros hasta el club: ${residenceKm}`, 12, y + 18);
-            doc.text(`Año: ${year !== undefined ? year : ''}`, 100, y + 18);
-            doc.text(`Mes: ${month !== undefined && month !== '' ? new Date(0, month).toLocaleString('es-ES', { month: 'long' }) : ''}`, 12, y + 25);
-            y += 38;
+            doc.text(addressLines, 12, addressStartY);
+            doc.text(emailLines, 12, emailStartY);
+            doc.text(`Kilómetros hasta el club: ${residenceKm}`, 12, kmRowY);
+            doc.text(`Año: ${year !== undefined ? year : ''}`, 100, kmRowY);
+            doc.text(`Mes: ${month !== undefined && month !== '' ? new Date(0, month).toLocaleString('es-ES', { month: 'long' }) : ''}`, 12, monthRowY);
+            y += infoBoxHeight + 2;
 
             // Resumen de Recorridos en caja
             doc.setFillColor(224, 247, 250);
