@@ -337,12 +337,16 @@ app.get('/api/formularios', async (req, res) => {
           transportExpenses: gastosTransporte,
           dietExpenses: form.gastos_dietas || [],
           weeksInMonth: form.semanas || 0,
+          residenceAddress: form.residence_address || null,
+          residenceKm: form.residence_km ?? null,
           // También incluir los nombres antiguos por compatibilidad
           asistencia: form.asistencia,
           desplazamientos: desplazamientos,
           gastosTransporte: gastosTransporte,
           gastosDietas: form.gastos_dietas,
-          semanas: form.semanas
+          semanas: form.semanas,
+          direccionResidencia: form.residence_address || null,
+          kmResidencia: form.residence_km ?? null
         };
       })
     );
@@ -406,7 +410,11 @@ app.get('/api/formularios/:username', async (req, res) => {
           desplazamientos: desplazamientos,
           gastosTransporte: gastosTransporte,
           gastosDietas: form.gastos_dietas,
-          semanas: form.semanas
+          semanas: form.semanas,
+          residenceAddress: form.residence_address || null,
+          residenceKm: form.residence_km ?? null,
+          direccionResidencia: form.residence_address || null,
+          kmResidencia: form.residence_km ?? null
         };
       })
     );
@@ -419,12 +427,48 @@ app.get('/api/formularios/:username', async (req, res) => {
 });
 
 app.post('/api/formularios', async (req, res) => {
-  const { username, year, month, asistencia, desplazamientos, gastosTransporte, gastosDietas, semanas } = req.body;
+  const {
+    username,
+    year,
+    month,
+    asistencia,
+    desplazamientos,
+    gastosTransporte,
+    gastosDietas,
+    semanas,
+    residenceAddress,
+    residenceKm
+  } = req.body;
 
   try {
     console.log('📝 Guardando formulario:', { username, year, month });
     console.log('📍 Desplazamientos recibidos:', desplazamientos);
     console.log('💰 Gastos de transporte recibidos:', gastosTransporte);
+
+    // Si no llega residencia mensual, usamos perfil actual como fallback.
+    let finalResidenceAddress = residenceAddress || null;
+    let finalResidenceKm = residenceKm !== undefined && residenceKm !== null && String(residenceKm).trim() !== ''
+      ? parseInt(residenceKm, 10)
+      : null;
+
+    if (!finalResidenceAddress || finalResidenceKm === null || Number.isNaN(finalResidenceKm)) {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('address, km')
+        .eq('username', username)
+        .maybeSingle();
+
+      if (userError) {
+        console.error('⚠️ No se pudo leer perfil para fallback de residencia:', userError);
+      }
+
+      if (!finalResidenceAddress) {
+        finalResidenceAddress = userData?.address || null;
+      }
+      if (finalResidenceKm === null || Number.isNaN(finalResidenceKm)) {
+        finalResidenceKm = userData?.km ?? null;
+      }
+    }
 
     // 1. Guardar o actualizar el formulario principal
     const { data: formData, error: formError } = await supabase
@@ -437,6 +481,8 @@ app.post('/api/formularios', async (req, res) => {
         gastos_transporte: null,
         gastos_dietas: gastosDietas || [],
         semanas: semanas || 0,
+        residence_address: finalResidenceAddress,
+        residence_km: finalResidenceKm,
         desplazamientos: [],
         updated_at: new Date().toISOString()
       }, { onConflict: 'username,year,month' })

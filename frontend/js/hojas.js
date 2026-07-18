@@ -102,6 +102,9 @@
                         headers: getAuthHeaders()
                     });
                     const userData = userResponse.ok ? await userResponse.json() : {};
+                    const residenceAddress = (formData.residenceAddress ?? formData.direccionResidencia ?? userData.address) || '';
+                    const residenceKmRaw = formData.residenceKm ?? formData.kmResidencia ?? userData.km;
+                    const residenceKm = residenceKmRaw !== undefined && residenceKmRaw !== null ? String(residenceKmRaw) : '';
                     
                     const year = formData.year;
                     const month = formData.month;
@@ -135,8 +138,8 @@
                         </div>
                         <div style="flex:1; min-width:220px;">
                             <p><strong>DNI:</strong> ${userData.dni || ''}</p>
-                            <p><strong>Dirección:</strong> ${userData.address || ''}</p>
-                            <p><strong>Kilómetros:</strong> ${userData.km || ''}</p>
+                            <p><strong>Dirección:</strong> ${residenceAddress}</p>
+                            <p><strong>Kilómetros:</strong> ${residenceKm}</p>
                         </div>
                     </div>
                     <h3>Datos del Formulario</h3>
@@ -199,6 +202,9 @@
                     headers: getAuthHeaders()
                 });
                 const userData = userResponse.ok ? await userResponse.json() : {};
+                const residenceAddress = (formData.residenceAddress ?? formData.direccionResidencia ?? userData.address) || '';
+                const residenceKmRaw = formData.residenceKm ?? formData.kmResidencia ?? userData.km;
+                const residenceKm = residenceKmRaw !== undefined && residenceKmRaw !== null ? String(residenceKmRaw) : '';
 
                 const year = formData.year;
                 const month = formData.month;
@@ -267,7 +273,7 @@
             });
 
             // Cálculo de recorrido y gasto en recorrido
-            const kmClub = parseFloat(userData.km) || 0;
+            const kmClub = parseFloat(residenceKm) || 0;
             const asistencia = parseInt(formData.trainingAttendance) || 0;
             const recorrido = kmClub * 2 * asistencia;
             const gastoRecorrido = (recorrido * 0.26).toFixed(2);
@@ -374,9 +380,9 @@
             doc.setFont("helvetica", "normal");
             doc.text(`Nombre: ${userData.fullName || ''}`, 12, y + 4 * (fontSize / 11));
             doc.text(`DNI: ${userData.dni || ''}`, 100, y + 4 * (fontSize / 11));
-            doc.text(`Dirección: ${userData.address || ''}`, 12, y + 11 * (fontSize / 11));
+            doc.text(`Dirección: ${residenceAddress}`, 12, y + 11 * (fontSize / 11));
             doc.text(`Correo electrónico: ${userData.email || ''}`, 100, y + 11 * (fontSize / 11));
-            doc.text(`Kilómetros hasta el club: ${userData.km || ''}`, 12, y + 18 * (fontSize / 11));
+            doc.text(`Kilómetros hasta el club: ${residenceKm}`, 12, y + 18 * (fontSize / 11));
             doc.text(`Año: ${year !== undefined ? year : ''}`, 100, y + 18 * (fontSize / 11));
             doc.text(`Mes: ${month !== undefined && month !== '' ? new Date(0, month).toLocaleString('es-ES', { month: 'long' }) : ''}`, 12, y + 25 * (fontSize / 11));
             y += 38 * (fontSize / 11);
@@ -687,6 +693,9 @@
         async function generarPDFIndividual(formData, userData) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
+            const residenceAddress = (formData.residenceAddress ?? formData.direccionResidencia ?? userData.address) || '';
+            const residenceKmRaw = formData.residenceKm ?? formData.kmResidencia ?? userData.km;
+            const residenceKm = residenceKmRaw !== undefined && residenceKmRaw !== null ? String(residenceKmRaw) : '';
 
             const year = formData.year;
             const month = formData.month;
@@ -756,7 +765,7 @@
             });
 
             // Cálculo de recorrido y gasto en recorrido
-            const kmClub = parseFloat(userData.km) || 0;
+            const kmClub = parseFloat(residenceKm) || 0;
             const asistencia = parseInt(formData.trainingAttendance) || 0;
             const recorrido = kmClub * 2 * asistencia;
             const gastoRecorrido = (recorrido * 0.26).toFixed(2);
@@ -808,9 +817,9 @@
             doc.setFont("helvetica", "normal");
             doc.text(`Nombre: ${userData.fullName || ''}`, 12, y + 4);
             doc.text(`DNI: ${userData.dni || ''}`, 100, y + 4);
-            doc.text(`Dirección: ${userData.address || ''}`, 12, y + 11);
+            doc.text(`Dirección: ${residenceAddress}`, 12, y + 11);
             doc.text(`Correo electrónico: ${userData.email || ''}`, 100, y + 11);
-            doc.text(`Kilómetros hasta el club: ${userData.km || ''}`, 12, y + 18);
+            doc.text(`Kilómetros hasta el club: ${residenceKm}`, 12, y + 18);
             doc.text(`Año: ${year !== undefined ? year : ''}`, 100, y + 18);
             doc.text(`Mes: ${month !== undefined && month !== '' ? new Date(0, month).toLocaleString('es-ES', { month: 'long' }) : ''}`, 12, y + 25);
             y += 38;

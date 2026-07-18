@@ -62,6 +62,16 @@ const params = new URLSearchParams(window.location.search);
                     <label style="color: black;" for="trainingAttendance">Asistencia entrenamientos y partidos</label>
                     <input type="number" id="trainingAttendance" placeholder="Asistencia" required style="width: 50px; padding: 8px;">
                 </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label style="color: black;" for="residenceAddress">Dirección/Población de residencia (mes)</label>
+                        <input type="text" id="residenceAddress" placeholder="Residencia para este mes" style="width: 100%; padding: 8px;">
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label style="color: black;" for="residenceKm">Km hasta el club (mes)</label>
+                        <input type="number" id="residenceKm" placeholder="Km para este mes" style="width: 120px; padding: 8px;">
+                    </div>
+                </div>
                 <div>
                     <h3>Desplazamientos fuera del club</h3>
                     <div style="display: flex; gap: 10px; margin-bottom: 10px;">
@@ -120,11 +130,15 @@ const params = new URLSearchParams(window.location.search);
             const monthSelect = document.getElementById('formMonthSelect');
             const attendanceInput = document.getElementById('trainingAttendance');
             const weeksSelect = document.getElementById('weeksInMonth');
+            const residenceAddressInput = document.getElementById('residenceAddress');
+            const residenceKmInput = document.getElementById('residenceKm');
 
             if (yearInput) yearInput.value = String(now.getFullYear());
             if (monthSelect) monthSelect.value = String(now.getMonth());
             if (attendanceInput) attendanceInput.value = '';
             if (weeksSelect) weeksSelect.value = '4';
+            if (residenceAddressInput) residenceAddressInput.value = userData.address || '';
+            if (residenceKmInput) residenceKmInput.value = userData.km || '';
 
             const awayMatchesDetails = document.getElementById('awayMatchesDetails');
             const transportExpensesDetails = document.getElementById('transportExpensesDetails');
@@ -460,7 +474,9 @@ const params = new URLSearchParams(window.location.search);
                     gastosTransporte: formDataRaw.gastosTransporte || formDataRaw.transportExpenses || [],
                     gastosDietas: formDataRaw.gastosDietas || formDataRaw.dietExpenses || [],
                     asistencia: formDataRaw.asistencia ?? formDataRaw.trainingAttendance ?? 0,
-                    semanas: formDataRaw.semanas ?? formDataRaw.weeksInMonth ?? 0
+                    semanas: formDataRaw.semanas ?? formDataRaw.weeksInMonth ?? 0,
+                    residenceAddress: formDataRaw.residenceAddress ?? formDataRaw.direccionResidencia ?? null,
+                    residenceKm: formDataRaw.residenceKm ?? formDataRaw.kmResidencia ?? null
                 } : null;
                 
                 if (formData) {
@@ -469,6 +485,8 @@ const params = new URLSearchParams(window.location.search);
                     document.getElementById('formMonthSelect').value = month;
                     document.getElementById('trainingAttendance').value = formData.asistencia || 0;
                     document.getElementById('weeksInMonth').value = formData.semanas || 0;
+                    document.getElementById('residenceAddress').value = formData.residenceAddress || userData.address || '';
+                    document.getElementById('residenceKm').value = (formData.residenceKm ?? userData.km ?? '');
 
                     // Desplazamientos
                     const awayMatchesDetails = document.getElementById('awayMatchesDetails');
@@ -712,6 +730,8 @@ const params = new URLSearchParams(window.location.search);
                 gastosTransporte: transportExpenses,
                 gastosDietas: dietExpenses,
                 semanas: parseInt(document.getElementById('weeksInMonth').value || 0),
+                residenceAddress: document.getElementById('residenceAddress').value.trim(),
+                residenceKm: document.getElementById('residenceKm').value,
                 clubCode: document.getElementById('clubCode').value
             };
 

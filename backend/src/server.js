@@ -976,7 +976,11 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
         trainingAttendance: form.asistencia || 0,
         transportExpenses,
         dietExpenses,
-        weeksInMonth: form.semanas || 0
+        weeksInMonth: form.semanas || 0,
+        residenceAddress: form.residence_address || null,
+        residenceKm: form.residence_km ?? null,
+        direccionResidencia: form.residence_address || null,
+        kmResidencia: form.residence_km ?? null
       };
     }));
     
@@ -1195,6 +1199,10 @@ app.get('/api/formularios/:username', requireAuthenticated, requireSelfOrRole('u
         transportExpenses,
         dietExpenses,
         weeksInMonth: form.semanas || 4,
+        residenceAddress: form.residence_address || null,
+        residenceKm: form.residence_km ?? null,
+        direccionResidencia: form.residence_address || null,
+        kmResidencia: form.residence_km ?? null,
         // Mantener compatibilidad con nombres anteriores
         gastosTransporte: transportExpenses,
         gastosDietas: dietExpenses
@@ -1218,7 +1226,9 @@ app.post('/api/formularios', requireAuthenticated, async (req, res) => {
     gastosTransporte,
     gastosDietas,
     semanas,
-    completado
+    completado,
+    residenceAddress,
+    residenceKm
   } = req.body;
   const requester = req.requester || getRequesterIdentity(req);
 
@@ -1268,6 +1278,30 @@ app.post('/api/formularios', requireAuthenticated, async (req, res) => {
     let completedAtValue = existingForm?.completado_at || null;
     let completedByValue = existingForm?.completado_by || null;
 
+    let finalResidenceAddress = residenceAddress || null;
+    let finalResidenceKm = residenceKm !== undefined && residenceKm !== null && String(residenceKm).trim() !== ''
+      ? parseInt(residenceKm, 10)
+      : null;
+
+    if (!finalResidenceAddress || finalResidenceKm === null || Number.isNaN(finalResidenceKm)) {
+      const { data: userProfile, error: userProfileError } = await supabase
+        .from('users')
+        .select('address, km')
+        .eq('username', username)
+        .maybeSingle();
+
+      if (userProfileError) {
+        console.error('⚠️ No se pudo obtener perfil para fallback de residencia:', userProfileError);
+      }
+
+      if (!finalResidenceAddress) {
+        finalResidenceAddress = userProfile?.address || null;
+      }
+      if (finalResidenceKm === null || Number.isNaN(finalResidenceKm)) {
+        finalResidenceKm = userProfile?.km ?? null;
+      }
+    }
+
     if (completionRequested) {
       if (completedValue) {
         completedAtValue = existingForm?.completado_at || new Date().toISOString();
@@ -1291,6 +1325,8 @@ app.post('/api/formularios', requireAuthenticated, async (req, res) => {
       // Los gastos de dietas se gestionan en la tabla gastos_dietas.
       gastos_dietas: [],
       semanas: parseInt(semanas || 0),
+      residence_address: finalResidenceAddress,
+      residence_km: finalResidenceKm,
       completado: completedValue,
       completado_at: completedAtValue,
       completado_by: completedByValue,
