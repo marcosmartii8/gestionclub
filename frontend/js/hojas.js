@@ -30,6 +30,24 @@
             return currentUser.clubCode || localStorage.getItem('clubCode') || sessionUserData.clubCode || '';
         }
 
+        function splitAddressAndEmail(addressValue, emailValue) {
+            const cleanAddress = (addressValue || '').toString().replace(/\s+/g, ' ').trim();
+            const cleanEmail = (emailValue || '').toString().trim();
+            const mergedMatch = cleanAddress.match(/^(.*?)(?:\s*)correo\s*electr[oó]nico\s*:\s*(.+)$/i);
+
+            if (!mergedMatch) {
+                return {
+                    address: cleanAddress,
+                    email: cleanEmail
+                };
+            }
+
+            return {
+                address: (mergedMatch[1] || '').trim(),
+                email: cleanEmail || (mergedMatch[2] || '').trim()
+            };
+        }
+
         // Map: username -> array de { year, month, formData }
         let userFormsMap = {};
 
@@ -205,6 +223,7 @@
                 const residenceAddress = (formData.residenceAddress ?? formData.direccionResidencia ?? userData.address) || '';
                 const residenceKmRaw = formData.residenceKm ?? formData.kmResidencia ?? userData.km;
                 const residenceKm = residenceKmRaw !== undefined && residenceKmRaw !== null ? String(residenceKmRaw) : '';
+                const contactData = splitAddressAndEmail(residenceAddress, userData.email);
 
                 const year = formData.year;
                 const month = formData.month;
@@ -309,8 +328,8 @@
                 let baseY = 15;
                 let y = baseY;
                 const scale = (fontSize / 11);
-                const addressLineCount = estimateWrappedLines(`Dirección: ${residenceAddress || ''}`, 82);
-                const emailLineCount = estimateWrappedLines(`Correo electrónico: ${userData.email || ''}`, 82);
+                const addressLineCount = estimateWrappedLines(`Dirección: ${contactData.address || ''}`, 82);
+                const emailLineCount = estimateWrappedLines(`Correo electrónico: ${contactData.email || ''}`, 82);
                 const infoBoxHeight = (36 * scale)
                     + ((addressLineCount - 1) * 6 * scale)
                     + ((emailLineCount - 1) * 6 * scale);
@@ -387,10 +406,10 @@
             // Datos del solicitante en caja
             const infoScale = (fontSize / 11);
             const contactLineHeight = 6 * infoScale;
-            const addressLines = doc.splitTextToSize(`Dirección: ${residenceAddress || ''}`, 176);
-            const emailLines = doc.splitTextToSize(`Correo electrónico: ${userData.email || ''}`, 176);
+            const addressLines = doc.splitTextToSize(`Dirección: ${contactData.address || ''}`, 176);
+            const emailLines = doc.splitTextToSize(`Correo electrónico: ${contactData.email || ''}`, 176);
             const addressStartY = y + (11 * infoScale);
-            const emailStartY = addressStartY + (addressLines.length * contactLineHeight);
+            const emailStartY = addressStartY + (addressLines.length * contactLineHeight) + (1 * infoScale);
             const kmRowY = emailStartY + (emailLines.length * contactLineHeight);
             const monthRowY = kmRowY + (7 * infoScale);
             const infoBoxHeight = (monthRowY - y) + (6 * infoScale);
@@ -718,6 +737,7 @@
             const residenceAddress = (formData.residenceAddress ?? formData.direccionResidencia ?? userData.address) || '';
             const residenceKmRaw = formData.residenceKm ?? formData.kmResidencia ?? userData.km;
             const residenceKm = residenceKmRaw !== undefined && residenceKmRaw !== null ? String(residenceKmRaw) : '';
+            const contactData = splitAddressAndEmail(residenceAddress, userData.email);
 
             const year = formData.year;
             const month = formData.month;
@@ -832,11 +852,11 @@
             y += 10;
 
             // Datos del solicitante en caja
-            const addressLines = doc.splitTextToSize(`Dirección: ${residenceAddress || ''}`, 176);
-            const emailLines = doc.splitTextToSize(`Correo electrónico: ${userData.email || ''}`, 176);
+            const addressLines = doc.splitTextToSize(`Dirección: ${contactData.address || ''}`, 176);
+            const emailLines = doc.splitTextToSize(`Correo electrónico: ${contactData.email || ''}`, 176);
             const contactLineHeight = 6;
             const addressStartY = y + 11;
-            const emailStartY = addressStartY + (addressLines.length * contactLineHeight);
+            const emailStartY = addressStartY + (addressLines.length * contactLineHeight) + 1;
             const kmRowY = emailStartY + (emailLines.length * contactLineHeight);
             const monthRowY = kmRowY + 7;
             const infoBoxHeight = (monthRowY - y) + 6;
