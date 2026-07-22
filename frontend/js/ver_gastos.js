@@ -18,6 +18,7 @@ const sessionUserData = JSON.parse(localStorage.getItem(sessionUsername)) || {};
 const sessionClubCode = sessionUserData.clubCode;
 
 let gastosPorUsuario = {};
+let nombreCompletoPorUsuario = {};
 
 // Cargar datos desde la API
 async function cargarGastos() {
@@ -28,6 +29,7 @@ async function cargarGastos() {
         const formularios = await response.json();
         
         gastosPorUsuario = {};
+        nombreCompletoPorUsuario = {};
         
         // Procesar cada formulario
         for (const formData of formularios) {
@@ -39,6 +41,8 @@ async function cargarGastos() {
                     headers: getAuthHeaders()
                 });
                 const userData = userResponse.ok ? await userResponse.json() : {};
+                const nombreCompleto = (userData.fullName || username || '').trim();
+                nombreCompletoPorUsuario[username] = nombreCompleto || username;
                 
                 let totalKm = 0;
                 (formData.matches || []).forEach(match => {
@@ -66,10 +70,13 @@ async function cargarGastos() {
                 const totalDesplazamientos = importeKm + gastoRecorrido;
                 const totalGastos = importeKm + gastoRecorrido + totalGastoTransporte + importeDietas + totalGastoDietas;
                 const totalGastoPorDietas = importeDietas + totalGastoDietas;
-                const sumaTransporteDietas = totalGastoTransporte + totalGastoPorDietas;
+                // Esta columna debe reflejar solo gastos reales cargados (sin dieta fija semanal).
+                const sumaTransporteDietas = totalGastoTransporte + totalGastoDietas;
 
                 if (!gastosPorUsuario[username]) gastosPorUsuario[username] = [];
                 gastosPorUsuario[username].push({
+                    username,
+                    fullName: nombreCompletoPorUsuario[username],
                     year: formData.year,
                     month: formData.month,
                     total: totalGastos.toFixed(2),
@@ -103,7 +110,7 @@ function inicializarFiltros() {
     Object.keys(gastosPorUsuario).forEach(username => {
         const opt = document.createElement('option');
         opt.value = username;
-        opt.textContent = username;
+        opt.textContent = nombreCompletoPorUsuario[username] || username;
         filtroUsuario.appendChild(opt);
     });
 
@@ -140,7 +147,7 @@ function renderTablaGastos() {
             hayDatos = true;
             totalSuma += parseFloat(form.total);
             html += `<tr>
-                <td>${username}</td>
+                <td>${form.fullName || nombreCompletoPorUsuario[username] || username}</td>
                 <td>${form.year}</td>
                 <td>${typeof form.month !== 'undefined' ? new Date(0, form.month).toLocaleString('es-ES', { month: 'long' }) : ''}</td>
                 <td>${form.totalDesplazamientos}</td>
@@ -188,7 +195,7 @@ function exportarAExcel() {
                 new Date(0, form.month).toLocaleString('es-ES', { month: 'long' }) : '';
             
             datos.push({
-                'Usuario': username,
+                'Usuario': form.fullName || nombreCompletoPorUsuario[username] || username,
                 'Año': form.year,
                 'Mes': nombreMes,
                 'Total Desplazamientos (€)': parseFloat(form.totalDesplazamientos),
