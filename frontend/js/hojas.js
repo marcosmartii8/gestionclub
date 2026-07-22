@@ -34,8 +34,21 @@
             const cleanAddress = (addressValue || '').toString().replace(/\s+/g, ' ').trim();
             const cleanEmail = (emailValue || '').toString().trim();
             const mergedMatch = cleanAddress.match(/^(.*?)(?:\s*)correo\s*electr[oó]nico\s*:\s*(.+)$/i);
+            const markerMatch = cleanAddress.match(/^(.*?)(?:\s*)correo\b\s*:?(.*)$/i);
 
             if (!mergedMatch) {
+                if (markerMatch) {
+                    const markerAddress = (markerMatch[1] || '').trim();
+                    const markerTail = (markerMatch[2] || '')
+                        .replace(/^\s*electr[oó]nico\s*:?\s*/i, '')
+                        .trim();
+
+                    return {
+                        address: markerAddress,
+                        email: cleanEmail || markerTail
+                    };
+                }
+
                 return {
                     address: cleanAddress,
                     email: cleanEmail
