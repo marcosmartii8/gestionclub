@@ -219,106 +219,98 @@ function exportarAExcel() {
     generarExcelHTML(datos);
 }
 
-// Función para generar Excel usando HTML (compatible con Excel)
+// Función para generar Excel con estilos reales usando HTML (.xls)
 function generarExcelHTML(datos) {
-    if (typeof XLSX !== 'undefined') {
-        try {
-            // Usar XLSX con formato completo
-            const ws = XLSX.utils.json_to_sheet(datos);
-            
-            // Obtener cabeceras
-            const cabeceras = Object.keys(datos[0]);
-            
-            // Aplicar estilos a los headers (primera fila)
-            const headerStyle = {
-                fill: { fgColor: { rgb: "FF004D40" } }, // Verde oscuro
-                font: { bold: true, color: { rgb: "FFFFFFFF" } }, // Blanco
-                alignment: { horizontal: "center", vertical: "center" },
-                border: {
-                    top: { style: "thin", color: { rgb: "FF000000" } },
-                    bottom: { style: "thin", color: { rgb: "FF000000" } },
-                    left: { style: "thin", color: { rgb: "FF000000" } },
-                    right: { style: "thin", color: { rgb: "FF000000" } }
-                }
-            };
-            
-            // Aplicar estilos a datos normales
-            const dataStyle = {
-                alignment: { horizontal: "left", vertical: "center" },
-                border: {
-                    top: { style: "thin", color: { rgb: "FFD3D3D3" } },
-                    bottom: { style: "thin", color: { rgb: "FFD3D3D3" } },
-                    left: { style: "thin", color: { rgb: "FFD3D3D3" } },
-                    right: { style: "thin", color: { rgb: "FFD3D3D3" } }
-                }
-            };
-            
-            // Estilo para la fila de TOTAL
-            const totalStyle = {
-                fill: { fgColor: { rgb: "FFE0F2F1" } }, // Verde claro
-                font: { bold: true, color: { rgb: "FF004D40" } },
-                alignment: { horizontal: "left", vertical: "center" },
-                border: {
-                    top: { style: "medium", color: { rgb: "FF004D40" } },
-                    bottom: { style: "medium", color: { rgb: "FF004D40" } },
-                    left: { style: "thin", color: { rgb: "FF000000" } },
-                    right: { style: "thin", color: { rgb: "FF000000" } }
-                }
-            };
-            
-            // Aplicar formato a headers
-            cabeceras.forEach((cab, colIndex) => {
-                const cellAddress = XLSX.utils.encode_col(colIndex) + '1';
-                ws[cellAddress].s = headerStyle;
+    try {
+        const cabeceras = Object.keys(datos[0]);
+
+        const escapeHTML = (valor) => String(valor ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        const formatearNumero = (valor) => {
+            const numero = Number(valor);
+            if (Number.isNaN(numero)) return '';
+            return numero.toLocaleString('es-ES', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
             });
-            
-            // Aplicar formato a datos y detectar fila de TOTAL
-            datos.forEach((row, rowIndex) => {
-                const isTotal = row['Usuario'] === 'TOTAL';
-                const style = isTotal ? totalStyle : dataStyle;
-                
-                cabeceras.forEach((cab, colIndex) => {
-                    const cellAddress = XLSX.utils.encode_col(colIndex) + (rowIndex + 2);
-                    if (ws[cellAddress]) {
-                        ws[cellAddress].s = style;
-                        
-                        // Formato de números para columnas con €
-                        if (cab.includes('€') && typeof ws[cellAddress].v === 'number') {
-                            ws[cellAddress].z = '#,##0.00';
-                        }
-                    }
-                });
-            });
-            
-            // Ajustar ancho de columnas
-            const wscols = [
-                { wch: 15 },
-                { wch: 10 },
-                { wch: 12 },
-                { wch: 25 },
-                { wch: 20 },
-                { wch: 28 },
-                { wch: 18 }
-            ];
-            ws['!cols'] = wscols;
-            
-            // Fijar la fila de headers (congelar)
-            ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-            
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Gastos');
-            
-            const hoy = new Date();
-            const nombreArchivo = `Gastos_${hoy.toISOString().slice(0,10)}.xlsx`;
-            XLSX.writeFile(wb, nombreArchivo);
-            return;
-        } catch (error) {
-            console.error('Error con XLSX:', error);
-        }
+        };
+
+        const esColumnaImporte = (cabecera) => cabecera.includes('€');
+
+        const thead = `<thead><tr>${cabeceras
+            .map((cabecera) => `<th>${escapeHTML(cabecera)}</th>`)
+            .join('')}</tr></thead>`;
+
+        const tbody = `<tbody>${datos.map((fila) => {
+            const esTotal = fila.Usuario === 'TOTAL';
+            const celdas = cabeceras.map((cabecera, indice) => {
+                const valor = fila[cabecera];
+                const contenido = esColumnaImporte(cabecera) ? formatearNumero(valor) : escapeHTML(valor);
+
+                if (esTotal && indice === 6) {
+                    return `<td class="total-final">${contenido}</td>`;
+                }
+                if (esTotal && indice === 0) {
+                    return `<td class="total-label">${escapeHTML(valor)}</td>`;
+                }
+                if (esTotal) {
+                    return '<td class="total-empty"></td>';
+                }
+                return `<td>${contenido}</td>`;
+            }).join('');
+
+            return `<tr>${celdas}</tr>`;
+        }).join('')}</tbody>`;
+
+        const htmlExcel = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    table { border-collapse: collapse; font-family: Calibri, Arial, sans-serif; }
+    th, td { border: 1px solid #7f7f7f; padding: 8px 10px; white-space: nowrap; }
+    th { background: #d9ead3; color: #000; font-weight: 700; text-align: center; }
+    tbody td { background: #f2f2f2; }
+    .total-label { background: #ffffff; font-weight: 700; }
+    .total-empty { background: #ffffff; }
+    .total-final { background: #ff0000; color: #ffffff; font-weight: 700; text-align: right; }
+  </style>
+</head>
+<body>
+  <table>
+    ${thead}
+    ${tbody}
+  </table>
+</body>
+</html>`;
+
+        const blob = new Blob(['\uFEFF' + htmlExcel], {
+            type: 'application/vnd.ms-excel;charset=utf-8;'
+        });
+
+        const hoy = new Date();
+        const nombreArchivo = `Gastos_${hoy.toISOString().slice(0,10)}.xls`;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = nombreArchivo;
+        link.style.visibility = 'hidden';
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Error generando Excel con estilos:', error);
+        generarExcelCSV(datos);
     }
-    
-    // Si XLSX no funciona, generar CSV (Excel lo abre correctamente)
-    generarExcelCSV(datos);
 }
 
 // Función para generar archivo CSV (compatible con Excel)
