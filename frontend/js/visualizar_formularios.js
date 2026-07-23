@@ -27,6 +27,8 @@ const params = new URLSearchParams(window.location.search);
         let allFormularios = []; // Cache de todos los formularios
         let allUsers = {}; // Cache de usuarios
         let trackerLoadedOnce = false;
+        let latestPendingReminder = null;
+        let pendingReminderModalOpen = false;
 
         const monthNames = [
             'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -83,6 +85,185 @@ const params = new URLSearchParams(window.location.search);
             });
         }
 
+        function renderPendingAlert(pendientes, completadosCount, totalVoluntarios, periodLabel) {
+            const alertEl = document.getElementById('tracker-pending-alert');
+            if (!alertEl) return;
+
+            const pendingCount = Array.isArray(pendientes) ? pendientes.length : 0;
+            const pendingNames = (Array.isArray(pendientes) ? pendientes : [])
+                .map((user) => user.fullName || user.username)
+                .filter(Boolean);
+
+            if (pendingCount === 0) {
+                latestPendingReminder = null;
+                closePendingReminderModal();
+                alertEl.classList.add('visible');
+                alertEl.innerHTML = `
+                    <strong>Todo al día.</strong> ${periodLabel} no tiene formularios pendientes de entrega.
+                `;
+                alertEl.style.borderColor = '#a5d6a7';
+                alertEl.style.background = 'linear-gradient(135deg, #f1f8e9, #e8f5e9)';
+                alertEl.style.color = '#1b5e20';
+                return;
+            }
+
+            const visibleNames = pendingNames.slice(0, 4).join(', ');
+            const remaining = pendingCount - Math.min(pendingNames.length, 4);
+            const namesSuffix = remaining > 0 ? ` y ${remaining} más` : '';
+            const reminderLines = pendingNames.map((name) => `- ${name}`).join('\n');
+
+            latestPendingReminder = {
+                periodLabel,
+                pendingCount,
+                completadosCount,
+                totalVoluntarios,
+                pendingNames,
+                reminderText: [
+                    `Asunto: Recordatorio de formulario pendiente`,
+                    ``,
+                    `Hola,`,
+                    ``,
+                    `Te recuerdo que tienes pendiente la entrega del formulario correspondiente a ${periodLabel}.`,
+                    ``,
+                    `Pendientes (${pendingCount}):`,
+                    reminderLines || '- Sin nombres disponibles',
+                    ``,
+                    `Gracias.`
+                ].join('\n')
+            };
+
+            alertEl.classList.add('visible');
+            alertEl.style.borderColor = '#ffcc80';
+            alertEl.style.background = 'linear-gradient(135deg, #fff8e1, #fffde7)';
+            alertEl.style.color = '#7a4b00';
+            alertEl.innerHTML = `
+                <strong>Atención:</strong> faltan ${pendingCount} formularios por entregar en ${periodLabel}.
+                ${visibleNames ? `Pendientes: ${visibleNames}${namesSuffix}.` : ''}
+                <div class="tracker-alert-actions">
+                    <button type="button" class="tracker-copy-button" onclick="openPendingReminderModal()">📝 Ver recordatorio</button>
+                </div>
+            `;
+        }
+
+        function buildPendingReminderText() {
+            return latestPendingReminder?.reminderText || '';
+        }
+
+        function renderPendingReminderModalContent() {
+            if (!latestPendingReminder) return;
+
+            const periodEl = document.getElementById('reminder-modal-period');
+            const listEl = document.getElementById('reminder-modal-list');
+            const textEl = document.getElementById('reminder-modal-text');
+
+            if (periodEl) {
+                periodEl.textContent = `${latestPendingReminder.periodLabel} · ${latestPendingReminder.pendingCount} pendientes de ${latestPendingReminder.totalVoluntarios} voluntarios`;
+            }
+
+            if (listEl) {
+                const names = Array.isArray(latestPendingReminder.pendingNames) ? latestPendingReminder.pendingNames : [];
+                listEl.innerHTML = names.length > 0
+                    ? names.map((name) => `<li>${name}</li>`).join('')
+                    : '<li>Sin nombres disponibles.</li>';
+            }
+
+            if (textEl) {
+                textEl.value = buildPendingReminderText();
+            }
+        }
+
+        function openPendingReminderModal() {
+            if (!latestPendingReminder) {
+                if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
+                    window.AuthUtils.showToast('No hay recordatorio disponible.', { type: 'info' });
+                }
+                return;
+            }
+
+            renderPendingReminderModalContent();
+
+            const overlay = document.getElementById('reminder-modal-overlay');
+            if (!overlay) return;
+
+            overlay.classList.add('visible');
+            overlay.setAttribute('aria-hidden', 'false');
+            pendingReminderModalOpen = true;
+
+            const textEl = document.getElementById('reminder-modal-text');
+            if (textEl) {
+                textEl.focus();
+                textEl.select();
+            }
+        }
+
+        function closePendingReminderModal() {
+            const overlay = document.getElementById('reminder-modal-overlay');
+            if (!overlay) return;
+
+            overlay.classList.remove('visible');
+            overlay.setAttribute('aria-hidden', 'true');
+            pendingReminderModalOpen = false;
+        }
+
+        async function copyReminderFromModal() {
+            const textEl = document.getElementById('reminder-modal-text');
+            const text = textEl ? textEl.value : buildPendingReminderText();
+
+            if (!text) {
+                if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
+                    window.AuthUtils.showToast('No hay texto para copiar.', { type: 'info' });
+                }
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(text);
+
+                if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
+                    window.AuthUtils.showToast('Recordatorio copiado al portapapeles.', { type: 'ok' });
+                }
+            } catch (error) {
+                console.error('Error copiando recordatorio:', error);
+                if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
+                    window.AuthUtils.showToast('No se pudo copiar el recordatorio.', { type: 'error' });
+                }
+            }
+        }
+
+        window.openPendingReminderModal = openPendingReminderModal;
+        window.closePendingReminderModal = closePendingReminderModal;
+        window.copyReminderFromModal = copyReminderFromModal;
+
+        async function copyPendingReminder() {
+            if (!latestPendingReminder || !latestPendingReminder.reminderText) {
+                if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
+                    window.AuthUtils.showToast('No hay recordatorio pendiente para copiar.', { type: 'info' });
+                } else {
+                    alert('No hay recordatorio pendiente para copiar.');
+                }
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(latestPendingReminder.reminderText);
+
+                if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
+                    window.AuthUtils.showToast('Recordatorio copiado al portapapeles.', { type: 'ok' });
+                } else {
+                    alert('Recordatorio copiado al portapapeles.');
+                }
+            } catch (error) {
+                console.error('Error copiando recordatorio:', error);
+                if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
+                    window.AuthUtils.showToast('No se pudo copiar el recordatorio.', { type: 'error' });
+                } else {
+                    alert('No se pudo copiar el recordatorio.');
+                }
+            }
+        }
+
+        window.copyPendingReminder = copyPendingReminder;
+
         async function loadCompletionTracker() {
             try {
                 const period = getTrackerPeriodFromFilters();
@@ -97,17 +278,28 @@ const params = new URLSearchParams(window.location.search);
 
                 const tracker = await response.json();
                 const monthLabel = monthNames[tracker.month] || monthNames[period.month];
+                const totalVoluntarios = Number(tracker.totalVoluntariosActivos || 0);
+                const completadosCount = Number(tracker.completadosCount || 0);
+                const pendientesCount = Number(tracker.pendientesCount || 0);
+                const completionRate = totalVoluntarios > 0 ? Math.round((completadosCount / totalVoluntarios) * 100) : 0;
 
                 const periodEl = document.getElementById('tracker-period');
                 const totalEl = document.getElementById('metric-total');
                 const completedEl = document.getElementById('metric-completed');
                 const pendingEl = document.getElementById('metric-pending');
+                const rateEl = document.getElementById('metric-rate');
+                const progressFillEl = document.getElementById('tracker-progress-fill');
+                const progressTextEl = document.getElementById('tracker-progress-text');
 
                 if (periodEl) periodEl.textContent = `Periodo: ${monthLabel} de ${tracker.year}`;
-                if (totalEl) totalEl.textContent = String(tracker.totalVoluntariosActivos || 0);
-                if (completedEl) completedEl.textContent = String(tracker.completadosCount || 0);
-                if (pendingEl) pendingEl.textContent = String(tracker.pendientesCount || 0);
+                if (totalEl) totalEl.textContent = String(totalVoluntarios);
+                if (completedEl) completedEl.textContent = String(completadosCount);
+                if (pendingEl) pendingEl.textContent = String(pendientesCount);
+                if (rateEl) rateEl.textContent = `${completionRate}%`;
+                if (progressFillEl) progressFillEl.style.width = `${completionRate}%`;
+                if (progressTextEl) progressTextEl.textContent = `${completadosCount} de ${totalVoluntarios} formularios entregados`;
 
+                renderPendingAlert(tracker.pendientes, completadosCount, totalVoluntarios, `${monthLabel} de ${tracker.year}`);
                 renderUsersList('pending-users-list', tracker.pendientes, 'No hay usuarios pendientes.');
                 renderUsersList('completed-users-list', tracker.completados, 'Aún no hay usuarios completados.');
             } catch (error) {
@@ -329,7 +521,7 @@ const params = new URLSearchParams(window.location.search);
                 console.error('Error cargando formularios:', error);
                 alert('Error al cargar los formularios');
             }
-            
+
             // Poblar filtro de años después de cargar formularios
             populateYearFilterFromAPI();
             if (isTrackerVisible()) {

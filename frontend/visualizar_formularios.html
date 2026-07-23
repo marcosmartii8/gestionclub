@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualizar Formularios</title>
-    <link rel="stylesheet" href="css/visualizar_formularios.css?v=20260717a">
+    <link rel="stylesheet" href="css/visualizar_formularios.css?v=20260723a">
     <script src="js/deployment-config.js"></script>
 </head>
 <body>
@@ -51,9 +51,20 @@
                     <span class="metric-label">Pendientes</span>
                     <span class="metric-value" id="metric-pending">0</span>
                 </div>
+                <div class="metric-card progress">
+                    <span class="metric-label">Tasa de entrega</span>
+                    <span class="metric-value" id="metric-rate">0%</span>
+                </div>
             </div>
+            <div class="tracker-progress" aria-label="Progreso de entrega mensual">
+                <div class="tracker-progress-bar">
+                    <div class="tracker-progress-fill" id="tracker-progress-fill" style="width: 0%;"></div>
+                </div>
+                <p class="tracker-progress-text" id="tracker-progress-text">0 de 0 formularios entregados</p>
+            </div>
+            <div class="tracker-alert" id="tracker-pending-alert" role="status" aria-live="polite"></div>
             <div class="tracker-lists">
-                <div class="tracker-list">
+                <div class="tracker-list pending-list">
                     <h4>Usuarios pendientes</h4>
                     <ul id="pending-users-list"></ul>
                 </div>
@@ -63,6 +74,30 @@
                 </div>
             </div>
         </section>
+
+        <div class="reminder-modal-overlay" id="reminder-modal-overlay" aria-hidden="true" onclick="if (event.target === this) closePendingReminderModal()">
+            <div class="reminder-modal" role="dialog" aria-modal="true" aria-labelledby="reminder-modal-title">
+                <div class="reminder-modal-header">
+                    <h3 id="reminder-modal-title">📝 Recordatorio de pendientes</h3>
+                    <button type="button" class="reminder-close-button" onclick="closePendingReminderModal()" aria-label="Cerrar recordatorio">×</button>
+                </div>
+                <p class="reminder-modal-period" id="reminder-modal-period"></p>
+                <div class="reminder-modal-grid">
+                    <div class="reminder-modal-list-panel">
+                        <h4>Usuarios pendientes</h4>
+                        <ul id="reminder-modal-list"></ul>
+                    </div>
+                    <div class="reminder-modal-text-panel">
+                        <label for="reminder-modal-text">Texto del recordatorio</label>
+                        <textarea id="reminder-modal-text" rows="14"></textarea>
+                    </div>
+                </div>
+                <div class="reminder-modal-actions">
+                    <button type="button" class="reminder-secondary-button" onclick="copyReminderFromModal()">📋 Copiar texto</button>
+                    <button type="button" class="reminder-primary-button" onclick="closePendingReminderModal()">Cerrar</button>
+                </div>
+            </div>
+        </div>
 
         <div class="filters-section">
             <h3>🔍 Filtros de Búsqueda</h3>
@@ -123,9 +158,9 @@
         <button class="button-back" onclick="goBack()">← Volver</button>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-client.js?v=20260717a"></script>
-    <script src="js/club-themes.js?v=20260717a"></script>
-    <script src="js/auth-utils.js?v=20260717a"></script>
-    <script src="js/visualizar_formularios.js?v=20260717a"></script>
+    <script src="js/supabase-client.js?v=20260723a"></script>
+    <script src="js/club-themes.js?v=20260723a"></script>
+    <script src="js/auth-utils.js?v=20260723a"></script>
+    <script src="js/visualizar_formularios.js?v=20260723a"></script>
 </body>
 </html>

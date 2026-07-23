@@ -178,7 +178,7 @@ body {
 
 .tracker-metrics {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 16px;
 }
@@ -198,6 +198,11 @@ body {
     border-color: #ffb74d;
 }
 
+.metric-card.progress {
+    border-color: #80cbc4;
+    background: linear-gradient(135deg, #ffffff 0%, #f1f8f7 100%);
+}
+
 .metric-label {
     display: block;
     font-size: 0.8rem;
@@ -211,6 +216,267 @@ body {
     font-size: 1.4rem;
     font-weight: 800;
     color: #004d40;
+}
+
+.tracker-progress {
+    background: #fff;
+    border: 1px solid #dcedc8;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+}
+
+.tracker-progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #e8f5e9;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.tracker-progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #2e7d32, #43a047);
+    transition: width 0.35s ease;
+}
+
+.tracker-progress-text {
+    margin: 8px 0 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #33691e;
+}
+
+.tracker-alert {
+    display: none;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid #ffcc80;
+    background: linear-gradient(135deg, #fff8e1, #fffde7);
+    color: #7a4b00;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.tracker-alert.visible {
+    display: block;
+}
+
+.tracker-alert strong {
+    color: #5d4037;
+}
+
+.tracker-alert-actions {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.tracker-copy-button {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #fb8c00, #ef6c00);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(239, 108, 0, 0.25);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tracker-copy-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(239, 108, 0, 0.3);
+}
+
+.tracker-copy-button:active {
+    transform: translateY(0);
+}
+
+.reminder-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 24, 20, 0.62);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    z-index: 2000;
+    backdrop-filter: blur(4px);
+}
+
+.reminder-modal-overlay.visible {
+    display: flex;
+}
+
+.reminder-modal {
+    width: min(980px, 100%);
+    max-height: min(88vh, 820px);
+    overflow: auto;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfffd 100%);
+    border-radius: 18px;
+    border: 1px solid #c8e6c9;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+    padding: 22px;
+}
+
+.reminder-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.reminder-modal-header h3 {
+    margin: 0;
+    color: #004d40;
+    font-size: 1.25rem;
+}
+
+.reminder-close-button {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: #e0f2f1;
+    color: #004d40;
+    font-size: 1.5rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.reminder-modal-period {
+    margin: 8px 0 18px;
+    font-weight: 700;
+    color: #33691e;
+}
+
+.reminder-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 16px;
+}
+
+.reminder-modal-list-panel,
+.reminder-modal-text-panel {
+    background: #fff;
+    border: 1px solid #dcedc8;
+    border-radius: 14px;
+    padding: 16px;
+}
+
+.reminder-modal-list-panel h4 {
+    margin: 0 0 12px;
+    color: #e65100;
+}
+
+.reminder-modal-list-panel ul {
+    margin: 0;
+    padding-left: 18px;
+    max-height: 360px;
+    overflow: auto;
+}
+
+.reminder-modal-list-panel li {
+    margin-bottom: 8px;
+    color: #4e342e;
+    font-weight: 600;
+}
+
+.reminder-modal-text-panel label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 700;
+    color: #004d40;
+}
+
+.reminder-modal-text-panel textarea {
+    width: 100%;
+    min-height: 360px;
+    resize: vertical;
+    border-radius: 12px;
+    border: 1px solid #c8e6c9;
+    padding: 14px;
+    font: inherit;
+    color: #263238;
+    background: #fbfffd;
+}
+
+.reminder-modal-text-panel textarea:focus {
+    outline: none;
+    border-color: #26a69a;
+    box-shadow: 0 0 0 3px rgba(38, 166, 154, 0.1);
+}
+
+.reminder-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.reminder-primary-button,
+.reminder-secondary-button {
+    border: none;
+    border-radius: 10px;
+    padding: 11px 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.reminder-primary-button {
+    background: linear-gradient(135deg, #26a69a, #00897b);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(38, 166, 154, 0.25);
+}
+
+.reminder-secondary-button {
+    background: linear-gradient(135deg, #fb8c00, #ef6c00);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(239, 108, 0, 0.25);
+}
+
+.reminder-primary-button:hover,
+.reminder-secondary-button:hover {
+    transform: translateY(-1px);
+}
+
+.reminder-primary-button:active,
+.reminder-secondary-button:active {
+    transform: translateY(0);
+}
+
+.pending-list {
+    border-color: #ffcc80;
+    background: linear-gradient(135deg, #fffdf8, #fffaf0);
+    box-shadow: inset 0 0 0 1px rgba(255, 183, 77, 0.12);
+}
+
+.pending-list h4 {
+    color: #e65100;
+}
+
+.pending-list ul {
+    list-style: disc;
+}
+
+.pending-list li {
+    color: #4e342e;
+}
+
+@media (max-width: 780px) {
+    .reminder-modal-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reminder-modal-text-panel textarea {
+        min-height: 280px;
+    }
 }
 
 .tracker-lists {
@@ -531,6 +797,10 @@ table tr:hover td {
         grid-template-columns: 1fr;
     }
 
+    .tracker-metrics {
+        grid-template-columns: 1fr;
+    }
+
     .table-wrapper {
         max-height: 500px;
     }
@@ -641,6 +911,7 @@ table tr:hover td {
         font-size: 0.9rem;
         margin-top: 12px;
     }
+
 }
 
     .back-button {
