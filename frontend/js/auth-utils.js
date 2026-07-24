@@ -412,6 +412,153 @@
     }, durationMs);
   }
 
+  function notify(message, options) {
+    if (!message) {
+      return;
+    }
+
+    var opts = options || {};
+    var type = typeof opts === 'string' ? opts : (opts.type || 'info');
+    var durationMs = typeof opts.durationMs === 'number' ? opts.durationMs : 3400;
+    showToast(message, {
+      type: type,
+      durationMs: durationMs,
+      focusOnShow: type === 'error'
+    });
+  }
+
+  function confirmDialog(message, options) {
+    return new Promise(function(resolve) {
+      if (!document.body) {
+        resolve(window.confirm(message));
+        return;
+      }
+
+      var opts = options || {};
+      var overlayId = 'auth-confirm-overlay';
+      var existing = document.getElementById(overlayId);
+      if (existing) {
+        existing.remove();
+      }
+
+      var previousFocus = document.activeElement;
+
+      var overlay = document.createElement('div');
+      overlay.id = overlayId;
+      overlay.style.position = 'fixed';
+      overlay.style.inset = '0';
+      overlay.style.background = 'rgba(0, 0, 0, 0.45)';
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      overlay.style.padding = '16px';
+      overlay.style.zIndex = '11000';
+
+      var modal = document.createElement('div');
+      modal.style.width = 'min(460px, 100%)';
+      modal.style.background = '#ffffff';
+      modal.style.borderRadius = '12px';
+      modal.style.padding = '18px';
+      modal.style.boxShadow = '0 18px 44px rgba(0, 0, 0, 0.25)';
+
+      var title = document.createElement('h3');
+      title.textContent = opts.title || 'Confirmar accion';
+      title.style.margin = '0 0 10px';
+      title.style.fontSize = '1.05rem';
+      title.style.color = '#1f2937';
+
+      var text = document.createElement('p');
+      text.textContent = message || 'Deseas continuar?';
+      text.style.margin = '0 0 16px';
+      text.style.whiteSpace = 'pre-line';
+      text.style.color = '#374151';
+      text.style.lineHeight = '1.45';
+
+      var actions = document.createElement('div');
+      actions.style.display = 'flex';
+      actions.style.gap = '10px';
+      actions.style.justifyContent = 'flex-end';
+
+      var cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.textContent = opts.cancelText || 'Cancelar';
+      cancelBtn.style.border = 'none';
+      cancelBtn.style.background = '#6b7280';
+      cancelBtn.style.color = '#ffffff';
+      cancelBtn.style.borderRadius = '8px';
+      cancelBtn.style.padding = '10px 14px';
+      cancelBtn.style.cursor = 'pointer';
+
+      var confirmBtn = document.createElement('button');
+      confirmBtn.type = 'button';
+      confirmBtn.textContent = opts.confirmText || 'Confirmar';
+      confirmBtn.style.border = 'none';
+      confirmBtn.style.background = opts.danger ? '#c62828' : '#0f766e';
+      confirmBtn.style.color = '#ffffff';
+      confirmBtn.style.borderRadius = '8px';
+      confirmBtn.style.padding = '10px 14px';
+      confirmBtn.style.cursor = 'pointer';
+
+      function cleanup(result) {
+        document.removeEventListener('keydown', onKeyDown);
+        if (overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+        if (previousFocus && document.contains(previousFocus)) {
+          safeFocus(previousFocus);
+        }
+        resolve(result);
+      }
+
+      function onKeyDown(event) {
+        if (event.key === 'Escape') {
+          cleanup(false);
+          return;
+        }
+
+        if (event.key === 'Tab') {
+          var focusables = [cancelBtn, confirmBtn];
+          var currentIndex = focusables.indexOf(document.activeElement);
+          var nextIndex = 0;
+
+          if (event.shiftKey) {
+            nextIndex = currentIndex <= 0 ? focusables.length - 1 : currentIndex - 1;
+          } else {
+            nextIndex = currentIndex >= focusables.length - 1 ? 0 : currentIndex + 1;
+          }
+
+          event.preventDefault();
+          safeFocus(focusables[nextIndex]);
+        }
+      }
+
+      overlay.addEventListener('click', function(event) {
+        if (event.target === overlay) {
+          cleanup(false);
+        }
+      });
+
+      cancelBtn.addEventListener('click', function() {
+        cleanup(false);
+      });
+      confirmBtn.addEventListener('click', function() {
+        cleanup(true);
+      });
+
+      document.addEventListener('keydown', onKeyDown);
+
+      actions.appendChild(cancelBtn);
+      actions.appendChild(confirmBtn);
+      modal.appendChild(title);
+      modal.appendChild(text);
+      modal.appendChild(actions);
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      safeFocus(confirmBtn);
+    });
+  }
+
   function queueToastForNextPage(message, type) {
     if (!message) {
       return;
@@ -531,9 +678,16 @@
     button.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.25)';
 
     button.addEventListener('click', function() {
-      if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
-        logout({ loginPath: 'nueva_interfaz_inicio_sesion.html' });
-      }
+      confirmDialog('Estas seguro de que quieres cerrar sesion?', {
+        title: 'Cerrar sesion',
+        confirmText: 'Cerrar sesion',
+        cancelText: 'Cancelar',
+        danger: true
+      }).then(function(accepted) {
+        if (accepted) {
+          logout({ loginPath: 'nueva_interfaz_inicio_sesion.html' });
+        }
+      });
     });
 
     if (document.body) {
@@ -692,7 +846,9 @@
     logout: logout,
     ensureGlobalLogoutButton: ensureGlobalLogoutButton,
     ensureAuthenticatedRoute: ensureAuthenticatedRoute,
-    showToast: showToast
+    showToast: showToast,
+    notify: notify,
+    confirmDialog: confirmDialog
   };
 
   consumeQueuedToast();

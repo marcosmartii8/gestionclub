@@ -35,6 +35,10 @@ function getAuthHeaders(extraHeaders = {}) {
 }
 
 function notify(message, type = 'info') {
+    if (window.AuthUtils && typeof window.AuthUtils.notify === 'function') {
+        window.AuthUtils.notify(message, { type });
+        return;
+    }
     if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
         window.AuthUtils.showToast(message, { type });
         return;
@@ -43,104 +47,11 @@ function notify(message, type = 'info') {
 }
 
 function confirmAction(message, options = {}) {
-    return new Promise((resolve) => {
-        if (!document.body) {
-            resolve(window.confirm(message));
-            return;
-        }
+    if (window.AuthUtils && typeof window.AuthUtils.confirmDialog === 'function') {
+        return window.AuthUtils.confirmDialog(message, options);
+    }
 
-        const existing = document.getElementById('confirm-overlay');
-        if (existing) {
-            existing.remove();
-        }
-
-        const overlay = document.createElement('div');
-        overlay.id = 'confirm-overlay';
-        overlay.style.position = 'fixed';
-        overlay.style.inset = '0';
-        overlay.style.background = 'rgba(0,0,0,0.45)';
-        overlay.style.display = 'flex';
-        overlay.style.alignItems = 'center';
-        overlay.style.justifyContent = 'center';
-        overlay.style.padding = '16px';
-        overlay.style.zIndex = '12000';
-
-        const modal = document.createElement('div');
-        modal.style.width = 'min(460px, 100%)';
-        modal.style.background = '#fff';
-        modal.style.borderRadius = '12px';
-        modal.style.padding = '18px';
-        modal.style.boxShadow = '0 18px 44px rgba(0,0,0,0.25)';
-
-        const title = document.createElement('h3');
-        title.textContent = options.title || 'Confirmar acción';
-        title.style.margin = '0 0 10px';
-        title.style.fontSize = '1.05rem';
-        title.style.color = '#1f2937';
-
-        const text = document.createElement('p');
-        text.textContent = message;
-        text.style.margin = '0 0 16px';
-        text.style.whiteSpace = 'pre-line';
-        text.style.color = '#374151';
-        text.style.lineHeight = '1.45';
-
-        const actions = document.createElement('div');
-        actions.style.display = 'flex';
-        actions.style.gap = '10px';
-        actions.style.justifyContent = 'flex-end';
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.textContent = options.cancelText || 'Cancelar';
-        cancelBtn.style.border = 'none';
-        cancelBtn.style.background = '#6b7280';
-        cancelBtn.style.color = '#fff';
-        cancelBtn.style.borderRadius = '8px';
-        cancelBtn.style.padding = '10px 14px';
-        cancelBtn.style.cursor = 'pointer';
-
-        const confirmBtn = document.createElement('button');
-        confirmBtn.type = 'button';
-        confirmBtn.textContent = options.confirmText || 'Confirmar';
-        confirmBtn.style.border = 'none';
-        confirmBtn.style.background = options.danger ? '#c62828' : '#0f766e';
-        confirmBtn.style.color = '#fff';
-        confirmBtn.style.borderRadius = '8px';
-        confirmBtn.style.padding = '10px 14px';
-        confirmBtn.style.cursor = 'pointer';
-
-        function cleanup(result) {
-            document.removeEventListener('keydown', onKeyDown);
-            overlay.remove();
-            resolve(result);
-        }
-
-        function onKeyDown(event) {
-            if (event.key === 'Escape') {
-                cleanup(false);
-            }
-        }
-
-        overlay.addEventListener('click', (event) => {
-            if (event.target === overlay) {
-                cleanup(false);
-            }
-        });
-
-        cancelBtn.addEventListener('click', () => cleanup(false));
-        confirmBtn.addEventListener('click', () => cleanup(true));
-        document.addEventListener('keydown', onKeyDown);
-
-        actions.appendChild(cancelBtn);
-        actions.appendChild(confirmBtn);
-        modal.appendChild(title);
-        modal.appendChild(text);
-        modal.appendChild(actions);
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-        confirmBtn.focus();
-    });
+    return Promise.resolve(window.confirm(message));
 }
 
 function sortTable(columnIndex) {
