@@ -665,10 +665,10 @@ html {
     }
 
     .table-wrapper {
-        max-height: 500px;
+        max-height: none;
         margin-bottom: 16px;
         overflow-x: auto;
-        overflow-y: visible;
+        overflow-y: hidden;
     }
 
     .data-table {
@@ -778,12 +778,12 @@ html {
     }
 
     .table-wrapper {
-        max-height: 400px;
+        max-height: none;
         margin-bottom: 12px;
         border-radius: 12px;
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
         overflow-x: auto;
-        overflow-y: visible;
+        overflow-y: hidden;
     }
 
     .data-table {
