@@ -34,6 +34,115 @@ function getAuthHeaders(extraHeaders = {}) {
     return { ...extraHeaders };
 }
 
+function notify(message, type = 'info') {
+    if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
+        window.AuthUtils.showToast(message, { type });
+        return;
+    }
+    alert(message);
+}
+
+function confirmAction(message, options = {}) {
+    return new Promise((resolve) => {
+        if (!document.body) {
+            resolve(window.confirm(message));
+            return;
+        }
+
+        const existing = document.getElementById('confirm-overlay');
+        if (existing) {
+            existing.remove();
+        }
+
+        const overlay = document.createElement('div');
+        overlay.id = 'confirm-overlay';
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.background = 'rgba(0,0,0,0.45)';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.style.padding = '16px';
+        overlay.style.zIndex = '12000';
+
+        const modal = document.createElement('div');
+        modal.style.width = 'min(460px, 100%)';
+        modal.style.background = '#fff';
+        modal.style.borderRadius = '12px';
+        modal.style.padding = '18px';
+        modal.style.boxShadow = '0 18px 44px rgba(0,0,0,0.25)';
+
+        const title = document.createElement('h3');
+        title.textContent = options.title || 'Confirmar acción';
+        title.style.margin = '0 0 10px';
+        title.style.fontSize = '1.05rem';
+        title.style.color = '#1f2937';
+
+        const text = document.createElement('p');
+        text.textContent = message;
+        text.style.margin = '0 0 16px';
+        text.style.whiteSpace = 'pre-line';
+        text.style.color = '#374151';
+        text.style.lineHeight = '1.45';
+
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.gap = '10px';
+        actions.style.justifyContent = 'flex-end';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.textContent = options.cancelText || 'Cancelar';
+        cancelBtn.style.border = 'none';
+        cancelBtn.style.background = '#6b7280';
+        cancelBtn.style.color = '#fff';
+        cancelBtn.style.borderRadius = '8px';
+        cancelBtn.style.padding = '10px 14px';
+        cancelBtn.style.cursor = 'pointer';
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.type = 'button';
+        confirmBtn.textContent = options.confirmText || 'Confirmar';
+        confirmBtn.style.border = 'none';
+        confirmBtn.style.background = options.danger ? '#c62828' : '#0f766e';
+        confirmBtn.style.color = '#fff';
+        confirmBtn.style.borderRadius = '8px';
+        confirmBtn.style.padding = '10px 14px';
+        confirmBtn.style.cursor = 'pointer';
+
+        function cleanup(result) {
+            document.removeEventListener('keydown', onKeyDown);
+            overlay.remove();
+            resolve(result);
+        }
+
+        function onKeyDown(event) {
+            if (event.key === 'Escape') {
+                cleanup(false);
+            }
+        }
+
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+                cleanup(false);
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => cleanup(false));
+        confirmBtn.addEventListener('click', () => cleanup(true));
+        document.addEventListener('keydown', onKeyDown);
+
+        actions.appendChild(cancelBtn);
+        actions.appendChild(confirmBtn);
+        modal.appendChild(title);
+        modal.appendChild(text);
+        modal.appendChild(actions);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        confirmBtn.focus();
+    });
+}
+
 function sortTable(columnIndex) {
     const table = document.getElementById('user-table');
     const rows = Array.from(table.rows).slice(1); // Excluir encabezado
@@ -192,7 +301,7 @@ async function editUser(encodedKey) {
         
         const user = users.find(u => u.username === username);
         if (!user) {
-            alert('Usuario no encontrado');
+            notify('Usuario no encontrado', 'error');
             return;
         }
         
@@ -204,7 +313,7 @@ async function editUser(encodedKey) {
         
     } catch (err) {
         console.error('Error cargando usuario:', err);
-        alert('Error al cargar los datos del usuario');
+        notify('Error al cargar los datos del usuario', 'error');
     }
 }
 
@@ -220,12 +329,12 @@ async function saveUserChanges(event) {
     const newPassword = document.getElementById('editPassword').value.trim();
     
     if (!newUsername) {
-        alert('El nombre de usuario es obligatorio');
+        notify('El nombre de usuario es obligatorio', 'error');
         return;
     }
     
     if (newPassword && newPassword.length < 8) {
-        alert('La contraseña debe tener al menos 8 caracteres');
+        notify('La contraseña debe tener al menos 8 caracteres', 'error');
         return;
     }
     
@@ -249,13 +358,13 @@ async function saveUserChanges(event) {
             throw new Error(error.error || 'Error al actualizar usuario');
         }
         
-        alert('Usuario actualizado correctamente');
+        notify('Usuario actualizado correctamente', 'success');
         closeEditModal();
         await loadUsers(); // Recargar la tabla
         
     } catch (err) {
         console.error('Error actualizando usuario:', err);
-        alert('Error al actualizar usuario: ' + err.message);
+        notify('Error al actualizar usuario: ' + err.message, 'error');
     }
 }
 
@@ -283,14 +392,14 @@ async function toggleUserAccess(encodedKey) {
                 }
             }
             
-            alert(data.message);
+            notify(data.message || 'Estado actualizado correctamente', 'success');
         } else {
             const error = await response.json();
-            alert(error.message || 'Error al cambiar el estado de acceso del usuario');
+            notify(error.message || 'Error al cambiar el estado de acceso del usuario', 'error');
         }
     } catch (error) {
         console.error('Error cambiando estado de acceso:', error);
-        alert('Error al cambiar el estado de acceso del usuario');
+        notify('Error al cambiar el estado de acceso del usuario', 'error');
     }
 }
 
@@ -302,7 +411,7 @@ function redirectToPersonalizedInterface() {
         // Redirigir directamente con el parámetro que ya tenemos
         window.location.href = `interfaz_personalizada.html?nombre=${encodeURIComponent(username)}`;
     } else {
-        alert('Error: Usuario no identificado.');
+        notify('Error: Usuario no identificado.', 'error');
         window.location.href = 'inicio_app1.html';
     }
 }
@@ -328,7 +437,7 @@ function exportToExcel() {
         });
         
         if (datos.length === 0) {
-            alert('No hay datos para exportar');
+            notify('No hay datos para exportar', 'info');
             return;
         }
         
@@ -400,7 +509,7 @@ function exportToExcel() {
         generarCSVUsuarios(datos);
     } catch (error) {
         console.error('Error al exportar:', error);
-        alert('Error al exportar usuarios');
+        notify('Error al exportar usuarios', 'error');
     }
 }
 
@@ -439,46 +548,61 @@ function generarCSVUsuarios(datos) {
 
 async function deleteUserPermanently(encodedKey) {
     const username = decodeURIComponent(encodedKey);
-    if (!confirm(`⚠️ ELIMINAR DEFINITIVAMENTE a ${username}\n\nSe borrarán el usuario y TODOS sus formularios. Esta acción no se puede deshacer.\n\n¿Continuar?`)) return;
+    const accepted = await confirmAction(
+        `Se eliminará definitivamente a ${username} y todos sus formularios. Esta acción no se puede deshacer.`,
+        { title: 'Eliminar usuario', confirmText: 'Eliminar', cancelText: 'Cancelar', danger: true }
+    );
+    if (!accepted) return;
     try {
         const res = await fetch(`/api/users/${username}/permanent`, {
             method: 'DELETE',
             headers: getAuthHeaders()
         });
         if (!res.ok) throw new Error((await res.json()).message);
+        notify('Usuario eliminado correctamente', 'success');
         await loadUsers();
     } catch (err) {
-        alert('Error: ' + err.message);
+        notify('Error: ' + err.message, 'error');
     }
 }
 
 async function leaveUser(encodedKey) {
     const username = decodeURIComponent(encodedKey);
-    if (!confirm(`¿Dar de baja a ${username} del club? Sus datos se conservarán.`)) return;
+    const accepted = await confirmAction(
+        `¿Dar de baja a ${username} del club? Sus datos se conservarán.`,
+        { title: 'Dar de baja usuario', confirmText: 'Dar de baja', cancelText: 'Cancelar', danger: true }
+    );
+    if (!accepted) return;
     try {
         const res = await fetch(`/api/users/${username}/leave`, {
             method: 'PATCH',
             headers: getAuthHeaders()
         });
         if (!res.ok) throw new Error((await res.json()).message);
+        notify('Usuario dado de baja correctamente', 'success');
         await loadUsers();
     } catch (err) {
-        alert('Error: ' + err.message);
+        notify('Error: ' + err.message, 'error');
     }
 }
 
 async function readmitUser(encodedKey) {
     const username = decodeURIComponent(encodedKey);
-    if (!confirm(`¿Readmitir a ${username} en el club?`)) return;
+    const accepted = await confirmAction(
+        `¿Readmitir a ${username} en el club?`,
+        { title: 'Readmitir usuario', confirmText: 'Readmitir', cancelText: 'Cancelar' }
+    );
+    if (!accepted) return;
     try {
         const res = await fetch(`/api/users/${username}/readmit`, {
             method: 'PATCH',
             headers: getAuthHeaders()
         });
         if (!res.ok) throw new Error((await res.json()).message);
+        notify('Usuario readmitido correctamente', 'success');
         await loadUsers();
     } catch (err) {
-        alert('Error: ' + err.message);
+        notify('Error: ' + err.message, 'error');
     }
 }
 

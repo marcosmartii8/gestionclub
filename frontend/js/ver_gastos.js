@@ -12,6 +12,14 @@ function getAuthHeaders(extraHeaders = {}) {
     return { ...extraHeaders };
 }
 
+function notify(message, type = 'info') {
+    if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
+        window.AuthUtils.showToast(message, { type });
+        return;
+    }
+    alert(message);
+}
+
 const params = new URLSearchParams(window.location.search);
 const sessionUsername = params.get('nombre');
 const sessionUserData = JSON.parse(localStorage.getItem(sessionUsername)) || {};
@@ -114,7 +122,7 @@ async function cargarGastos() {
         renderTablaGastos();
     } catch (error) {
         console.error('Error cargando gastos:', error);
-        alert('Error al cargar los gastos');
+        notify('Error al cargar los gastos', 'error');
     }
 }
 
@@ -231,7 +239,7 @@ function exportarAExcel() {
     });
     
     if (datos.length === 0) {
-        alert('No hay datos para exportar con los filtros seleccionados.');
+        notify('No hay datos para exportar con los filtros seleccionados.', 'info');
         return;
     }
     

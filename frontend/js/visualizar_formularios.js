@@ -17,8 +17,117 @@ const params = new URLSearchParams(window.location.search);
             return false;
         }
 
+        function notify(message, type = 'info') {
+            if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
+                window.AuthUtils.showToast(message, { type });
+                return;
+            }
+            alert(message);
+        }
+
+        function confirmAction(message, options = {}) {
+            return new Promise((resolve) => {
+                if (!document.body) {
+                    resolve(window.confirm(message));
+                    return;
+                }
+
+                const existing = document.getElementById('confirm-overlay');
+                if (existing) {
+                    existing.remove();
+                }
+
+                const overlay = document.createElement('div');
+                overlay.id = 'confirm-overlay';
+                overlay.style.position = 'fixed';
+                overlay.style.inset = '0';
+                overlay.style.background = 'rgba(0,0,0,0.45)';
+                overlay.style.display = 'flex';
+                overlay.style.alignItems = 'center';
+                overlay.style.justifyContent = 'center';
+                overlay.style.padding = '16px';
+                overlay.style.zIndex = '12000';
+
+                const modal = document.createElement('div');
+                modal.style.width = 'min(460px, 100%)';
+                modal.style.background = '#fff';
+                modal.style.borderRadius = '12px';
+                modal.style.padding = '18px';
+                modal.style.boxShadow = '0 18px 44px rgba(0,0,0,0.25)';
+
+                const title = document.createElement('h3');
+                title.textContent = options.title || 'Confirmar acción';
+                title.style.margin = '0 0 10px';
+                title.style.fontSize = '1.05rem';
+                title.style.color = '#1f2937';
+
+                const text = document.createElement('p');
+                text.textContent = message;
+                text.style.margin = '0 0 16px';
+                text.style.whiteSpace = 'pre-line';
+                text.style.color = '#374151';
+                text.style.lineHeight = '1.45';
+
+                const actions = document.createElement('div');
+                actions.style.display = 'flex';
+                actions.style.gap = '10px';
+                actions.style.justifyContent = 'flex-end';
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.type = 'button';
+                cancelBtn.textContent = options.cancelText || 'Cancelar';
+                cancelBtn.style.border = 'none';
+                cancelBtn.style.background = '#6b7280';
+                cancelBtn.style.color = '#fff';
+                cancelBtn.style.borderRadius = '8px';
+                cancelBtn.style.padding = '10px 14px';
+                cancelBtn.style.cursor = 'pointer';
+
+                const confirmBtn = document.createElement('button');
+                confirmBtn.type = 'button';
+                confirmBtn.textContent = options.confirmText || 'Confirmar';
+                confirmBtn.style.border = 'none';
+                confirmBtn.style.background = options.danger ? '#c62828' : '#0f766e';
+                confirmBtn.style.color = '#fff';
+                confirmBtn.style.borderRadius = '8px';
+                confirmBtn.style.padding = '10px 14px';
+                confirmBtn.style.cursor = 'pointer';
+
+                function cleanup(result) {
+                    document.removeEventListener('keydown', onKeyDown);
+                    overlay.remove();
+                    resolve(result);
+                }
+
+                function onKeyDown(event) {
+                    if (event.key === 'Escape') {
+                        cleanup(false);
+                    }
+                }
+
+                overlay.addEventListener('click', (event) => {
+                    if (event.target === overlay) {
+                        cleanup(false);
+                    }
+                });
+
+                cancelBtn.addEventListener('click', () => cleanup(false));
+                confirmBtn.addEventListener('click', () => cleanup(true));
+                document.addEventListener('keydown', onKeyDown);
+
+                actions.appendChild(cancelBtn);
+                actions.appendChild(confirmBtn);
+                modal.appendChild(title);
+                modal.appendChild(text);
+                modal.appendChild(actions);
+                overlay.appendChild(modal);
+                document.body.appendChild(overlay);
+                confirmBtn.focus();
+            });
+        }
+
         if (!currentUserData || !currentUserData.clubCode) {
-            alert('Error: Código del club no encontrado.');
+            notify('Error: Código del club no encontrado.', 'error');
             window.location.href = 'inicio_app1.html';
         }
 
@@ -262,7 +371,7 @@ const params = new URLSearchParams(window.location.search);
                 if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
                     window.AuthUtils.showToast('No hay recordatorio pendiente para copiar.', { type: 'info' });
                 } else {
-                    alert('No hay recordatorio pendiente para copiar.');
+                    notify('No hay recordatorio pendiente para copiar.', 'info');
                 }
                 return;
             }
@@ -273,14 +382,14 @@ const params = new URLSearchParams(window.location.search);
                 if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
                     window.AuthUtils.showToast('Recordatorio copiado al portapapeles.', { type: 'ok' });
                 } else {
-                    alert('Recordatorio copiado al portapapeles.');
+                    notify('Recordatorio copiado al portapapeles.', 'success');
                 }
             } catch (error) {
                 console.error('Error copiando recordatorio:', error);
                 if (window.AuthUtils && typeof window.AuthUtils.showToast === 'function') {
                     window.AuthUtils.showToast('No se pudo copiar el recordatorio.', { type: 'error' });
                 } else {
-                    alert('No se pudo copiar el recordatorio.');
+                    notify('No se pudo copiar el recordatorio.', 'error');
                 }
             }
         }
@@ -542,7 +651,7 @@ const params = new URLSearchParams(window.location.search);
                 }
             } catch (error) {
                 console.error('Error cargando formularios:', error);
-                alert('Error al cargar los formularios');
+                notify('Error al cargar los formularios', 'error');
             }
 
             applyMobileFormsTableLabels();
@@ -864,7 +973,7 @@ const params = new URLSearchParams(window.location.search);
                 }
             } catch (error) {
                 console.error('Error cargando formulario:', error);
-                alert('Error al cargar el formulario para editar');
+                notify('Error al cargar el formulario para editar', 'error');
             }
         }
 
@@ -984,7 +1093,7 @@ const params = new URLSearchParams(window.location.search);
                                 expense.url = uploadResult.url;
                             }
                         } catch (e) {
-                            alert('Error subiendo archivo de transporte: ' + e.message);
+                            notify('Error subiendo archivo de transporte: ' + e.message, 'error');
                         }
                     } else if (existingFile) {
                         // Guardar la URL anterior en todos los campos posibles
@@ -1016,7 +1125,7 @@ const params = new URLSearchParams(window.location.search);
                                 expense.url = uploadResult.url;
                             }
                         } catch (e) {
-                            alert('Error subiendo archivo de dietas: ' + e.message);
+                            notify('Error subiendo archivo de dietas: ' + e.message, 'error');
                         }
                     } else if (existingFile) {
                         // Guardar la URL anterior en todos los campos posibles
@@ -1047,7 +1156,7 @@ const params = new URLSearchParams(window.location.search);
                 });
 
                 if (response.ok) {
-                    alert('Formulario actualizado exitosamente.');
+                    notify('Formulario actualizado exitosamente.', 'success');
                     loadForms();
                     closeEditForm();
                 } else {
@@ -1060,13 +1169,13 @@ const params = new URLSearchParams(window.location.search);
                         errorData = {};
                     }
                     console.error('Error del servidor:', errorData);
-                    alert('Error al actualizar el formulario: ' + (errorData.message || 'Error desconocido'));
+                    notify('Error al actualizar el formulario: ' + (errorData.message || 'Error desconocido'), 'error');
                     saveButton.textContent = originalText;
                     saveButton.disabled = false;
                 }
             } catch (error) {
                 console.error('Error guardando formulario:', error);
-                alert('Error al guardar el formulario: ' + error.message);
+                notify('Error al guardar el formulario: ' + error.message, 'error');
                 const saveButton = document.querySelector('#edit-form button[onclick*="saveEditedForm"]');
                 if (saveButton) {
                     saveButton.textContent = 'Guardar';
@@ -1083,8 +1192,11 @@ const params = new URLSearchParams(window.location.search);
         }
 
         async function deleteForm(formUser, year, month) {
-            const confirmation = confirm("¿Estás seguro de que quieres borrar este formulario?");
-            if (confirmation) {
+            const accepted = await confirmAction(
+                '¿Estás seguro de que quieres borrar este formulario?',
+                { title: 'Borrar formulario', confirmText: 'Borrar', cancelText: 'Cancelar', danger: true }
+            );
+            if (accepted) {
                 try {
                     const response = await fetch(`/api/formularios/${formUser}/${year}/${month}`, {
                         method: 'DELETE',
@@ -1093,14 +1205,14 @@ const params = new URLSearchParams(window.location.search);
                     
                     if (response.ok) {
                         loadForms();
-                        alert("Formulario borrado exitosamente.");
+                        notify('Formulario borrado exitosamente.', 'success');
                     } else {
                         if (handleAuthFailure(response)) return;
-                        alert("Error al borrar el formulario.");
+                        notify('Error al borrar el formulario.', 'error');
                     }
                 } catch (error) {
                     console.error('Error eliminando formulario:', error);
-                    alert("Error al borrar el formulario.");
+                    notify('Error al borrar el formulario.', 'error');
                 }
             }
         }
