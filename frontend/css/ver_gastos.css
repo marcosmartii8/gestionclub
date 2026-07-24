@@ -454,3 +454,87 @@ tr:nth-child(even) td {
         gap: 8px;
     }
 }
+
+@media (max-width: 640px) {
+    #gastos-table {
+        overflow: visible;
+        max-height: none;
+        border: 0;
+        background: transparent;
+    }
+
+    #gastos-table table {
+        min-width: 0 !important;
+        display: block;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    #gastos-table thead {
+        display: none;
+    }
+
+    #gastos-table,
+    #gastos-table tbody,
+    #gastos-table tr,
+    #gastos-table td {
+        display: block;
+        width: 100%;
+    }
+
+    #gastos-table tbody {
+        max-height: none;
+        overflow: visible;
+    }
+
+    #gastos-table tr {
+        margin: 0 0 14px;
+        padding: 12px;
+        border: 1px solid #d9ece8;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    #gastos-table tr:hover {
+        transform: none;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    #gastos-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        text-align: right;
+        padding: 8px 0;
+        border-bottom: 1px dashed #d7e9e5;
+        font-size: 0.84rem;
+        white-space: normal;
+    }
+
+    #gastos-table td::before {
+        content: attr(data-label);
+        min-width: 48%;
+        text-align: left;
+        color: #004d40;
+        font-weight: 700;
+    }
+
+    #gastos-table td:last-child {
+        border-bottom: 0;
+    }
+
+    #gastos-table tr.mobile-full-row td,
+    #gastos-table tr.summary-row td {
+        display: block;
+        text-align: center;
+        border-bottom: 0;
+    }
+
+    #gastos-table tr.mobile-full-row td::before,
+    #gastos-table tr.summary-row td::before {
+        content: '';
+        display: none;
+    }
+}

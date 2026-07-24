@@ -2,6 +2,30 @@ let sortDirection = {}; // Para controlar la dirección de ordenación por colum
 let allUsers = []; // Almacenar todos los usuarios cargados
 let currentFilter = 'activos'; // Filtro actual
 
+function applyMobileUserTableLabels() {
+    const table = document.getElementById('user-table');
+    if (!table) return;
+
+    const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+    if (headers.length === 0) return;
+
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+    rows.forEach((row) => {
+        const cells = Array.from(row.children);
+
+        if (cells.length === 1 && cells[0].colSpan > 1) {
+            row.classList.add('mobile-full-row');
+            cells[0].setAttribute('data-label', '');
+            return;
+        }
+
+        row.classList.remove('mobile-full-row');
+        cells.forEach((cell, index) => {
+            cell.setAttribute('data-label', headers[index] || 'Dato');
+        });
+    });
+}
+
 function getAuthHeaders(extraHeaders = {}) {
     if (window.AuthUtils && typeof window.AuthUtils.getAuthHeaders === 'function') {
         return window.AuthUtils.getAuthHeaders({ extraHeaders });
@@ -28,6 +52,7 @@ function sortTable(columnIndex) {
     });
 
     rows.forEach(row => table.tBodies[0].appendChild(row));
+    applyMobileUserTableLabels();
 }
 
 async function loadUsers() {
@@ -63,6 +88,7 @@ async function loadUsers() {
 
         if (users.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #666;">No hay usuarios registrados</td></tr>';
+            applyMobileUserTableLabels();
             return;
         }
 
@@ -71,6 +97,7 @@ async function loadUsers() {
     } catch (err) {
         console.error('❌ Error cargando usuarios:', err);
         tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: red;">Error al cargar usuarios</td></tr>';
+        applyMobileUserTableLabels();
     }
 }
 
@@ -148,6 +175,8 @@ function renderUsers(users) {
             `;
             tableBody.appendChild(row);
         });
+
+    applyMobileUserTableLabels();
 }
 
 async function editUser(encodedKey) {

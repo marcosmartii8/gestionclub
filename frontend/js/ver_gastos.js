@@ -20,6 +20,29 @@ const sessionClubCode = sessionUserData.clubCode;
 let gastosPorUsuario = {};
 let nombreCompletoPorUsuario = {};
 
+function applyMobileExpenseTableLabels() {
+    const table = gastosTableDiv.querySelector('table');
+    if (!table) return;
+
+    const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+    if (headers.length === 0) return;
+
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+    rows.forEach((row) => {
+        const cells = Array.from(row.children);
+        if (cells.length === 1 && cells[0].colSpan > 1) {
+            row.classList.add('mobile-full-row');
+            cells[0].setAttribute('data-label', '');
+            return;
+        }
+
+        row.classList.remove('mobile-full-row');
+        cells.forEach((cell, index) => {
+            cell.setAttribute('data-label', headers[index] || 'Dato');
+        });
+    });
+}
+
 // Cargar datos desde la API
 async function cargarGastos() {
     try {
@@ -159,15 +182,16 @@ function renderTablaGastos() {
     });
 
     if (!hayDatos) {
-        html += `<tr><td colspan="7" style="text-align:center;">No hay gastos registrados para este filtro.</td></tr>`;
+        html += '<tr class="mobile-full-row"><td colspan="7" style="text-align:center;">No hay gastos registrados para este filtro.</td></tr>';
     }
 
-    html += `<tr style="font-weight:bold; background:#e0f2f1;">
+    html += `<tr class="summary-row" style="font-weight:bold; background:#e0f2f1;">
                 <td colspan="6" style="text-align:right;">TOTAL SUMA:</td>
                 <td>${totalSuma.toFixed(2)}</td>
             </tr>`;
     html += '</tbody></table>';
     gastosTableDiv.innerHTML = html;
+    applyMobileExpenseTableLabels();
 }
 
 filtroUsuario.addEventListener('change', renderTablaGastos);

@@ -1004,3 +1004,96 @@ table tr:hover td {
         min-height: 34px;
     }
 }
+
+@media (max-width: 640px) {
+    .table-wrapper {
+        overflow: visible;
+        max-height: none;
+        box-shadow: none;
+    }
+
+    #forms-table {
+        min-width: 0 !important;
+        border: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    #forms-table thead {
+        display: none;
+    }
+
+    #forms-table,
+    #forms-table tbody,
+    #forms-table tr,
+    #forms-table td {
+        display: block;
+        width: 100%;
+    }
+
+    #forms-table tbody {
+        max-height: none;
+        overflow: visible;
+    }
+
+    #forms-table tr {
+        margin: 0 0 14px;
+        padding: 12px;
+        border: 1px solid #d9ece8;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    #forms-table tr:hover td {
+        background: transparent;
+        color: #333;
+    }
+
+    #forms-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        text-align: right;
+        padding: 8px 0;
+        border-bottom: 1px dashed #d7e9e5;
+        font-size: 0.84rem;
+        max-width: none;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+    }
+
+    #forms-table td::before {
+        content: attr(data-label);
+        min-width: 47%;
+        text-align: left;
+        color: #004d40;
+        font-weight: 700;
+    }
+
+    #forms-table td:last-child {
+        border-bottom: 0;
+    }
+
+    #forms-table td button {
+        width: 100%;
+        margin: 0 0 8px;
+    }
+
+    #forms-table td button:last-child {
+        margin-bottom: 0;
+    }
+
+    #forms-table tr.mobile-full-row td {
+        display: block;
+        text-align: center;
+        border-bottom: 0;
+    }
+
+    #forms-table tr.mobile-full-row td::before {
+        content: '';
+        display: none;
+    }
+}

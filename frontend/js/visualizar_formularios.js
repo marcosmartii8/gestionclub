@@ -30,6 +30,29 @@ const params = new URLSearchParams(window.location.search);
         let latestPendingReminder = null;
         let pendingReminderModalOpen = false;
 
+        function applyMobileFormsTableLabels() {
+            const table = document.getElementById('forms-table');
+            if (!table) return;
+
+            const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+            if (headers.length === 0) return;
+
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            rows.forEach((row) => {
+                const cells = Array.from(row.children);
+                if (cells.length === 1 && cells[0].colSpan > 1) {
+                    row.classList.add('mobile-full-row');
+                    cells[0].setAttribute('data-label', '');
+                    return;
+                }
+
+                row.classList.remove('mobile-full-row');
+                cells.forEach((cell, index) => {
+                    cell.setAttribute('data-label', headers[index] || 'Dato');
+                });
+            });
+        }
+
         const monthNames = [
             'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
             'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
@@ -522,6 +545,8 @@ const params = new URLSearchParams(window.location.search);
                 alert('Error al cargar los formularios');
             }
 
+            applyMobileFormsTableLabels();
+
             // Poblar filtro de años después de cargar formularios
             populateYearFilterFromAPI();
             if (isTrackerVisible()) {
@@ -640,6 +665,8 @@ const params = new URLSearchParams(window.location.search);
                 }
             }
 
+            applyMobileFormsTableLabels();
+
             if (isTrackerVisible()) {
                 loadCompletionTracker();
             }
@@ -664,6 +691,7 @@ const params = new URLSearchParams(window.location.search);
             });
 
             rows.forEach(row => table.tBodies[0].appendChild(row)); // Re-append sorted rows
+            applyMobileFormsTableLabels();
         }
 
         function goBack() {

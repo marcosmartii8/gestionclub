@@ -997,3 +997,98 @@ table tr:hover td {
         padding: 10px 12px;
     }
 }
+
+@media (max-width: 640px) {
+    .table-container {
+        overflow: visible;
+        max-height: none;
+        box-shadow: none;
+        border-radius: 0;
+    }
+
+    #user-table {
+        min-width: 0 !important;
+        border: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    #user-table thead {
+        display: none;
+    }
+
+    #user-table,
+    #user-table tbody,
+    #user-table tr,
+    #user-table td {
+        display: block;
+        width: 100%;
+    }
+
+    #user-table tbody {
+        max-height: none;
+        overflow: visible;
+    }
+
+    #user-table tr {
+        margin: 0 0 14px;
+        padding: 12px;
+        border: 1px solid #d9ece8;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    #user-table tr:hover td {
+        background: transparent;
+    }
+
+    #user-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        text-align: right;
+        padding: 8px 0;
+        border-bottom: 1px dashed #d7e9e5;
+        font-size: 0.84rem;
+        max-width: none;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+    }
+
+    #user-table td::before {
+        content: attr(data-label);
+        min-width: 46%;
+        text-align: left;
+        color: #004d40;
+        font-weight: 700;
+    }
+
+    #user-table td:last-child {
+        border-bottom: 0;
+    }
+
+    #user-table td:last-child button {
+        width: 100%;
+        margin: 0 0 8px;
+        padding: 10px 12px !important;
+        font-size: 0.82rem !important;
+    }
+
+    #user-table td:last-child button:last-child {
+        margin-bottom: 0;
+    }
+
+    #user-table tr.mobile-full-row td {
+        display: block;
+        text-align: center;
+        border-bottom: 0;
+    }
+
+    #user-table tr.mobile-full-row td::before {
+        content: '';
+        display: none;
+    }
+}
