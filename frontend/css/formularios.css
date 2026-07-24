@@ -135,9 +135,18 @@ html {
 }
 
 #user-title {
-    color: #0f3f37 !important;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+    color: #0b3a33 !important;
+    opacity: 1 !important;
+    filter: none !important;
+    mix-blend-mode: normal !important;
+    position: relative;
+    z-index: 5;
+    display: inline-block;
     margin-bottom: 16px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.84));
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
 }
 
 .form-actions {
