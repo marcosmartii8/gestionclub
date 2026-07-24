@@ -134,6 +134,12 @@ html {
     letter-spacing: 0.5px;
 }
 
+#user-title {
+    color: #0f3f37 !important;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+    margin-bottom: 16px;
+}
+
 .form-actions {
     display: flex;
     justify-content: center;
