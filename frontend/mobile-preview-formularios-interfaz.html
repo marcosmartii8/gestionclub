@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview Movil - Interfaz Formularios</title>
+  <link rel="stylesheet" href="css/formularios.css?v=20260718b">
+</head>
+<body>
+  <div class="form-container">
+    <h2 id="user-title" class="title" style="margin: 0 0 14px; text-align: left; font-size: 1.6rem;">Formulario Mensual: demo</h2>
+    <div class="form-actions" style="margin-bottom: 12px; justify-content: flex-start;">
+      <button class="button-create">✏️ Crear Nuevo Formulario</button>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="data-table" id="dataTable">
+        <thead>
+          <tr>
+            <th>Año</th>
+            <th>Mes</th>
+            <th>Días Asist.</th>
+            <th>Desplazamientos</th>
+            <th>Gastos Transporte</th>
+            <th>Gastos Dietas</th>
+            <th>Semanas</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>2026</td>
+            <td>junio</td>
+            <td>8</td>
+            <td><button class="edit-button">Ver</button></td>
+            <td><button class="edit-button">Ver</button></td>
+            <td><button class="edit-button">Ver</button></td>
+            <td>4</td>
+            <td><span class="status-badge status-pending">Pendiente</span></td>
+            <td>
+              <button class="edit-button">✏️ Editar</button>
+              <button class="complete-button">✅ Completar</button>
+            </td>
+          </tr>
+          <tr>
+            <td>2026</td>
+            <td>mayo</td>
+            <td>6</td>
+            <td><button class="edit-button">Ver</button></td>
+            <td><button class="edit-button">Ver</button></td>
+            <td><button class="edit-button">Ver</button></td>
+            <td>4</td>
+            <td><span class="status-badge status-completed">Completado</span></td>
+            <td>
+              <button class="edit-button">✏️ Editar</button>
+              <div class="status-note">Entregado</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <button class="button-back" type="button">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px; margin-right: 8px;">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+    </svg>
+    Volver
+  </button>
+</body>
+</html>

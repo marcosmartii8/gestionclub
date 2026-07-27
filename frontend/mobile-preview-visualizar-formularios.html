@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preview Movil - Visualizar Formularios</title>
+  <link rel="stylesheet" href="css/visualizar_formularios.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header-section"><h1 class="title">📋 Formularios</h1></div>
+    <div class="table-wrapper">
+      <table id="forms-table">
+        <thead>
+          <tr>
+            <th>Usuario</th><th>Ano</th><th>Mes</th><th>Asistencia</th><th>Semanas Mes</th><th>Detalles Desplazamientos</th><th>Detalles Transporte</th><th>Detalles Dietas</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="forms-table-body">
+          <tr>
+            <td data-label="Usuario">Ana Ruiz</td>
+            <td data-label="Ano">2026</td>
+            <td data-label="Mes">junio</td>
+            <td data-label="Asistencia">8</td>
+            <td data-label="Semanas Mes">4</td>
+            <td data-label="Detalles Desplazamientos"><button>Ver</button></td>
+            <td data-label="Detalles Transporte"><button>Ver</button></td>
+            <td data-label="Detalles Dietas"><button>Ver</button></td>
+            <td data-label="Acciones"><button>Editar</button><button>Borrar</button></td>
+          </tr>
+          <tr>
+            <td data-label="Usuario">Carlos Diaz</td>
+            <td data-label="Ano">2026</td>
+            <td data-label="Mes">junio</td>
+            <td data-label="Asistencia">6</td>
+            <td data-label="Semanas Mes">4</td>
+            <td data-label="Detalles Desplazamientos"><button>Ver</button></td>
+            <td data-label="Detalles Transporte"><button>Ver</button></td>
+            <td data-label="Detalles Dietas"><button>Ver</button></td>
+            <td data-label="Acciones"><button>Editar</button><button>Borrar</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

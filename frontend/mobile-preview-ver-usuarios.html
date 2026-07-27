@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preview Movil - Ver Usuarios</title>
+  <link rel="stylesheet" href="css/ver_usuarios.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header-section">
+      <h1 class="title">👥 Usuarios Registrados</h1>
+    </div>
+    <div class="table-container">
+      <table id="user-table">
+        <thead>
+          <tr>
+            <th>Usuario</th><th>Nombre Completo</th><th>Email</th><th>DNI</th><th>Telefono</th><th>Direccion</th><th>Km</th><th>Club</th><th>Rol</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="user-table-body">
+          <tr>
+            <td data-label="Usuario"><strong>ana01</strong></td>
+            <td data-label="Nombre Completo">Ana Ruiz</td>
+            <td data-label="Email">ana@club.es</td>
+            <td data-label="DNI">12345678A</td>
+            <td data-label="Telefono">600111222</td>
+            <td data-label="Direccion">Calle Mayor 12</td>
+            <td data-label="Km">14</td>
+            <td data-label="Club">1337</td>
+            <td data-label="Rol">voluntario</td>
+            <td data-label="Acciones"><button>✏️ Editar</button><button>🚪 Dar de baja</button><button class="deny-access-btn">Denegar Acceso</button></td>
+          </tr>
+          <tr>
+            <td data-label="Usuario"><strong>carlos02</strong></td>
+            <td data-label="Nombre Completo">Carlos Diaz</td>
+            <td data-label="Email">carlos@club.es</td>
+            <td data-label="DNI">87654321B</td>
+            <td data-label="Telefono">600333444</td>
+            <td data-label="Direccion">Av. Deporte 9</td>
+            <td data-label="Km">8</td>
+            <td data-label="Club">1337</td>
+            <td data-label="Rol">voluntario</td>
+            <td data-label="Acciones"><button>✏️ Editar</button><button>🚪 Dar de baja</button><button class="deny-access-btn">Denegar Acceso</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
