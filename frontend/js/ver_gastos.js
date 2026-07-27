@@ -41,12 +41,28 @@ function applyMobileExpenseTableLabels() {
         if (cells.length === 1 && cells[0].colSpan > 1) {
             row.classList.add('mobile-full-row');
             cells[0].setAttribute('data-label', '');
+            if (cells[0].querySelector('.mobile-value')) {
+                cells[0].textContent = cells[0].querySelector('.mobile-value').textContent;
+            }
             return;
         }
 
         row.classList.remove('mobile-full-row');
         cells.forEach((cell, index) => {
             cell.setAttribute('data-label', headers[index] || 'Dato');
+
+            const existingValue = cell.querySelector('.mobile-value');
+            if (existingValue) {
+                existingValue.textContent = existingValue.textContent.trim();
+                return;
+            }
+
+            const valueText = cell.textContent.trim();
+            cell.textContent = '';
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'mobile-value';
+            valueSpan.textContent = valueText;
+            cell.appendChild(valueSpan);
         });
     });
 }
