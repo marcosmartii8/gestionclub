@@ -97,7 +97,7 @@ const params = new URLSearchParams(window.location.search);
                     <div id="dietExpensesDetails" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;"></div>
                 </div>
                 <div>
-                    <label style="color: black;" for="weeksInMonth">Marcar semanas que tiene el mes</label>
+                    <label style="color: black;" for="weeksInMonth">Marcar semanas que asistes este mes</label>
                     <select id="weeksInMonth" style="width: 100%; padding: 8px;">
                         <option value="1">1 semana</option>
                         <option value="2">2 semanas</option>
