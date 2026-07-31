@@ -457,92 +457,55 @@ tr:nth-child(even) td {
 
 @media (max-width: 640px) {
     #gastos-table {
-        overflow: visible;
-        max-height: none;
-        border: 0;
-        background: transparent;
+        overflow: auto;
+        max-height: 56vh;
+        border: 1px solid #d2e7e3;
+        background: #fff;
+        -webkit-overflow-scrolling: touch;
     }
 
     #gastos-table table {
-        min-width: 0 !important;
-        display: block;
+        min-width: 720px;
+        display: table;
         box-shadow: none;
         background: transparent;
     }
 
     #gastos-table thead {
-        display: none;
-    }
-
-    #gastos-table,
-    #gastos-table tbody,
-    #gastos-table tr,
-    #gastos-table td {
-        display: block;
-        width: 100%;
+        display: table-header-group;
     }
 
     #gastos-table tbody {
+        display: table-row-group;
         max-height: none;
         overflow: visible;
     }
 
     #gastos-table tr {
-        margin: 0 0 14px;
-        padding: 12px;
-        border: 1px solid #d9ece8;
-        border-radius: 12px;
-        background: #ffffff;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+        display: table-row;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
     }
 
     #gastos-table tr:hover {
         transform: none;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+        box-shadow: none;
     }
 
     #gastos-table td {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-        text-align: right;
-        padding: 8px 0;
-        border-bottom: 1px dashed #d7e9e5;
-        font-size: 0.84rem;
-        white-space: normal;
-    }
-
-    #gastos-table td .mobile-value {
-        font-weight: 600;
-        color: #263238;
-        text-align: right;
-        word-break: break-word;
+        display: table-cell;
+        text-align: left;
+        padding: 7px 5px;
+        border-bottom: 1px solid #e5ecea;
+        white-space: nowrap;
     }
 
     #gastos-table td::before {
-        content: attr(data-label);
-        min-width: 48%;
-        text-align: left;
-        color: #004d40;
-        font-weight: 700;
-    }
-
-    #gastos-table td:last-child {
-        border-bottom: 0;
-    }
-
-    #gastos-table tr.mobile-full-row td,
-    #gastos-table tr.summary-row td {
-        display: block;
-        text-align: center;
-        border-bottom: 0;
-    }
-
-    #gastos-table tr.mobile-full-row td::before,
-    #gastos-table tr.summary-row td::before {
-        content: '';
-        display: none;
+        content: none;
     }
 }
 
