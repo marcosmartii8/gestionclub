@@ -1,6 +1,7 @@
 let sortDirection = {}; // Para controlar la dirección de ordenación por columna
 let allUsers = []; // Almacenar todos los usuarios cargados
 let currentFilter = 'activos'; // Filtro actual
+let currentSearch = ''; // Búsqueda actual por usuario
 
 function applyMobileUserTableLabels() {
     const table = document.getElementById('user-table');
@@ -112,8 +113,8 @@ async function loadUsers() {
             return;
         }
 
-        // Aplicar filtro actual
-        renderUsers(filterUsersByAccess(users, currentFilter));
+        // Aplicar filtros actuales
+        applyCurrentFilters();
     } catch (err) {
         console.error('❌ Error cargando usuarios:', err);
         tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: red;">Error al cargar usuarios</td></tr>';
@@ -137,15 +138,32 @@ function filterUsersByAccess(users, filter) {
 
 function filterUsers(filter) {
     currentFilter = filter;
+
+    const filterSelect = document.getElementById('user-filter');
+    if (filterSelect && filterSelect.value !== filter) {
+        filterSelect.value = filter;
+    }
     
-    // Actualizar botones activos
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('active');
+    applyCurrentFilters();
+}
+
+function searchUsers(searchValue) {
+    currentSearch = (searchValue || '').trim().toLowerCase();
+    applyCurrentFilters();
+}
+
+function filterUsersByFullName(users, searchValue) {
+    if (!searchValue) return users;
+
+    return users.filter((user) => {
+        const fullName = (user.fullName || '').toLowerCase();
+        return fullName.includes(searchValue);
     });
-    document.getElementById(`btn-${filter}`).classList.add('active');
-    
-    // Aplicar filtro
-    const filteredUsers = filterUsersByAccess(allUsers, filter);
+}
+
+function applyCurrentFilters() {
+    let filteredUsers = filterUsersByAccess(allUsers, currentFilter);
+    filteredUsers = filterUsersByFullName(filteredUsers, currentSearch);
     renderUsers(filteredUsers);
 }
 

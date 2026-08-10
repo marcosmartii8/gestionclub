@@ -29,11 +29,20 @@
         
         <!-- Filtros -->
         <div class="filter-container">
-            <label>Filtrar por:</label>
-            <button class="filter-btn active" onclick="filterUsers('activos')" id="btn-activos">✅ Activos</button>
-            <button class="filter-btn" onclick="filterUsers('exmiembros')" id="btn-exmiembros">🚪 Ex-miembros</button>
-            <button class="filter-btn" onclick="filterUsers('denegados')" id="btn-denegados">❌ Acceso Denegado</button>
-            <button class="filter-btn" onclick="filterUsers('todos')" id="btn-todos">Todos</button>
+            <label for="user-filter">Filtrar por:</label>
+            <select id="user-filter" class="filter-select" onchange="filterUsers(this.value)">
+                <option value="activos" selected>✅ Activos</option>
+                <option value="exmiembros">🚪 Ex-miembros</option>
+                <option value="denegados">❌ Acceso Denegado</option>
+                <option value="todos">Todos</option>
+            </select>
+            <input
+                type="text"
+                id="user-search"
+                class="filter-search"
+                placeholder="Buscar por nombre completo..."
+                oninput="searchUsers(this.value)"
+            >
         </div>
         
         <div class="table-container">
