@@ -8,6 +8,10 @@ const params = new URLSearchParams(window.location.search);
 
         const userData = JSON.parse(localStorage.getItem(username)) || {};
 
+        function getUserDisplayName() {
+            return userData.fullName || userData.fullname || userData.full_name || username;
+        }
+
         function getAuthHeaders(extraHeaders = {}) {
             if (window.AuthUtils && typeof window.AuthUtils.getAuthHeaders === 'function') {
                 return window.AuthUtils.getAuthHeaders({ userHint: username, extraHeaders });
@@ -676,7 +680,11 @@ const params = new URLSearchParams(window.location.search);
                     }
                     if (fileInput && fileInput.files[0]) {
                         try {
-                            const uploadResult = await uploadFileToSupabase(fileInput.files[0], 'gastos_transporte');
+                            const uploadResult = await uploadFileToSupabase(
+                                fileInput.files[0],
+                                'gastos_transporte',
+                                window.buildFormTicketBaseName?.(getUserDisplayName(), document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, `transporte_${idx + 1}`) || ''
+                            );
                             fileUrl = uploadResult.url;
                         } catch (e) {
                             alert('Error subiendo archivo de transporte: ' + e.message);
@@ -702,7 +710,11 @@ const params = new URLSearchParams(window.location.search);
                     }
                     if (fileInput && fileInput.files[0]) {
                         try {
-                            const uploadResult = await uploadFileToSupabase(fileInput.files[0], 'gastos_dietas');
+                            const uploadResult = await uploadFileToSupabase(
+                                fileInput.files[0],
+                                'gastos_dietas',
+                                window.buildFormTicketBaseName?.(getUserDisplayName(), document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, `dieta_${idx + 1}`) || ''
+                            );
                             fileUrl = uploadResult.url;
                         } catch (e) {
                             alert('Error subiendo archivo de dieta: ' + e.message);

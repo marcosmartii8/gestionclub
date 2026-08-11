@@ -3,6 +3,32 @@ const SUPABASE_URL = 'https://ugfrdrtycslcrnyovjvw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnZnJkcnR5Y3NsY3JueW92anZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyODkxNDksImV4cCI6MjA4NTg2NTE0OX0.iyLzicI9xXbFGE1NezNjOkAvqoId6wF3ZGh4RK7FE_Q';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const MONTH_NAMES_ES = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+];
+
+function normalizeFileNamePart(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .toLowerCase();
+}
+
+window.buildFormTicketBaseName = function buildFormTicketBaseName(ownerName, year, month, suffix = '') {
+    const ownerPart = normalizeFileNamePart(ownerName) || 'usuario';
+    const parsedYear = Number(year);
+    const parsedMonth = Number(month);
+    const monthPart = Number.isInteger(parsedMonth) && parsedMonth >= 0 && parsedMonth < MONTH_NAMES_ES.length
+        ? MONTH_NAMES_ES[parsedMonth]
+        : normalizeFileNamePart(month) || 'mes';
+    const yearPart = Number.isFinite(parsedYear) && parsedYear > 0 ? String(parsedYear) : 'sin_anio';
+    const suffixPart = normalizeFileNamePart(suffix);
+
+    return [ownerPart, monthPart, yearPart, suffixPart].filter(Boolean).join('_');
+};
 
 // Comprobación de conexión a Supabase al cargar
 (async function checkSupabaseConnection() {
@@ -21,7 +47,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
 })();
 // Función para subir archivo a Supabase Storage
-window.uploadFileToSupabase = async function uploadFileToSupabase(file, folder = 'formularios') {
+window.uploadFileToSupabase = async function uploadFileToSupabase(file, folder = 'formularios', customBaseName = '') {
     if (!file) return null;
 
     try {
@@ -37,11 +63,12 @@ window.uploadFileToSupabase = async function uploadFileToSupabase(file, folder =
             throw new Error('Tipo de archivo no permitido. Solo se permiten imágenes (JPG, PNG, GIF, WEBP) y PDF');
         }
 
-        // Generar nombre único para el archivo
-        const timestamp = Date.now();
-        const randomString = Math.random().toString(36).substring(2, 15);
         const fileExtension = file.name.split('.').pop();
-        const fileName = `${timestamp}_${randomString}.${fileExtension}`;
+        const baseName = normalizeFileNamePart(customBaseName);
+        const timestamp = Date.now();
+        const randomString = Math.random().toString(36).substring(2, 8);
+        const fileStem = baseName || `${timestamp}_${randomString}`;
+        const fileName = `${fileStem}.${fileExtension}`;
         const filePath = `${folder}/${fileName}`;
 
         console.log('📤 Subiendo archivo:', fileName);

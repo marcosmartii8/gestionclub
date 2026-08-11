@@ -2,6 +2,11 @@ const params = new URLSearchParams(window.location.search);
         const username = params.get('nombre');
         const currentUserData = JSON.parse(localStorage.getItem(username));
 
+        function getUserDisplayName(targetUsername) {
+            const user = allUsers[targetUsername] || {};
+            return user.fullName || user.fullname || user.full_name || targetUsername;
+        }
+
         function getAuthHeaders(extraHeaders = {}) {
             if (window.AuthUtils && typeof window.AuthUtils.getAuthHeaders === 'function') {
                 return window.AuthUtils.getAuthHeaders({ userHint: username, extraHeaders });
@@ -615,17 +620,13 @@ const params = new URLSearchParams(window.location.search);
                     const hasTransport = formData.transportExpenses && formData.transportExpenses.length > 0;
                     const transportDetailsContent = hasTransport
                         ? formData.transportExpenses.map(expense => {
+                            let fileUrl = expense.url || expense.fileUrl || (typeof expense.file === 'string' ? expense.file : (expense.file && expense.file.url)) || null;
+                            let fileType = expense.type || (expense.file && typeof expense.file === 'object' ? expense.file.type : '');
+                            let fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
                             let fileLink = '';
-                            if (expense.file) {
-                                const fileUrl = typeof expense.file === 'string' ? expense.file : expense.file.url;
-                                const fileType = typeof expense.file === 'object' ? expense.file.type : '';
-                                const fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
-                                
-                                if (fileUrl) {
-                                    fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #0288d1;">${fileIcon} Ver archivo</a>`;
-                                }
+                            if (fileUrl) {
+                                fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #0288d1;">${fileIcon} Ver archivo</a>`;
                             }
-                            
                             return `Fecha: ${expense.date}, Concepto: ${expense.concept || ''}, Importe: ${expense.amount}€${fileLink}`;
                         }).join('<br>')
                         : '<em style="color: #999;">No hay datos</em>';
@@ -639,17 +640,13 @@ const params = new URLSearchParams(window.location.search);
                     const hasDiets = formData.dietExpenses && formData.dietExpenses.length > 0;
                     const dietDetailsContent = hasDiets
                         ? formData.dietExpenses.map(expense => {
+                            let fileUrl = expense.url || expense.fileUrl || (typeof expense.file === 'string' ? expense.file : (expense.file && expense.file.url)) || null;
+                            let fileType = expense.type || (expense.file && typeof expense.file === 'object' ? expense.file.type : '');
+                            let fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
                             let fileLink = '';
-                            if (expense.file) {
-                                const fileUrl = typeof expense.file === 'string' ? expense.file : expense.file.url;
-                                const fileType = typeof expense.file === 'object' ? expense.file.type : '';
-                                const fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
-                                
-                                if (fileUrl) {
-                                    fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #f57c00;">${fileIcon} Ver archivo</a>`;
-                                }
+                            if (fileUrl) {
+                                fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #f57c00;">${fileIcon} Ver archivo</a>`;
                             }
-                            
                             return `Fecha: ${expense.date}, Concepto: ${expense.concept}, Importe: ${expense.amount}€${fileLink}`;
                         }).join('<br>')
                         : '<em style="color: #999;">No hay datos</em>';
@@ -997,7 +994,11 @@ const params = new URLSearchParams(window.location.search);
                     if (fileInput && fileInput.files && fileInput.files[0]) {
                         // Subir archivo nuevo a Supabase
                         try {
-                            const uploadResult = await window.uploadFileToSupabase(fileInput.files[0], 'gastos_transporte');
+                            const uploadResult = await window.uploadFileToSupabase(
+                                fileInput.files[0],
+                                'gastos_transporte',
+                                window.buildFormTicketBaseName?.(getUserDisplayName(formUser), year, month, `transporte_${idx + 1}`) || ''
+                            );
                             if (uploadResult && uploadResult.url) {
                                 expense.fileUrl = uploadResult.url;
                                 expense.file = uploadResult.url;
@@ -1029,7 +1030,11 @@ const params = new URLSearchParams(window.location.search);
                     if (fileInput && fileInput.files && fileInput.files[0]) {
                         // Subir archivo nuevo a Supabase
                         try {
-                            const uploadResult = await window.uploadFileToSupabase(fileInput.files[0], 'gastos_dietas');
+                            const uploadResult = await window.uploadFileToSupabase(
+                                fileInput.files[0],
+                                'gastos_dietas',
+                                window.buildFormTicketBaseName?.(getUserDisplayName(formUser), year, month, `dieta_${idx + 1}`) || ''
+                            );
                             if (uploadResult && uploadResult.url) {
                                 expense.fileUrl = uploadResult.url;
                                 expense.file = uploadResult.url;
