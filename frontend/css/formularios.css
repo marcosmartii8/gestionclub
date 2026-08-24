@@ -999,7 +999,7 @@ html {
         text-transform: uppercase;
     }
 
-    .data-table td:nth-child(1)::before { content: 'Ano'; }
+    .data-table td:nth-child(1)::before { content: 'Año'; }
     .data-table td:nth-child(2)::before { content: 'Mes'; }
     .data-table td:nth-child(3)::before { content: 'Dias asistencia'; }
     .data-table td:nth-child(4)::before { content: 'Desplazamientos'; }
