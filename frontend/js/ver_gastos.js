@@ -109,7 +109,7 @@ async function cargarGastos() {
                     totalGastoDietas += parseFloat(exp.amount) || 0;
                 });
 
-                const kmClub = parseFloat(userData.km) || 0;
+                const kmClub = parseFloat(formData.residenceKm ?? formData.kmResidencia ?? formData.residence_km) || 0;
                 const asistencia = parseInt(formData.trainingAttendance) || 0;
                 const recorrido = kmClub * 2 * asistencia;
                 const gastoRecorrido = recorrido * 0.26;
