@@ -683,7 +683,8 @@ const params = new URLSearchParams(window.location.search);
                             const uploadResult = await uploadFileToSupabase(
                                 fileInput.files[0],
                                 'gastos_transporte',
-                                window.buildFormTicketBaseName?.(getUserDisplayName(), document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, `transporte_${idx + 1}`) || ''
+                                window.buildFormTicketBaseName?.(getUserDisplayName(), document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, `transporte_${idx + 1}`) || '',
+                                window.buildFormTicketFolder?.(userData.clubCode, username, document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, 'transporte') || ''
                             );
                             fileUrl = uploadResult.url;
                         } catch (e) {
@@ -713,7 +714,8 @@ const params = new URLSearchParams(window.location.search);
                             const uploadResult = await uploadFileToSupabase(
                                 fileInput.files[0],
                                 'gastos_dietas',
-                                window.buildFormTicketBaseName?.(getUserDisplayName(), document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, `dieta_${idx + 1}`) || ''
+                                window.buildFormTicketBaseName?.(getUserDisplayName(), document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, `dieta_${idx + 1}`) || '',
+                                window.buildFormTicketFolder?.(userData.clubCode, username, document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, 'dietas') || ''
                             );
                             fileUrl = uploadResult.url;
                         } catch (e) {

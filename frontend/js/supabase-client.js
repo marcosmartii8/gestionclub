@@ -30,6 +30,16 @@ window.buildFormTicketBaseName = function buildFormTicketBaseName(ownerName, yea
     return [ownerPart, monthPart, yearPart, suffixPart].filter(Boolean).join('_');
 };
 
+window.buildFormTicketFolder = function buildFormTicketFolder(clubCode, ownerName, year, month, category) {
+    const clubPart = normalizeFileNamePart(clubCode) || 'club_sin_codigo';
+    const ownerPart = normalizeFileNamePart(ownerName) || 'usuario';
+    const yearPart = Number.isFinite(Number(year)) ? String(year) : 'sin_anio';
+    const monthPart = Number.isFinite(Number(month)) ? String(Number(month) + 1).padStart(2, '0') : 'sin_mes';
+    const categoryPart = normalizeFileNamePart(category) || 'formularios';
+
+    return ['clubs', clubPart, 'usuarios', ownerPart, yearPart, monthPart, categoryPart].join('/');
+};
+
 // Comprobación de conexión a Supabase al cargar
 (async function checkSupabaseConnection() {
     try {
@@ -47,7 +57,7 @@ window.buildFormTicketBaseName = function buildFormTicketBaseName(ownerName, yea
     }
 })();
 // Función para subir archivo a Supabase Storage
-window.uploadFileToSupabase = async function uploadFileToSupabase(file, folder = 'formularios', customBaseName = '') {
+window.uploadFileToSupabase = async function uploadFileToSupabase(file, folder = 'formularios', customBaseName = '', storageFolder = '') {
     if (!file) return null;
 
     try {
@@ -69,7 +79,7 @@ window.uploadFileToSupabase = async function uploadFileToSupabase(file, folder =
         const randomString = Math.random().toString(36).substring(2, 8);
         const fileStem = baseName || `${timestamp}_${randomString}`;
         const fileName = `${fileStem}.${fileExtension}`;
-        const filePath = `${folder}/${fileName}`;
+        const filePath = `${storageFolder || folder}/${fileName}`;
 
         console.log('📤 Subiendo archivo:', fileName);
 

@@ -1003,7 +1003,8 @@ const params = new URLSearchParams(window.location.search);
                             const uploadResult = await window.uploadFileToSupabase(
                                 fileInput.files[0],
                                 'gastos_transporte',
-                                window.buildFormTicketBaseName?.(getUserDisplayName(formUser), year, month, `transporte_${idx + 1}`) || ''
+                                window.buildFormTicketBaseName?.(getUserDisplayName(formUser), year, month, `transporte_${idx + 1}`) || '',
+                                window.buildFormTicketFolder?.(currentClubCode, formUser, year, month, 'transporte') || ''
                             );
                             if (uploadResult && uploadResult.url) {
                                 expense.fileUrl = uploadResult.url;
@@ -1039,7 +1040,8 @@ const params = new URLSearchParams(window.location.search);
                             const uploadResult = await window.uploadFileToSupabase(
                                 fileInput.files[0],
                                 'gastos_dietas',
-                                window.buildFormTicketBaseName?.(getUserDisplayName(formUser), year, month, `dieta_${idx + 1}`) || ''
+                                window.buildFormTicketBaseName?.(getUserDisplayName(formUser), year, month, `dieta_${idx + 1}`) || '',
+                                window.buildFormTicketFolder?.(currentClubCode, formUser, year, month, 'dietas') || ''
                             );
                             if (uploadResult && uploadResult.url) {
                                 expense.fileUrl = uploadResult.url;
