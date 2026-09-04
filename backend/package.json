@@ -6,7 +6,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "start:dev": "nodemon src/server.js"
+    "start:dev": "nodemon src/server.js",
+    "cleanup:tickets": "node src/cleanup-ticket-files.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.94.1",
