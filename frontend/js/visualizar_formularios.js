@@ -782,6 +782,8 @@ const params = new URLSearchParams(window.location.search);
                         matches: formData.matches ?? formData.desplazamientos ?? [],
                         transportExpenses: formData.transportExpenses ?? formData.gastosTransporte ?? formData.gastos_transporte ?? [],
                         dietExpenses: formData.dietExpenses ?? formData.gastosDietas ?? formData.gastos_dietas ?? [],
+                        residenceAddress: formData.residenceAddress ?? formData.direccionResidencia ?? formData.residence_address ?? '',
+                        residenceKm: formData.residenceKm ?? formData.kmResidencia ?? formData.residence_km ?? '',
                         weeksInMonth: formData.weeksInMonth ?? formData.semanas ?? 0
                     };
                     // Almacenar archivos existentes en una variable global accesible, robusto para todos los campos posibles
@@ -807,6 +809,10 @@ const params = new URLSearchParams(window.location.search);
                                 </select>
                                 <label style="color: black;">Asistencia entrenamientos y partidos:</label>
                                 <input type="number" id="edit-trainingAttendance" value="${formData.trainingAttendance}">
+                                <label style="color: black;">Dirección/Población de residencia (mes):</label>
+                                <input type="text" id="edit-residenceAddress" value="${formData.residenceAddress}" placeholder="Residencia para este mes">
+                                <label style="color: black;">Km hasta el club (mes):</label>
+                                <input type="number" id="edit-residenceKm" value="${formData.residenceKm}" placeholder="Km para este mes">
                                 <h3>Desplazamientos fuera del club:</h3>
                                 <div id="edit-awayMatches">
                                     ${(formData.matches || []).map((match, index) => `
@@ -1057,6 +1063,8 @@ const params = new URLSearchParams(window.location.search);
                     year: parseInt(year),
                     month: parseInt(month),
                     asistencia: parseInt(document.getElementById('edit-trainingAttendance').value) || 0,
+                    residenceAddress: document.getElementById('edit-residenceAddress').value.trim(),
+                    residenceKm: document.getElementById('edit-residenceKm').value,
                     desplazamientos: matches,
                     gastosTransporte: transportExpenses,
                     gastosDietas: dietExpenses,
