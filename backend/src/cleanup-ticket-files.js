@@ -6,16 +6,12 @@ dotenv.config();
 const BUCKET = 'formularios-archivos';
 const ROOT_FOLDER = 'clubs';
 const RETENTION_MONTHS = 12;
-const EXECUTE = process.argv.includes('--execute');
-
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('SUPABASE_URL y SUPABASE_SERVICE_KEY son obligatorios');
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = supabaseUrl && supabaseKey
+  ? createClient(supabaseUrl, supabaseKey)
+  : null;
 
 function getCutoffPeriod() {
   const cutoff = new Date();
@@ -96,7 +92,11 @@ async function clearDatabaseReferences(filePaths) {
   }
 }
 
-async function main() {
+export async function cleanupTicketFiles({ execute = false } = {}) {
+  if (!supabase) {
+    throw new Error('SUPABASE_URL y SUPABASE_SERVICE_KEY son obligatorios para limpiar tickets');
+  }
+
   const cutoff = getCutoffPeriod();
   const allFiles = await listFiles(ROOT_FOLDER);
   const candidates = allFiles.filter((filePath) => {
@@ -110,13 +110,13 @@ async function main() {
 
   candidates.forEach((filePath) => console.log(`- ${filePath}`));
 
-  if (!EXECUTE) {
+  if (!execute) {
     console.log('Modo previsualización: no se ha borrado ningún archivo.');
     console.log('Para ejecutar el borrado usa: npm run cleanup:tickets -- --execute');
-    return;
+    return candidates.length;
   }
 
-  if (candidates.length === 0) return;
+  if (candidates.length === 0) return 0;
 
   await clearDatabaseReferences(candidates);
 
@@ -127,9 +127,12 @@ async function main() {
   }
 
   console.log(`Eliminados ${candidates.length} archivos y sus referencias. Los formularios se han conservado.`);
+  return candidates.length;
 }
 
-main().catch((error) => {
-  console.error('Error limpiando tickets:', error.message);
-  process.exitCode = 1;
-});
+if (process.argv[1] && process.argv[1].endsWith('cleanup-ticket-files.js')) {
+  cleanupTicketFiles({ execute: process.argv.includes('--execute') }).catch((error) => {
+    console.error('Error limpiando tickets:', error.message);
+    process.exitCode = 1;
+  });
+}
