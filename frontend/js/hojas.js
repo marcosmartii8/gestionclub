@@ -63,6 +63,29 @@
 
         // Map: username -> array de { year, month, formData }
         let userFormsMap = {};
+        const clubPresidentCache = {};
+
+        async function getClubPresident(clubCode) {
+            if (!clubCode) return { name: '', dni: '' };
+            if (clubPresidentCache[clubCode]) return clubPresidentCache[clubCode];
+
+            try {
+                const response = await fetch('/api/clubs');
+                if (!response.ok) return { name: '', dni: '' };
+
+                const clubs = await response.json();
+                const club = clubs.find((item) => item.club_code === clubCode);
+                const president = {
+                    name: club?.nom_presidente || '',
+                    dni: club?.dni_presidente || ''
+                };
+                clubPresidentCache[clubCode] = president;
+                return president;
+            } catch (error) {
+                console.error('Error obteniendo datos del presidente:', error);
+                return { name: '', dni: '' };
+            }
+        }
 
         async function cargarFormularios() {
             try {
@@ -233,6 +256,7 @@
                     headers: getAuthHeaders()
                 });
                 const userData = userResponse.ok ? await userResponse.json() : {};
+                const president = await getClubPresident(userData.clubCode);
                 const residenceAddress = (formData.residenceAddress ?? formData.direccionResidencia ?? userData.address) || '';
                 const residenceKmRaw = formData.residenceKm ?? formData.kmResidencia ?? userData.km;
                 const residenceKm = residenceKmRaw !== undefined && residenceKmRaw !== null ? String(residenceKmRaw) : '';
@@ -660,28 +684,16 @@
             // Mostrar la fecha justo debajo del DNI del solicitante
             doc.text('Fecha: ' + new Date().toLocaleDateString(), 190, fechaY, { align: 'right' });
 
-            // Obtener datos del presidente desde la vista (ya renderizados en presidente-details)
-            let nombrePresidente = '';
-            let dniPresidente = '';
-            const presidenteDiv = document.getElementById('presidente-details');
-            if (presidenteDiv) {
-                const html = presidenteDiv.innerHTML;
-                const matchNombre = html.match(/Presidente:<\/strong> ([^<]+)/);
-                const matchDni = html.match(/DNI Presidente:<\/strong> ([^<]+)/);
-                if (matchNombre) nombrePresidente = matchNombre[1];
-                if (matchDni) dniPresidente = matchDni[1];
-            }
-
             // Mostrar nombre y DNI del presidente justo debajo de la línea de firma del presidente
             let yPresidente = y - 2; // y está justo después de la línea de firma
             doc.setFontSize(10);
             doc.setTextColor(44, 62, 80);
-            if (nombrePresidente) {
-                doc.text(`${nombrePresidente}`, 10, yPresidente);
+            if (president.name) {
+                doc.text(president.name, 10, yPresidente);
                 yPresidente += 6;
             }
-            if (dniPresidente) {
-                doc.text(`${dniPresidente}`, 10, yPresidente);
+            if (president.dni) {
+                doc.text(president.dni, 10, yPresidente);
                 yPresidente += 6;
             }
 
@@ -747,6 +759,7 @@
         async function generarPDFIndividual(formData, userData) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
+            const president = await getClubPresident(userData.clubCode);
             const residenceAddress = (formData.residenceAddress ?? formData.direccionResidencia ?? userData.address) || '';
             const residenceKmRaw = formData.residenceKm ?? formData.kmResidencia ?? userData.km;
             const residenceKm = residenceKmRaw !== undefined && residenceKmRaw !== null ? String(residenceKmRaw) : '';
@@ -1070,8 +1083,11 @@
             doc.text('Firma del solicitante:', 150, y); y += 12;
             doc.text('________________________',10,y - 10);
             doc.text('________________________',150,y - 10);
-            y += 6;
-            doc.text('Fecha: ' + new Date().toLocaleDateString(), 170, y);
+            doc.text(president.name || '', 10, y - 4);
+            doc.text(president.dni || '', 10, y + 2);
+            doc.text(userData.fullName || '', 150, y - 4);
+            doc.text(userData.dni || '', 150, y + 2);
+            doc.text('Fecha: ' + new Date().toLocaleDateString(), 170, y + 8);
 
             return doc;
         }
