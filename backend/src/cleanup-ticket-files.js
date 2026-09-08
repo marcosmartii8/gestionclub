@@ -5,7 +5,7 @@ dotenv.config();
 
 const BUCKET = 'formularios-archivos';
 const ROOT_FOLDER = 'clubs';
-const RETENTION_MONTHS = 12;
+const RETENTION_MONTHS = Number(process.env.TICKET_RETENTION_MONTHS || 3);
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 

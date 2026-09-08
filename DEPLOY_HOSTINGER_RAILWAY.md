@@ -49,6 +49,7 @@ Configura al menos estas variables:
 - `CORS_ALLOWED_ORIGINS=https://app.tudominio.com,http://localhost:3000,http://127.0.0.1:3000`
 - `TICKET_CLEANUP_ENABLED=true`
 - `TICKET_CLEANUP_INTERVAL_MS=86400000`
+- `TICKET_RETENTION_MONTHS=3`
 
 Si vas a usar mas dominios, agregalos separados por comas.
 
@@ -68,7 +69,7 @@ Si vas a usar mas dominios, agregalos separados por comas.
 ## Retención de tickets
 
 Los tickets nuevos se organizan en Storage por club, usuario, año, mes y categoría.
-La limpieza automática revisa una vez al día los tickets organizados con más de 12 meses,
+La limpieza automática revisa una vez al día los tickets organizados con más de 3 meses,
 elimina solo el archivo de Storage y conserva el formulario y los datos del gasto.
 
 Los archivos antiguos, subidos antes de esta organización, no se eliminan automáticamente.
