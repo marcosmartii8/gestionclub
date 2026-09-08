@@ -1081,13 +1081,14 @@
             doc.setFont("helvetica", "normal");
             doc.text('Firma del presidente:',10,y); 
             doc.text('Firma del solicitante:', 150, y); y += 12;
-            doc.text('________________________',10,y - 10);
-            doc.text('________________________',150,y - 10);
-            doc.text(president.name || '', 10, y - 4);
-            doc.text(president.dni || '', 10, y + 2);
-            doc.text(userData.fullName || '', 150, y - 4);
-            doc.text(userData.dni || '', 150, y + 2);
-            doc.text('Fecha: ' + new Date().toLocaleDateString(), 170, y + 8);
+            const signatureLineY = y + 8;
+            doc.text('________________________', 10, signatureLineY);
+            doc.text('________________________', 150, signatureLineY);
+            doc.text(president.name || '', 10, signatureLineY + 6);
+            doc.text(president.dni || '', 10, signatureLineY + 12);
+            doc.text(userData.fullName || '', 150, signatureLineY + 6);
+            doc.text(userData.dni || '', 150, signatureLineY + 12);
+            doc.text('Fecha: ' + new Date().toLocaleDateString(), 170, signatureLineY + 18);
 
             return doc;
         }
