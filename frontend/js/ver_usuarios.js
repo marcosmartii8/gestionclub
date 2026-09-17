@@ -349,96 +349,88 @@ function exportToExcel() {
     try {
         const table = document.getElementById('user-table');
         const rows = Array.from(table.rows);
-        
-        // Preparar datos: excluir columna de acciones
-        let datos = [];
-        
-        // Obtener headers (sin la columna de acciones)
+
         const headers = Array.from(rows[0].cells).slice(0, -1).map(cell => cell.innerText);
-        
-        // Obtener datos (sin la columna de acciones)
-        rows.slice(1).forEach(row => {
+        const datos = rows.slice(1).map(row => {
             const rowData = {};
             Array.from(row.cells).slice(0, -1).forEach((cell, index) => {
-                rowData[headers[index]] = cell.innerText;
+                rowData[headers[index]] = cell.innerText.trim();
             });
-            datos.push(rowData);
+            return rowData;
         });
-        
+
         if (datos.length === 0) {
             notify('No hay datos para exportar', 'info');
             return;
         }
-        
-        // Intentar usar XLSX si está disponible
-        if (typeof XLSX !== 'undefined') {
-            try {
-                const ws = XLSX.utils.json_to_sheet(datos);
-                
-                // Aplicar estilos a los headers
-                const headerStyle = {
-                    fill: { fgColor: { rgb: "FF004D40" } },
-                    font: { bold: true, color: { rgb: "FFFFFFFF" } },
-                    alignment: { horizontal: "center", vertical: "center" },
-                    border: {
-                        top: { style: "thin", color: { rgb: "FF000000" } },
-                        bottom: { style: "thin", color: { rgb: "FF000000" } },
-                        left: { style: "thin", color: { rgb: "FF000000" } },
-                        right: { style: "thin", color: { rgb: "FF000000" } }
-                    }
-                };
-                
-                // Aplicar estilos a datos
-                const dataStyle = {
-                    alignment: { horizontal: "left", vertical: "center" },
-                    border: {
-                        top: { style: "thin", color: { rgb: "FFD3D3D3" } },
-                        bottom: { style: "thin", color: { rgb: "FFD3D3D3" } },
-                        left: { style: "thin", color: { rgb: "FFD3D3D3" } },
-                        right: { style: "thin", color: { rgb: "FFD3D3D3" } }
-                    }
-                };
-                
-                // Aplicar formato a headers
-                headers.forEach((header, colIndex) => {
-                    const cellAddress = XLSX.utils.encode_col(colIndex) + '1';
-                    ws[cellAddress].s = headerStyle;
-                });
-                
-                // Aplicar formato a datos
-                datos.forEach((row, rowIndex) => {
-                    headers.forEach((header, colIndex) => {
-                        const cellAddress = XLSX.utils.encode_col(colIndex) + (rowIndex + 2);
-                        if (ws[cellAddress]) {
-                            ws[cellAddress].s = dataStyle;
-                        }
-                    });
-                });
-                
-                // Ajustar ancho de columnas
-                const wscols = headers.map(() => ({ wch: 15 }));
-                ws['!cols'] = wscols;
-                
-                // Fijar la fila de headers
-                ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-                
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Usuarios');
-                
-                const hoy = new Date();
-                const nombreArchivo = `Usuarios_${hoy.toISOString().slice(0,10)}.xlsx`;
-                XLSX.writeFile(wb, nombreArchivo);
-                return;
-            } catch (error) {
-                console.error('Error con XLSX:', error);
-            }
-        }
-        
-        // Si XLSX no funciona, generar CSV
-        generarCSVUsuarios(datos);
+
+        generarExcelHTMLUsuarios(datos, headers);
     } catch (error) {
         console.error('Error al exportar:', error);
         notify('Error al exportar usuarios', 'error');
+    }
+}
+
+function generarExcelHTMLUsuarios(datos, headers) {
+    try {
+        const escaparHTML = valor => String(valor ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        const fechaTexto = new Date().toLocaleDateString('es-ES');
+        const columnas = headers.length;
+        const encabezados = headers.map(header => `<th>${escaparHTML(header)}</th>`).join('');
+        const filas = datos.map((fila, indice) => {
+            const clase = indice % 2 === 0 ? 'fila-clara' : 'fila-alterna';
+            return `<tr class="${clase}">${headers.map(header => `<td>${escaparHTML(fila[header])}</td>`).join('')}</tr>`;
+        }).join('');
+        const total = `<tr class="fila-total"><td colspan="${columnas - 1}">TOTAL USUARIOS</td><td>${datos.length}</td></tr>`;
+        const htmlExcel = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: Calibri, Arial, sans-serif; color: #263238; }
+    table { border-collapse: collapse; min-width: 1200px; }
+    th, td { border: 1px solid #7f8c8d; padding: 8px 10px; white-space: nowrap; }
+    .titulo { background: #004d40; color: #ffffff; font-size: 18pt; font-weight: 700; text-align: left; padding: 14px; }
+    .subtitulo { background: #e0f2f1; color: #456a68; font-style: italic; text-align: left; padding: 8px 10px; }
+    .cabeceras th { background: #00695c; color: #ffffff; font-weight: 700; text-align: center; }
+    .fila-clara td { background: #ffffff; }
+    .fila-alterna td { background: #f2f7f6; }
+    .fila-total td { background: #d9ead3; font-weight: 700; text-align: right; }
+    .fila-total td:last-child { background: #26a69a; color: #ffffff; font-size: 12pt; }
+  </style>
+</head>
+<body>
+  <table>
+    <tr><th class="titulo" colspan="${columnas}">USUARIOS REGISTRADOS</th></tr>
+    <tr><td class="subtitulo" colspan="${columnas}">Informe generado el ${fechaTexto} | Datos visibles en el listado: ${datos.length}</td></tr>
+    <tr class="cabeceras">${encabezados}</tr>
+    ${filas}
+    ${total}
+  </table>
+</body>
+</html>`;
+        const blob = new Blob(['\uFEFF' + htmlExcel], {
+            type: 'application/vnd.ms-excel;charset=utf-8;'
+        });
+        const nombreArchivo = `Usuarios_${new Date().toISOString().slice(0, 10)}.xls`;
+        const url = URL.createObjectURL(blob);
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = nombreArchivo;
+        enlace.style.visibility = 'hidden';
+        document.body.appendChild(enlace);
+        enlace.click();
+        document.body.removeChild(enlace);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Error generando Excel con estilos:', error);
+        generarCSVUsuarios(datos);
     }
 }
 
