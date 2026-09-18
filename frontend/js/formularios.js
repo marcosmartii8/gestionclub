@@ -3,7 +3,7 @@ const params = new URLSearchParams(window.location.search);
 
         if (!username) {
             alert('Error: Usuario no identificado.');
-            window.location.href = 'inicio_app1.html'; // Redirect to the main page
+            window.location.href = 'index.html'; // Redirect to the main page
         }
 
         const userData = JSON.parse(localStorage.getItem(username)) || {};
