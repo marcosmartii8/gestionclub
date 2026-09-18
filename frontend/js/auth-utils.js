@@ -92,7 +92,7 @@
 
   function isLoginPage() {
     var path = (window.location && window.location.pathname ? window.location.pathname : '').toLowerCase();
-    return path.indexOf('nueva_interfaz_inicio_sesion.html') >= 0 || path.indexOf('inicio_sesion_otro.html') >= 0;
+    return path.indexOf('nueva_interfaz_inicio_sesion.html') >= 0;
   }
 
   function isPublicLandingPage() {
@@ -113,7 +113,7 @@
       'formularios.html': true,
       'ver_usuarios.html': true,
       'editar_perfil.html': true,
-      'editar_perfilcopia.html': true,
+      
       'visualizar_formularios.html': true,
       'hojas.html': true,
       'ver_gastos.html': true,
