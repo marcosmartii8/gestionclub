@@ -1255,7 +1255,7 @@ app.get('/api/formularios/:username', requireAuthenticated, requireSelfOrRole('u
 
     if (isManagerRole(requester.role)) {
       const targetClubCode = await fetchUserClubCode(targetUsername);
-      if (requester.clubCode && targetClubCode && requester.clubCode !== targetClubCode) {
+      if (!requester.clubCode || !targetClubCode || requester.clubCode !== targetClubCode) {
         return res.status(403).json({ message: 'No autorizado para consultar formularios de otro club' });
       }
     }
@@ -1391,7 +1391,7 @@ app.post('/api/formularios', requireAuthenticated, async (req, res) => {
 
     if (isManager) {
       const targetClubCode = await fetchUserClubCode(username);
-      if (requester.clubCode && targetClubCode && requester.clubCode !== targetClubCode) {
+      if (!requester.clubCode || !targetClubCode || requester.clubCode !== targetClubCode) {
         return res.status(403).json({ message: 'No autorizado para guardar formularios de otro club' });
       }
     }
@@ -1586,7 +1586,7 @@ app.patch('/api/formularios/:username/:year/:month/completar', requireAuthentica
   try {
     if (isManagerRole(requester.role)) {
       const targetClubCode = await fetchUserClubCode(username);
-      if (requester.clubCode && targetClubCode && requester.clubCode !== targetClubCode) {
+      if (!requester.clubCode || !targetClubCode || requester.clubCode !== targetClubCode) {
         return res.status(403).json({ message: 'No autorizado para actualizar formularios de otro club' });
       }
     }
@@ -1647,7 +1647,7 @@ app.delete('/api/formularios/:username/:year/:month', requireAuthenticated, requ
   try {
     if (isManagerRole(requester.role)) {
       const targetClubCode = await fetchUserClubCode(username);
-      if (requester.clubCode && targetClubCode && requester.clubCode !== targetClubCode) {
+      if (!requester.clubCode || !targetClubCode || requester.clubCode !== targetClubCode) {
         return res.status(403).json({ message: 'No autorizado para borrar formularios de otro club' });
       }
     }
