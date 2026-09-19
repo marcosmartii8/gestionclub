@@ -529,10 +529,27 @@ app.post('/api/users', requireRole(['lider']), async (req, res) => {
 
 app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('username', ['lider', 'administrador']), async (req, res) => {
   const oldUsername = req.params.username;
-  const { username: newUsername, password, clubCode, role, fullName, email, dni, address, phone, km } = req.body;
+  const { username: newUsername, password, clubCode, role, fullName, email, dni, address, phone, km } = req.body || {};
   const requester = req.requester || getRequesterIdentity(req);
   const isLeader = requester.role === 'lider';
+
   try {
+    const { data: targetUser, error: targetUserError } = await supabase
+      .from('users')
+      .select('username, club_code')
+      .eq('username', oldUsername)
+      .single();
+
+    if (targetUserError || !targetUser) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (targetUser.club_code !== requester.clubCode) {
+      return res.status(403).json({
+        error: 'No tienes permisos para modificar usuarios de otro club'
+      });
+    }
+
     // Si se proporciona una nueva contraseña, validarla
     if (password !== undefined) {
       if (password.length < 8) {
@@ -589,7 +606,16 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
     if (password !== undefined) updateData.password = await hashPassword(password);
 
     // Solo líder puede cambiar rol y club_code.
-    if (isLeader && clubCode !== undefined) updateData.club_code = clubCode;
+    if (isLeader && clubCode !== undefined) {
+      if (clubCode !== requester.clubCode) {
+        return res.status(403).json({
+          error: 'No puedes cambiar un usuario a otro club'
+        });
+      }
+
+      updateData.club_code = requester.clubCode;
+    }
+
     if (isLeader && role !== undefined) updateData.role = role;
 
     if (fullName !== undefined) updateData.full_name = fullName;
