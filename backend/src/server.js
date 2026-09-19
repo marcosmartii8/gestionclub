@@ -1008,26 +1008,33 @@ app.delete('/api/clubs/:club_code', requireRole(['lider']), async (req, res) => 
 // ========== FORMULARIOS ==========
 app.get('/api/formularios', requireAuthenticated, async (req, res) => {
   try {
-    console.log('📋 Obteniendo todos los formularios...');
-    
-    // Obtener todos los formularios
-    const { data: formularios, error: formError } = await supabase
-      .from('formularios')
-      .select('*')
-      .order('year', { ascending: false })
-      .order('month', { ascending: false });
+    const requester = req.requester || getRequesterIdentity(req);
 
-    if (formError) {
-      console.error('❌ Error al obtener formularios:', formError);
-      return res.status(500).json({ message: 'Error al obtener formularios', error: formError.message });
+    if (!requester.username) {
+      return res.status(401).json({ message: 'Autenticación requerida' });
     }
-    
-    console.log(`✓ ${formularios?.length || 0} formularios encontrados`);
 
-    // Obtener todos los usuarios para mapear clubCode
-    const { data: users, error: userError } = await supabase
+    if (isManagerRole(requester.role) && !requester.clubCode) {
+      return res.status(403).json({ message: 'No se pudo determinar el club del usuario' });
+    }
+
+    if (requester.role !== 'voluntario' && !isManagerRole(requester.role) && AUTHZ_ENFORCE) {
+      return res.status(403).json({ message: 'Rol no autorizado para consultar formularios' });
+    }
+
+    console.log('📋 Obteniendo todos los formularios...');
+    // Obtener solo los usuarios que el solicitante puede consultar
+    let usersQuery = supabase
       .from('users')
       .select('username, club_code');
+
+    if (isManagerRole(requester.role)) {
+      usersQuery = usersQuery.eq('club_code', requester.clubCode);
+    } else if (requester.role === 'voluntario') {
+      usersQuery = usersQuery.eq('username', requester.username);
+    }
+
+    const { data: users, error: userError } = await usersQuery;
 
     if (userError) {
       console.error('❌ Error al obtener usuarios:', userError);
@@ -1035,6 +1042,31 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
     }
     
     console.log(`✓ ${users?.length || 0} usuarios encontrados`);
+        const allowedUsernames = (users || [])
+      .map((user) => user.username)
+      .filter(Boolean);
+
+    if (allowedUsernames.length === 0) {
+      return res.json([]);
+    }
+
+    // Obtener solo los formularios de los usuarios autorizados
+    const { data: formularios, error: formError } = await supabase
+      .from('formularios')
+      .select('*')
+      .in('username', allowedUsernames)
+      .order('year', { ascending: false })
+      .order('month', { ascending: false });
+
+    if (formError) {
+      console.error('❌ Error al obtener formularios:', formError);
+      return res.status(500).json({
+        message: 'Error al obtener formularios',
+        error: formError.message
+      });
+    }
+
+    console.log(`✓ ${formularios?.length || 0} formularios autorizados encontrados`);
 
     // Crear un mapa de username -> club_code
     const userClubMap = {};
@@ -1127,7 +1159,6 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
     
     console.log(`✓ Formularios procesados con clubCode: ${formulariosConClub.length}`);
 
-    const requester = req.requester || getRequesterIdentity(req);
     let formulariosFiltrados = formulariosConClub;
 
     if (isManagerRole(requester.role)) {
