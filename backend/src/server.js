@@ -482,9 +482,13 @@ app.get('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
 });
 
 app.post('/api/users', requireRole(['lider']), async (req, res) => {
-  const { username, password, clubCode, role, fullName, email, dni, address, phone, km } = req.body;
+    const { username, password, role, fullName, email, dni, address, phone, km } = req.body;
+    const requester = req.requester || getRequesterIdentity(req);
 
-  try {
+    try {
+        if (!requester.clubCode) {
+            return res.status(403).json({ error: 'No se ha podido identificar el club del usuario' });
+        }
     // Validar longitud mínima de contraseña
     if (!password || password.length < 8) {
       return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
@@ -502,7 +506,7 @@ app.post('/api/users', requireRole(['lider']), async (req, res) => {
       .insert({
         username,
         password: hashedPassword,
-        club_code: clubCode,
+        club_code: requester.clubCode,
         role,
         full_name: fullName || null,
         email: email || null,
@@ -625,17 +629,47 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
 
 app.delete('/api/users/:username', requireRole(['lider']), async (req, res) => {
   try {
+    const requester = req.requester || getRequesterIdentity(req);
+
+    if (!requester.clubCode) {
+      return res.status(403).json({
+        message: 'No se ha podido identificar el club del usuario'
+      });
+    }
+
+    const { data: targetUser, error: fetchError } = await supabase
+      .from('users')
+      .select('username, club_code')
+      .eq('username', req.params.username)
+      .single();
+
+    if (fetchError || !targetUser) {
+      return res.status(404).json({
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    if (targetUser.club_code !== requester.clubCode) {
+      return res.status(403).json({
+        message: 'No tienes permisos para eliminar usuarios de otro club'
+      });
+    }
+
     const { error } = await supabase
       .from('users')
       .delete()
-      .eq('username', req.params.username);
+      .eq('username', req.params.username)
+      .eq('club_code', requester.clubCode);
 
     if (error) throw error;
 
     res.json({ message: 'Usuario eliminado exitosamente' });
   } catch (error) {
     console.error('Error al eliminar usuario:', error);
-    res.status(500).json({ message: 'Error al eliminar usuario', error: error.message });
+    res.status(500).json({
+      message: 'Error al eliminar usuario',
+      error: error.message
+    });
   }
 });
 
