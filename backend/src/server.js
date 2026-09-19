@@ -703,22 +703,32 @@ app.delete('/api/users/:username', requireRole(['lider']), async (req, res) => {
 app.delete('/api/users/:username/permanent', requireRole(['lider', 'administrador']), async (req, res) => {
   try {
     const { username } = req.params;
+    const requester = req.requester || getRequesterIdentity(req);
 
-    // Verificar que el usuario existe y tiene left_at (es ex-miembro)
+    if (!requester.clubCode) {
+      return res.status(403).json({
+        message: 'No se ha podido identificar el club del usuario'
+      });
+    }
+
+    // Verificar que el usuario existe, pertenece al mismo club y tiene left_at
     const { data: userData, error: fetchError } = await supabase
       .from('users')
-      .select('username, left_at')
+      .select('username, left_at, club_code')
       .eq('username', username)
       .single();
 
     if (fetchError || !userData) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
-
+    if (userData.club_code !== requester.clubCode) {
+      return res.status(403).json({
+        message: 'No tienes permisos para eliminar permanentemente usuarios de otro club'
+      });
+    }
     if (!userData.left_at) {
       return res.status(400).json({ message: 'Solo se pueden eliminar permanentemente ex-miembros dados de baja' });
     }
-
     // Obtener IDs de formularios del usuario
     const { data: formularios } = await supabase
       .from('formularios')
@@ -739,7 +749,8 @@ app.delete('/api/users/:username/permanent', requireRole(['lider', 'administrado
     const { error: deleteError } = await supabase
       .from('users')
       .delete()
-      .eq('username', username);
+      .eq('username', username)
+      .eq('club_code', requester.clubCode);
 
     if (deleteError) throw deleteError;
 
@@ -754,16 +765,27 @@ app.delete('/api/users/:username/permanent', requireRole(['lider', 'administrado
 app.patch('/api/users/:username/toggle-access', requireRole(['lider', 'administrador']), async (req, res) => {
   try {
     const { username } = req.params;
-    
+    const requester = req.requester || getRequesterIdentity(req);
+
+    if (!requester.clubCode) {
+      return res.status(403).json({
+        message: 'No se ha podido identificar el club del usuario'
+      });
+    }
     // Obtener el estado actual
     const { data: userData, error: fetchError } = await supabase
       .from('users')
-      .select('active')
+      .select('active, club_code')
       .eq('username', username)
       .single();
 
     if (fetchError || !userData) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+    if (userData.club_code !== requester.clubCode) {
+      return res.status(403).json({
+        message: 'No tienes permisos para cambiar el acceso de usuarios de otro club'
+      });
     }
 
     // Alternar el estado activo
@@ -773,6 +795,7 @@ app.patch('/api/users/:username/toggle-access', requireRole(['lider', 'administr
       .from('users')
       .update({ active: newActiveState })
       .eq('username', username)
+      .eq('club_code', requester.clubCode)
       .select()
       .single();
 
@@ -791,12 +814,38 @@ app.patch('/api/users/:username/toggle-access', requireRole(['lider', 'administr
 app.patch('/api/users/:username/leave', requireRole(['lider', 'administrador']), async (req, res) => {
   try {
     const { username } = req.params;
+    const requester = req.requester || getRequesterIdentity(req);
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    if (!requester.clubCode) {
+      return res.status(403).json({
+        message: 'No se ha podido identificar el club del usuario'
+      });
+    }
+
+    const { data: userData, error: fetchError } = await supabase
+      .from('users')
+      .select('username, club_code')
+      .eq('username', username)
+      .single();
+
+    if (fetchError || !userData) {
+      return res.status(404).json({
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    if (userData.club_code !== requester.clubCode) {
+      return res.status(403).json({
+        message: 'No tienes permisos para dar de baja usuarios de otro club'
+      });
+    }
 
     const { error } = await supabase
       .from('users')
       .update({ left_at: today })
-      .eq('username', username);
+      .eq('username', username)
+      .eq('club_code', requester.clubCode);
 
     if (error) throw error;
 
@@ -810,11 +859,37 @@ app.patch('/api/users/:username/leave', requireRole(['lider', 'administrador']),
 app.patch('/api/users/:username/readmit', requireRole(['lider', 'administrador']), async (req, res) => {
   try {
     const { username } = req.params;
+    const requester = req.requester || getRequesterIdentity(req);
+
+    if (!requester.clubCode) {
+      return res.status(403).json({
+        message: 'No se ha podido identificar el club del usuario'
+      });
+    }
+
+    const { data: userData, error: fetchError } = await supabase
+      .from('users')
+      .select('username, club_code')
+      .eq('username', username)
+      .single();
+
+    if (fetchError || !userData) {
+      return res.status(404).json({
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    if (userData.club_code !== requester.clubCode) {
+      return res.status(403).json({
+        message: 'No tienes permisos para readmitir usuarios de otro club'
+      });
+    }
 
     const { error } = await supabase
       .from('users')
       .update({ left_at: null })
-      .eq('username', username);
+      .eq('username', username)
+      .eq('club_code', requester.clubCode);
 
     if (error) throw error;
 
