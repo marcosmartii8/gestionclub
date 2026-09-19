@@ -455,6 +455,8 @@ app.get('/api/users', requireRole(['lider', 'administrador']), async (req, res) 
 
 app.get('/api/users/:username', requireAuthenticated, requireSelfOrRole('username', ['lider', 'administrador']), async (req, res) => {
   try {
+    const requester = req.requester || getRequesterIdentity(req);
+
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -463,6 +465,13 @@ app.get('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
 
     if (error || !data) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    const isSelf = requester.username === data.username;
+    const isManager = requester.role === 'lider' || requester.role === 'administrador';
+
+    if (!isSelf && isManager && data.club_code !== requester.clubCode) {
+      return res.status(403).json({ message: 'No tienes permisos para acceder a usuarios de otro club' });
     }
 
     res.json(mapUserForClient(data, true));
