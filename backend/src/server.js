@@ -430,9 +430,16 @@ app.post('/api/login', async (req, res) => {
 // ========== USUARIOS ==========
 app.get('/api/users', requireRole(['lider', 'administrador']), async (req, res) => {
   try {
+    const requester = getRequesterIdentity(req);
+
+    if (!requester.clubCode) {
+      return res.status(403).json({ message: 'No se ha podido identificar el club del usuario' });
+    }
+
     const { data, error } = await supabase
       .from('users')
       .select('*')
+      .eq('club_code', requester.clubCode)
       .order('username');
 
     if (error) throw error;
@@ -512,7 +519,6 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
   const { username: newUsername, password, clubCode, role, fullName, email, dni, address, phone, km } = req.body;
   const requester = req.requester || getRequesterIdentity(req);
   const isLeader = requester.role === 'lider';
-
   try {
     // Si se proporciona una nueva contraseña, validarla
     if (password !== undefined) {
@@ -537,53 +543,32 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
         .from('users')
         .select('username')
         .eq('username', newUsername)
-        .single();
+        .maybeSingle();
 
       if (existingUser) {
         return res.status(400).json({ error: 'El nombre de usuario ya está en uso' });
       }
 
-      // Obtener todos los datos del usuario actual
-      const { data: currentUser, error: fetchError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', oldUsername)
-        .single();
+      const updateData = {
+        username: newUsername
+      };
 
-      if (fetchError || !currentUser) {
-        return res.status(404).json({ error: 'Usuario no encontrado' });
+      if (password !== undefined) {
+        updateData.password = await hashPassword(password);
       }
-
-      // Crear un nuevo usuario con el nuevo username y los datos actualizados
-      const { data: newUser, error: insertError } = await supabase
+      const { data: updatedUser, error: updateError } = await supabase
         .from('users')
-        .insert({
-          username: newUsername,
-          password: password ? await hashPassword(password) : currentUser.password,
-          club_code: clubCode !== undefined ? clubCode : currentUser.club_code,
-          role: role || currentUser.role,
-          full_name: fullName !== undefined ? fullName : currentUser.full_name,
-          email: email !== undefined ? email : currentUser.email,
-          dni: dni !== undefined ? dni : currentUser.dni,
-          address: address !== undefined ? address : currentUser.address,
-          phone: phone !== undefined ? phone : currentUser.phone,
-          km: km !== undefined ? (km ? parseInt(km) : null) : currentUser.km,
-          active: currentUser.active
-        })
+        .update(updateData)
+        .eq('username', oldUsername)
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (updateError) throw updateError;
 
-      // Eliminar el usuario antiguo
-      const { error: deleteError } = await supabase
-        .from('users')
-        .delete()
-        .eq('username', oldUsername);
-
-      if (deleteError) throw deleteError;
-
-      return res.json({ message: 'Usuario actualizado exitosamente', user: mapUserForClient(newUser, true) });
+      return res.json({
+        message: 'Usuario actualizado exitosamente',
+        user: mapUserForClient(updatedUser, true)
+      });
     }
 
     // Si no se cambia el username, solo actualizar los campos proporcionados
