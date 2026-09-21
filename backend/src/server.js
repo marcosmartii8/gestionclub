@@ -143,14 +143,17 @@ const supabase = createClient(
 );
 
 const BCRYPT_ROUNDS = 10;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-me';
+
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET es obligatorio para iniciar el servidor');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '12h';
 const TICKET_CLEANUP_ENABLED = process.env.TICKET_CLEANUP_ENABLED === 'true';
 const TICKET_CLEANUP_INTERVAL_MS = Number(process.env.TICKET_CLEANUP_INTERVAL_MS || 24 * 60 * 60 * 1000);
 
-if (!process.env.JWT_SECRET) {
-  console.warn('⚠️ JWT_SECRET no definido. Usa uno robusto en producción.');
-}
+
 
 if (TICKET_CLEANUP_ENABLED) {
   setInterval(() => {
