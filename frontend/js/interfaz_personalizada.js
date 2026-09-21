@@ -16,11 +16,12 @@ if (userData) {
     // Función para cargar el nombre del club desde la API
     async function loadClubName() {
         try {
-            const response = await fetch('/api/clubs');
-            if (!response.ok) throw new Error('Error al cargar clubes');
-            
-            const clubs = await response.json();
-            const userClub = clubs.find(club => club.club_code === userData.clubCode);
+            const response = await fetch('/api/clubs/me', {
+                headers: window.AuthUtils.getAuthHeaders()
+            });
+            if (!response.ok) throw new Error('Error al cargar el club');
+
+            const userClub = await response.json();
             
             if (userClub) {
                 welcomeMessage.textContent = userClub.club_name;

@@ -15,13 +15,15 @@ async function loadClubThemes() {
     if (themesLoaded) return;
     
     try {
-        const response = await fetch('/api/clubs');
-        if (!response.ok) throw new Error('Error al cargar clubes');
-        
-        const clubs = await response.json();
-        
-        // Construir el objeto de temas desde los datos de la base de datos
-        clubs.forEach(club => {
+        const response = await fetch('/api/clubs/me', {
+            headers: window.AuthUtils.getAuthHeaders()
+        });
+        if (!response.ok) throw new Error('Error al cargar el club');
+
+        const club = await response.json();
+
+        // Construir el tema del club desde los datos de la base de datos
+            [club].forEach(club => {
             const colorPrimary = club.color_primary || '#004d40';
             const colorSecondary = club.color_secondary || '#1b5e20';
             const textColor = club.text_color || '#f5f5f5';

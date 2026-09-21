@@ -277,6 +277,25 @@ function isManagerRole(role) {
   const normalizedRole = (role || '').toLowerCase().trim();
   return normalizedRole === 'lider' || normalizedRole === 'administrador';
 }
+function isSuperadmin(requester) {
+  return (
+    requester?.username === 'superadmin' &&
+    requester?.clubCode === 'SUPERADMIN' &&
+    requester?.role === 'lider'
+  );
+}
+function requireSuperadmin(req, res, next) {
+  const requester = req.requester || getRequesterIdentity(req);
+  req.requester = requester;
+
+  if (isSuperadmin(requester)) {
+    return next();
+  }
+
+  return res.status(403).json({
+    message: 'Acceso exclusivo para superadministrador'
+  });
+}
 
 async function fetchUserClubCode(username) {
   const { data, error } = await supabase
@@ -430,17 +449,21 @@ app.post('/api/login', async (req, res) => {
 // ========== USUARIOS ==========
 app.get('/api/users', requireRole(['lider', 'administrador']), async (req, res) => {
   try {
-    const requester = getRequesterIdentity(req);
+    const requester = req.requester || getRequesterIdentity(req);
 
     if (!requester.clubCode) {
       return res.status(403).json({ message: 'No se ha podido identificar el club del usuario' });
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('users')
-      .select('*')
-      .eq('club_code', requester.clubCode)
-      .order('username');
+      .select('*');
+
+    if (!isSuperadmin(requester)) {
+      query = query.eq('club_code', requester.clubCode);
+    }
+
+    const { data, error } = await query.order('username');
 
     if (error) throw error;
 
@@ -900,7 +923,36 @@ app.patch('/api/users/:username/readmit', requireRole(['lider', 'administrador']
 });
 
 // ========== CLUBES ==========
-app.get('/api/clubs', async (req, res) => {
+app.get('/api/clubs/me', requireAuthenticated, async (req, res) => {
+  try {
+    const requester = req.requester || getRequesterIdentity(req);
+
+    if (!requester.clubCode) {
+      return res.status(403).json({
+        message: 'No se ha podido identificar el club del usuario'
+      });
+    }
+
+    const { data, error } = await supabase
+      .from('clubs')
+      .select('*')
+      .eq('club_code', requester.clubCode)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ message: 'Club no encontrado' });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error al obtener el club del usuario:', error);
+    res.status(500).json({
+      message: 'Error al obtener el club',
+      error: error.message
+    });
+  }
+});
+app.get('/api/clubs', requireSuperadmin, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('clubs')
@@ -916,7 +968,7 @@ app.get('/api/clubs', async (req, res) => {
   }
 });
 
-app.post('/api/clubs', requireRole(['lider']), async (req, res) => {
+app.post('/api/clubs', requireSuperadmin, async (req, res) => {
   try {
     const { club_code, club_name, nom_presidente, dni_presidente,
         color_primary, color_secondary, text_color, accent_color } = req.body;
@@ -959,7 +1011,7 @@ app.post('/api/clubs', requireRole(['lider']), async (req, res) => {
   }
 });
 
-app.patch('/api/clubs/:club_code', requireRole(['lider']), async (req, res) => {
+app.patch('/api/clubs/:club_code', requireSuperadmin, async (req, res) => {
   try {
     // DESPUÉS
 // DESPUÉS
@@ -989,7 +1041,7 @@ const { data, error } = await supabase
   }
 });
 
-app.delete('/api/clubs/:club_code', requireRole(['lider']), async (req, res) => {
+app.delete('/api/clubs/:club_code', requireSuperadmin, async (req, res) => {
   try {
     const { error } = await supabase
       .from('clubs')

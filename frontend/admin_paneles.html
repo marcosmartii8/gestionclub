@@ -487,9 +487,6 @@
 // ============================================================
 // CONFIGURACIÓN
 // ============================================================
-const SA_USERNAME = 'superadmin';   // ← CAMBIA ESTO
-const SA_PASSWORD = 'Admin1234!';   // ← CAMBIA ESTO por una contraseña segura
-
 let adminToken = null;
 let allClubs   = [];
 let allUsers   = [];
@@ -497,17 +494,50 @@ let allUsers   = [];
 // ============================================================
 // LOGIN
 // ============================================================
-function doLogin() {
+async function doLogin() {
     const u = document.getElementById('sa-user').value.trim();
     const p = document.getElementById('sa-pass').value;
-    if (u === SA_USERNAME && p === SA_PASSWORD) {
-        adminToken = 'superadmin-local';
+    const errorEl = document.getElementById('login-error');
+
+    errorEl.textContent = '';
+
+    try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: u,
+                password: p
+            })
+        });
+
+        if (!response.ok) {
+            errorEl.textContent = 'Usuario o contraseña incorrectos.';
+            return;
+        }
+
+        const data = await response.json();
+
+        if (
+            data.user?.username !== 'superadmin' ||
+            data.user?.clubCode !== 'SUPERADMIN' ||
+            data.user?.role !== 'lider'
+        ) {
+            errorEl.textContent = 'Esta cuenta no tiene acceso al panel de superadministración.';
+            return;
+        }
+
+        adminToken = data.token;
+
+        document.getElementById('sa-pass').value = '';
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('main-panel').style.display = 'block';
-        cargarDatos();
+
+        await cargarDatos();
         initColorPreview();
-    } else {
-        document.getElementById('login-error').textContent = 'Usuario o contraseña incorrectos.';
+    } catch (error) {
+        console.error('Error al iniciar sesión como superadmin:', error);
+        errorEl.textContent = 'No se ha podido iniciar sesión.';
     }
 }
 
@@ -541,11 +571,12 @@ function showTab(id) {
 // ============================================================
 async function cargarDatos() {
     try {
-        const [clubsRes, usersRes] = await Promise.all([
-            fetch('/api/clubs'),
-            fetch('/api/users', { headers: await getSuperadminHeaders() })
-        ]);
+        const headers = await getSuperadminHeaders();
 
+        const [clubsRes, usersRes] = await Promise.all([
+            fetch('/api/clubs', { headers }),
+            fetch('/api/users', { headers })
+        ]);
         if (clubsRes.ok) allClubs = await clubsRes.json();
         if (usersRes.ok) allUsers = await usersRes.json();
 
@@ -556,21 +587,14 @@ async function cargarDatos() {
 }
 
 async function getSuperadminHeaders() {
-    // Intenta login como superadmin para obtener token real
-    // Si tienes un usuario superadmin en la BD, ajusta aquí.
-    // Por ahora usa el token de lider del primer club si existe.
-    try {
-        const r = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: SA_USERNAME, password: SA_PASSWORD })
-        });
-        if (r.ok) {
-            const data = await r.json();
-            return { 'Authorization': `Bearer ${data.token}`, 'Content-Type': 'application/json' };
-        }
-    } catch(e) {}
-    return { 'Content-Type': 'application/json' };
+    if (!adminToken) {
+        throw new Error('Sesión de superadministrador no iniciada');
+    }
+
+    return {
+        'Authorization': `Bearer ${adminToken}`,
+        'Content-Type': 'application/json'
+    };
 }
 
 // ============================================================
