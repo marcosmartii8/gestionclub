@@ -516,12 +516,19 @@ app.get('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
 });
 
 app.post('/api/users', requireRole(['lider']), async (req, res) => {
-    const { username, password, role, fullName, email, dni, address, phone, km } = req.body;
+    const { username, password, role, fullName, email, dni, address, phone, km, clubCode } = req.body;
     const requester = req.requester || getRequesterIdentity(req);
 
     try {
         if (!requester.clubCode) {
             return res.status(403).json({ error: 'No se ha podido identificar el club del usuario' });
+        }
+        const targetClubCode = isSuperadmin(requester)
+          ? clubCode
+          : requester.clubCode;
+
+        if (!targetClubCode) {
+          return res.status(400).json({ error: 'Debes indicar el club del usuario' });
         }
     // Validar longitud mínima de contraseña
     if (!password || password.length < 8) {
@@ -540,7 +547,7 @@ app.post('/api/users', requireRole(['lider']), async (req, res) => {
       .insert({
         username,
         password: hashedPassword,
-        club_code: requester.clubCode,
+        club_code: targetClubCode,
         role,
         full_name: fullName || null,
         email: email || null,
@@ -566,6 +573,7 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
   const { username: newUsername, password, clubCode, role, fullName, email, dni, address, phone, km } = req.body || {};
   const requester = req.requester || getRequesterIdentity(req);
   const isLeader = requester.role === 'lider';
+  const requesterIsSuperadmin = isSuperadmin(requester);
 
   try {
     const { data: targetUser, error: targetUserError } = await supabase
@@ -578,7 +586,7 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    if (targetUser.club_code !== requester.clubCode) {
+    if (!requesterIsSuperadmin && targetUser.club_code !== requester.clubCode) {
       return res.status(403).json({
         error: 'No tienes permisos para modificar usuarios de otro club'
       });
@@ -640,17 +648,23 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
     if (password !== undefined) updateData.password = await hashPassword(password);
 
     // Solo líder puede cambiar rol y club_code.
+    // El superadmin puede gestionar usuarios de cualquier club.
     if (isLeader && clubCode !== undefined) {
-      if (clubCode !== requester.clubCode) {
+      if (!requesterIsSuperadmin && clubCode !== requester.clubCode) {
         return res.status(403).json({
           error: 'No puedes cambiar un usuario a otro club'
         });
       }
 
-      updateData.club_code = requester.clubCode;
+      updateData.club_code = requesterIsSuperadmin
+        ? clubCode
+        : requester.clubCode;
     }
 
-    if (isLeader && role !== undefined) updateData.role = role;
+    if (isLeader && role !== undefined) {
+      updateData.role = role;
+    }
+
 
     if (fullName !== undefined) updateData.full_name = fullName;
     if (email !== undefined) updateData.email = email;
@@ -690,7 +704,6 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
 app.delete('/api/users/:username', requireRole(['lider']), async (req, res) => {
   try {
     const requester = req.requester || getRequesterIdentity(req);
-
     if (!requester.clubCode) {
       return res.status(403).json({
         message: 'No se ha podido identificar el club del usuario'
@@ -709,17 +722,30 @@ app.delete('/api/users/:username', requireRole(['lider']), async (req, res) => {
       });
     }
 
-    if (targetUser.club_code !== requester.clubCode) {
+    const requesterIsSuperadmin = isSuperadmin(requester);
+
+    if (targetUser.username === 'superadmin') {
+      return res.status(403).json({
+        message: 'La cuenta de superadministrador no puede eliminarse'
+      });
+    }
+
+    if (!requesterIsSuperadmin && targetUser.club_code !== requester.clubCode) {
       return res.status(403).json({
         message: 'No tienes permisos para eliminar usuarios de otro club'
       });
     }
 
-    const { error } = await supabase
+    let deleteQuery = supabase
       .from('users')
       .delete()
-      .eq('username', req.params.username)
-      .eq('club_code', requester.clubCode);
+      .eq('username', req.params.username);
+
+    if (!requesterIsSuperadmin) {
+      deleteQuery = deleteQuery.eq('club_code', requester.clubCode);
+    }
+
+    const { error } = await deleteQuery;
 
     if (error) throw error;
 
@@ -738,6 +764,7 @@ app.delete('/api/users/:username/permanent', requireRole(['lider', 'administrado
   try {
     const { username } = req.params;
     const requester = req.requester || getRequesterIdentity(req);
+    const requesterIsSuperadmin = isSuperadmin(requester);
 
     if (!requester.clubCode) {
       return res.status(403).json({
@@ -745,7 +772,7 @@ app.delete('/api/users/:username/permanent', requireRole(['lider', 'administrado
       });
     }
 
-    // Verificar que el usuario existe, pertenece al mismo club y tiene left_at
+    // Verificar que el usuario existe y tiene left_at
     const { data: userData, error: fetchError } = await supabase
       .from('users')
       .select('username, left_at, club_code')
@@ -755,14 +782,25 @@ app.delete('/api/users/:username/permanent', requireRole(['lider', 'administrado
     if (fetchError || !userData) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
-    if (userData.club_code !== requester.clubCode) {
+
+    if (username === 'superadmin') {
+      return res.status(403).json({
+        message: 'La cuenta de superadministrador no puede eliminarse permanentemente'
+      });
+    }
+
+    if (!requesterIsSuperadmin && userData.club_code !== requester.clubCode) {
       return res.status(403).json({
         message: 'No tienes permisos para eliminar permanentemente usuarios de otro club'
       });
     }
+
     if (!userData.left_at) {
-      return res.status(400).json({ message: 'Solo se pueden eliminar permanentemente ex-miembros dados de baja' });
+      return res.status(400).json({
+        message: 'Solo se pueden eliminar permanentemente ex-miembros dados de baja'
+      });
     }
+
     // Obtener IDs de formularios del usuario
     const { data: formularios } = await supabase
       .from('formularios')
@@ -773,25 +811,50 @@ app.delete('/api/users/:username/permanent', requireRole(['lider', 'administrado
 
     if (formularioIds.length > 0) {
       // Eliminar subtablas en orden
-      await supabase.from('desplazamientos').delete().in('formulario_id', formularioIds);
-      await supabase.from('gastos_transporte').delete().in('formulario_id', formularioIds);
-      await supabase.from('gastos_dietas').delete().in('formulario_id', formularioIds);
-      await supabase.from('formularios').delete().in('id', formularioIds);
+      await supabase
+        .from('desplazamientos')
+        .delete()
+        .in('formulario_id', formularioIds);
+
+      await supabase
+        .from('gastos_transporte')
+        .delete()
+        .in('formulario_id', formularioIds);
+
+      await supabase
+        .from('gastos_dietas')
+        .delete()
+        .in('formulario_id', formularioIds);
+
+      await supabase
+        .from('formularios')
+        .delete()
+        .in('id', formularioIds);
     }
 
     // Eliminar el usuario
-    const { error: deleteError } = await supabase
+    let deleteQuery = supabase
       .from('users')
       .delete()
-      .eq('username', username)
-      .eq('club_code', requester.clubCode);
+      .eq('username', username);
+
+    if (!requesterIsSuperadmin) {
+      deleteQuery = deleteQuery.eq('club_code', requester.clubCode);
+    }
+
+    const { error: deleteError } = await deleteQuery;
 
     if (deleteError) throw deleteError;
 
-    res.json({ message: `Usuario ${username} y sus formularios eliminados permanentemente` });
+    res.json({
+      message: `Usuario ${username} y sus formularios eliminados permanentemente`
+    });
   } catch (error) {
     console.error('Error al eliminar usuario permanentemente:', error);
-    res.status(500).json({ message: 'Error al eliminar usuario', error: error.message });
+    res.status(500).json({
+      message: 'Error al eliminar usuario',
+      error: error.message
+    });
   }
 });
 
@@ -800,6 +863,7 @@ app.patch('/api/users/:username/toggle-access', requireRole(['lider', 'administr
   try {
     const { username } = req.params;
     const requester = req.requester || getRequesterIdentity(req);
+    const requesterIsSuperadmin = isSuperadmin(requester);
 
     if (!requester.clubCode) {
       return res.status(403).json({
@@ -816,20 +880,30 @@ app.patch('/api/users/:username/toggle-access', requireRole(['lider', 'administr
     if (fetchError || !userData) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
-    if (userData.club_code !== requester.clubCode) {
+    if (username === 'superadmin') {
+      return res.status(403).json({
+        message: 'No se puede modificar el acceso de la cuenta de superadministrador'
+      });
+    }
+
+    if (!requesterIsSuperadmin && userData.club_code !== requester.clubCode) {
       return res.status(403).json({
         message: 'No tienes permisos para cambiar el acceso de usuarios de otro club'
       });
     }
-
     // Alternar el estado activo
     const newActiveState = userData.active === false ? true : false;
     
-    const { data, error } = await supabase
+    let updateQuery = supabase
       .from('users')
       .update({ active: newActiveState })
-      .eq('username', username)
-      .eq('club_code', requester.clubCode)
+      .eq('username', username);
+
+    if (!requesterIsSuperadmin) {
+      updateQuery = updateQuery.eq('club_code', requester.clubCode);
+    }
+
+    const { data, error } = await updateQuery
       .select()
       .single();
 
@@ -849,6 +923,7 @@ app.patch('/api/users/:username/leave', requireRole(['lider', 'administrador']),
   try {
     const { username } = req.params;
     const requester = req.requester || getRequesterIdentity(req);
+    const requesterIsSuperadmin = isSuperadmin(requester);
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
     if (!requester.clubCode) {
@@ -869,31 +944,46 @@ app.patch('/api/users/:username/leave', requireRole(['lider', 'administrador']),
       });
     }
 
-    if (userData.club_code !== requester.clubCode) {
+    if (username === 'superadmin') {
+      return res.status(403).json({
+        message: 'La cuenta de superadministrador no puede darse de baja'
+      });
+    }
+
+    if (!requesterIsSuperadmin && userData.club_code !== requester.clubCode) {
       return res.status(403).json({
         message: 'No tienes permisos para dar de baja usuarios de otro club'
       });
     }
 
-    const { error } = await supabase
+    let updateQuery = supabase
       .from('users')
       .update({ left_at: today })
-      .eq('username', username)
-      .eq('club_code', requester.clubCode);
+      .eq('username', username);
+
+    if (!requesterIsSuperadmin) {
+      updateQuery = updateQuery.eq('club_code', requester.clubCode);
+    }
+
+    const { error } = await updateQuery;
 
     if (error) throw error;
 
     res.json({ message: 'Usuario dado de baja del club', leftAt: today });
-  } catch (error) {
-    res.status(500).json({ message: 'Error al dar de baja', error: error.message });
-  }
-});
+      } catch (error) {
+        res.status(500).json({
+          message: 'Error al dar de baja',
+          error: error.message
+        });
+      }
+    });
 
 // Readmitir a un usuario al club
 app.patch('/api/users/:username/readmit', requireRole(['lider', 'administrador']), async (req, res) => {
   try {
     const { username } = req.params;
     const requester = req.requester || getRequesterIdentity(req);
+    const requesterIsSuperadmin = isSuperadmin(requester);
 
     if (!requester.clubCode) {
       return res.status(403).json({
@@ -913,25 +1003,36 @@ app.patch('/api/users/:username/readmit', requireRole(['lider', 'administrador']
       });
     }
 
-    if (userData.club_code !== requester.clubCode) {
+    if (username === 'superadmin') {
+      return res.status(403).json({
+        message: 'La cuenta de superadministrador no puede readmitirse'
+      });
+    }
+
+    if (!requesterIsSuperadmin && userData.club_code !== requester.clubCode) {
       return res.status(403).json({
         message: 'No tienes permisos para readmitir usuarios de otro club'
       });
     }
 
-    const { error } = await supabase
+    let updateQuery = supabase
       .from('users')
       .update({ left_at: null })
-      .eq('username', username)
-      .eq('club_code', requester.clubCode);
+      .eq('username', username);
+
+    if (!requesterIsSuperadmin) {
+      updateQuery = updateQuery.eq('club_code', requester.clubCode);
+    }
+
+    const { error } = await updateQuery;
 
     if (error) throw error;
 
     res.json({ message: 'Usuario readmitido en el club' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error al readmitir', error: error.message });
-  }
-});
+      } catch (error) {
+        res.status(500).json({ message: 'Error al readmitir', error: error.message });
+      }
+    });
 
 // ========== CLUBES ==========
 app.get('/api/clubs/me', requireAuthenticated, async (req, res) => {

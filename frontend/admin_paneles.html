@@ -990,7 +990,20 @@ function renderClubesList() {
         </div>`;
     }).join('');
 }
+function siguienteNumeroUsuario(prefix, existentes, reservados = new Set()) {
+    const usernames = new Set(existentes.map(u => u.username.toLowerCase()));
+    let numero = 1;
 
+    while (
+        usernames.has(`${prefix}_${numero}`.toLowerCase()) ||
+        reservados.has(numero)
+    ) {
+        numero++;
+    }
+
+    reservados.add(numero);
+    return numero;
+}
 function previewNuevosUsuarios(clubCode) {
     const numLider = parseInt(document.getElementById(`add-num-lider-${clubCode}`).value) || 0;
     const numAdmin = parseInt(document.getElementById(`add-num-admin-${clubCode}`).value) || 0;
@@ -999,18 +1012,40 @@ function previewNuevosUsuarios(clubCode) {
     const previewDiv = document.getElementById(`add-preview-${clubCode}`);
     const listaDiv   = document.getElementById(`add-preview-lista-${clubCode}`);
 
-    // Calcular cuántos usuarios de cada rol ya existen para continuar la numeración
     const existentes = allUsers.filter(u => u.clubCode === clubCode);
-    const existLider = existentes.filter(u => u.role === 'lider').length;
-    const existAdmin = existentes.filter(u => u.role === 'administrador').length;
-    const existVol   = existentes.filter(u => u.role === 'voluntario').length;
-
     const prefix = clubCode.toLowerCase();
     const usuarios = [];
-    for (let i = 1; i <= numLider; i++) usuarios.push({ username: `lider_${prefix}_${existLider + i}`, password: generarPassword(), role: 'lider' });
-    for (let i = 1; i <= numAdmin; i++) usuarios.push({ username: `admin_${prefix}_${existAdmin + i}`, password: generarPassword(), role: 'administrador' });
-    for (let i = 1; i <= numVol;   i++) usuarios.push({ username: `vol_${prefix}_${existVol + i}`,   password: generarPassword(), role: 'voluntario' });
 
+    const reservadosLider = new Set();
+    const reservadosAdmin = new Set();
+    const reservadosVol = new Set();
+
+    for (let i = 0; i < numLider; i++) {
+        const numero = siguienteNumeroUsuario(`lider_${prefix}`, existentes, reservadosLider);
+        usuarios.push({
+            username: `lider_${prefix}_${numero}`,
+            password: generarPassword(),
+            role: 'lider'
+        });
+    }
+
+    for (let i = 0; i < numAdmin; i++) {
+        const numero = siguienteNumeroUsuario(`admin_${prefix}`, existentes, reservadosAdmin);
+        usuarios.push({
+            username: `admin_${prefix}_${numero}`,
+            password: generarPassword(),
+            role: 'administrador'
+        });
+    }
+
+    for (let i = 0; i < numVol; i++) {
+        const numero = siguienteNumeroUsuario(`vol_${prefix}`, existentes, reservadosVol);
+        usuarios.push({
+            username: `vol_${prefix}_${numero}`,
+            password: generarPassword(),
+            role: 'voluntario'
+        });
+    }
     if (usuarios.length === 0) { previewDiv.style.display = 'none'; return; }
 
     const roleClass = { lider: 'role-lider', administrador: 'role-admin', voluntario: 'role-voluntario' };
