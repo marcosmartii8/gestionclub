@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from '@supabase/supabase-js';
@@ -15,6 +16,49 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const ticketUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024
+  },
+  fileFilter: (req, file, callback) => {
+    const allowedTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'application/pdf'
+    ];
+
+    if (!allowedTypes.includes(file.mimetype)) {
+      return callback(new Error('Tipo de archivo no permitido'));
+    }
+
+    callback(null, true);
+  }
+});
+const TICKET_BUCKET = 'formularios-archivos';
+
+function normalizeStoragePart(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+}
+
+function getTicketExtension(file) {
+  const extensionsByMime = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'application/pdf': 'pdf'
+  };
+
+  return extensionsByMime[file.mimetype] || null;
+}
 
 const AUTHZ_ENFORCE = process.env.AUTHZ_ENFORCE !== 'false';
 const AUTH_ALLOW_LEGACY_HEADERS = process.env.AUTH_ALLOW_LEGACY_HEADERS === 'true';
@@ -1212,6 +1256,141 @@ app.delete('/api/clubs/:club_code', requireSuperadmin, async (req, res) => {
 });
 
 // ========== FORMULARIOS ==========
+app.post(
+  '/api/formularios/:username/archivo',
+  requireAuthenticated,
+  ticketUpload.single('file'),
+  async (req, res) => {
+    try {
+      const requester = req.requester || getRequesterIdentity(req);
+      const targetUsername = req.params.username;
+
+      const year = Number.parseInt(req.body?.year, 10);
+      const month = Number.parseInt(req.body?.month, 10);
+      const category = req.body?.category;
+      const baseName = normalizeStoragePart(req.body?.baseName);
+
+      if (!req.file) {
+        return res.status(400).json({ message: 'Archivo obligatorio' });
+      }
+
+      if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+        return res.status(400).json({ message: 'Año no válido' });
+      }
+
+      if (!Number.isInteger(month) || month < 0 || month > 11) {
+        return res.status(400).json({ message: 'Mes no válido' });
+      }
+
+      const allowedCategories = {
+        transporte: 'transporte',
+        dietas: 'dietas'
+      };
+
+      const storageCategory = allowedCategories[category];
+
+      if (!storageCategory) {
+        return res.status(400).json({ message: 'Categoría no válida' });
+      }
+
+      const { data: targetUser, error: targetUserError } = await supabase
+        .from('users')
+        .select('username, club_code')
+        .eq('username', targetUsername)
+        .single();
+
+      if (targetUserError || !targetUser) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+
+      const isSelf = requester.username === targetUser.username;
+      const isManager = isManagerRole(requester.role);
+
+      if (!isSelf && !isManager) {
+        return res.status(403).json({
+          message: 'No autorizado para subir archivos de otros usuarios'
+        });
+      }
+
+      if (isManager && !isSuperadmin(requester)) {
+        if (
+          !requester.clubCode ||
+          !targetUser.club_code ||
+          requester.clubCode !== targetUser.club_code
+        ) {
+          return res.status(403).json({
+            message: 'No autorizado para subir archivos de otro club'
+          });
+        }
+      }
+
+      if (!targetUser.club_code) {
+        return res.status(400).json({
+          message: 'El usuario no tiene un club asociado'
+        });
+      }
+
+      const extension = getTicketExtension(req.file);
+
+      if (!extension) {
+        return res.status(400).json({
+          message: 'Tipo de archivo no permitido'
+        });
+      }
+
+      const clubPart = normalizeStoragePart(targetUser.club_code);
+      const userPart = normalizeStoragePart(targetUser.username);
+      const monthPart = String(month + 1).padStart(2, '0');
+
+      const storageFolder = [
+        'clubs',
+        clubPart,
+        'usuarios',
+        userPart,
+        String(year),
+        monthPart,
+        storageCategory
+      ].join('/');
+
+      const uniquePart = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const fileStem = baseName || uniquePart;
+      const fileName = `${fileStem}.${extension}`;
+      const filePath = `${storageFolder}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(TICKET_BUCKET)
+        .upload(filePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Error subiendo justificante a Storage:', uploadError);
+        return res.status(500).json({
+          message: 'Error al subir el archivo'
+        });
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from(TICKET_BUCKET)
+        .getPublicUrl(filePath);
+
+      return res.status(201).json({
+        url: publicUrlData.publicUrl,
+        path: filePath,
+        name: req.file.originalname,
+        size: req.file.size,
+        type: req.file.mimetype
+      });
+    } catch (error) {
+      console.error('Error procesando subida de justificante:', error);
+      return res.status(500).json({
+        message: 'Error al procesar el archivo'
+      });
+    }
+  }
+);
 app.get('/api/formularios', requireAuthenticated, async (req, res) => {
   try {
     const requester = req.requester || getRequesterIdentity(req);
@@ -1905,11 +2084,29 @@ app.delete('/api/formularios/:username/:year/:month', requireAuthenticated, requ
   }
 });
 
-// Manejo de errores CORS sin exponer información interna.
+// Manejo de errores controlados sin exponer información interna.
 app.use((err, req, res, next) => {
   if (err?.status === 403 && err?.message === 'Origen no permitido por CORS') {
     return res.status(403).json({
       message: 'Origen no permitido'
+    });
+  }
+
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        message: 'El archivo excede el tamaño máximo de 10 MB'
+      });
+    }
+
+    return res.status(400).json({
+      message: 'Error al procesar el archivo'
+    });
+  }
+
+  if (err?.message === 'Tipo de archivo no permitido') {
+    return res.status(400).json({
+      message: 'Tipo de archivo no permitido'
     });
   }
 

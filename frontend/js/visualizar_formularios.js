@@ -1002,9 +1002,16 @@ const params = new URLSearchParams(window.location.search);
                         try {
                             const uploadResult = await window.uploadFileToSupabase(
                                 fileInput.files[0],
-                                'gastos_transporte',
-                                window.buildFormTicketBaseName?.(getUserDisplayName(formUser), year, month, `transporte_${idx + 1}`) || '',
-                                window.buildFormTicketFolder?.(currentClubCode, formUser, year, month, 'transporte') || ''
+                                formUser,
+                                year,
+                                month,
+                                'transporte',
+                                window.buildFormTicketBaseName?.(
+                                getUserDisplayName(formUser),
+                                    year,
+                                    month,
+                                    `transporte_${idx + 1}`
+                                ) || ''
                             );
                             if (uploadResult && uploadResult.url) {
                                 expense.fileUrl = uploadResult.url;
@@ -1039,9 +1046,16 @@ const params = new URLSearchParams(window.location.search);
                         try {
                             const uploadResult = await window.uploadFileToSupabase(
                                 fileInput.files[0],
-                                'gastos_dietas',
-                                window.buildFormTicketBaseName?.(getUserDisplayName(formUser), year, month, `dieta_${idx + 1}`) || '',
-                                window.buildFormTicketFolder?.(currentClubCode, formUser, year, month, 'dietas') || ''
+                                formUser,
+                                year,
+                                month,
+                                'dietas',
+                                window.buildFormTicketBaseName?.(
+                                    getUserDisplayName(formUser),
+                                    year,
+                                    month,
+                                    `dieta_${idx + 1}`
+                                ) || ''
                             );
                             if (uploadResult && uploadResult.url) {
                                 expense.fileUrl = uploadResult.url;

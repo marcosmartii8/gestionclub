@@ -682,9 +682,16 @@ const params = new URLSearchParams(window.location.search);
                         try {
                             const uploadResult = await uploadFileToSupabase(
                                 fileInput.files[0],
-                                'gastos_transporte',
-                                window.buildFormTicketBaseName?.(getUserDisplayName(), document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, `transporte_${idx + 1}`) || '',
-                                window.buildFormTicketFolder?.(userData.clubCode, username, document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, 'transporte') || ''
+                                username,
+                                document.getElementById('formYearSelect')?.value,
+                                document.getElementById('formMonthSelect')?.value,
+                                'transporte',
+                                window.buildFormTicketBaseName?.(
+                                    getUserDisplayName(),
+                                    document.getElementById('formYearSelect')?.value,
+                                    document.getElementById('formMonthSelect')?.value,
+                                    `transporte_${idx + 1}`
+                                ) || ''
                             );
                             fileUrl = uploadResult.url;
                         } catch (e) {
@@ -713,9 +720,16 @@ const params = new URLSearchParams(window.location.search);
                         try {
                             const uploadResult = await uploadFileToSupabase(
                                 fileInput.files[0],
-                                'gastos_dietas',
-                                window.buildFormTicketBaseName?.(getUserDisplayName(), document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, `dieta_${idx + 1}`) || '',
-                                window.buildFormTicketFolder?.(userData.clubCode, username, document.getElementById('formYearSelect')?.value, document.getElementById('formMonthSelect')?.value, 'dietas') || ''
+                                username,
+                                document.getElementById('formYearSelect')?.value,
+                                document.getElementById('formMonthSelect')?.value,
+                                'dietas',
+                                window.buildFormTicketBaseName?.(
+                                    getUserDisplayName(),
+                                    document.getElementById('formYearSelect')?.value,
+                                    document.getElementById('formMonthSelect')?.value,
+                                    `dieta_${idx + 1}`
+                                ) || ''
                             );
                             fileUrl = uploadResult.url;
                         } catch (e) {

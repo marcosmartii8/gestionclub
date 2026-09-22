@@ -1,8 +1,4 @@
 // Inicializar Supabase
-const SUPABASE_URL = 'https://ugfrdrtycslcrnyovjvw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnZnJkcnR5Y3NsY3JueW92anZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyODkxNDksImV4cCI6MjA4NTg2NTE0OX0.iyLzicI9xXbFGE1NezNjOkAvqoId6wF3ZGh4RK7FE_Q';
-
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const MONTH_NAMES_ES = [
     'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
@@ -30,34 +26,15 @@ window.buildFormTicketBaseName = function buildFormTicketBaseName(ownerName, yea
     return [ownerPart, monthPart, yearPart, suffixPart].filter(Boolean).join('_');
 };
 
-window.buildFormTicketFolder = function buildFormTicketFolder(clubCode, ownerName, year, month, category) {
-    const clubPart = normalizeFileNamePart(clubCode) || 'club_sin_codigo';
-    const ownerPart = normalizeFileNamePart(ownerName) || 'usuario';
-    const yearPart = Number.isFinite(Number(year)) ? String(year) : 'sin_anio';
-    const monthPart = Number.isFinite(Number(month)) ? String(Number(month) + 1).padStart(2, '0') : 'sin_mes';
-    const categoryPart = normalizeFileNamePart(category) || 'formularios';
-
-    return ['clubs', clubPart, 'usuarios', ownerPart, yearPart, monthPart, categoryPart].join('/');
-};
-
-// Comprobación de conexión a Supabase al cargar
-(async function checkSupabaseConnection() {
-    try {
-        // Intentar obtener la hora del servidor (tabla pública, puede ser cualquier consulta simple)
-        const { error } = await supabaseClient.from('users').select('*').limit(1);
-        if (error) {
-            console.error('❌ Error de conexión a Supabase:', error.message);
-            alert('No se pudo conectar a Supabase. Verifica tu conexión o configuración.');
-        } else {
-            console.log('✅ Conexión a Supabase exitosa');
-        }
-    } catch (err) {
-        console.error('❌ Error inesperado al conectar a Supabase:', err);
-        alert('No se pudo conectar a Supabase.');
-    }
-})();
-// Función para subir archivo a Supabase Storage
-window.uploadFileToSupabase = async function uploadFileToSupabase(file, folder = 'formularios', customBaseName = '', storageFolder = '') {
+// Función para subir justificantes mediante el backend autenticado
+window.uploadFileToSupabase = async function uploadFileToSupabase(
+    file,
+    username,
+    year,
+    month,
+    category,
+    customBaseName = ''
+) {
     if (!file) return null;
 
     try {
@@ -68,50 +45,73 @@ window.uploadFileToSupabase = async function uploadFileToSupabase(file, folder =
         }
 
         // Validar tipo de archivo
-        const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+        const validTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'application/pdf'
+        ];
+
         if (!validTypes.includes(file.type)) {
-            throw new Error('Tipo de archivo no permitido. Solo se permiten imágenes (JPG, PNG, GIF, WEBP) y PDF');
+            throw new Error(
+                'Tipo de archivo no permitido. Solo se permiten imágenes (JPG, PNG, GIF, WEBP) y PDF'
+            );
         }
 
-        const fileExtension = file.name.split('.').pop();
+        if (!username) {
+            throw new Error('No se ha podido identificar al usuario del formulario');
+        }
+
+        if (!window.AuthUtils?.getAuthHeaders) {
+            throw new Error('No se ha podido inicializar la autenticación');
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('year', String(year));
+        formData.append('month', String(month));
+        formData.append('category', category);
+
         const baseName = normalizeFileNamePart(customBaseName);
-        const timestamp = Date.now();
-        const randomString = Math.random().toString(36).substring(2, 8);
-        const fileStem = baseName || `${timestamp}_${randomString}`;
-        const fileName = `${fileStem}.${fileExtension}`;
-        const filePath = `${storageFolder || folder}/${fileName}`;
-
-        console.log('📤 Subiendo archivo:', fileName);
-
-        // Subir archivo a Supabase Storage
-        const { data, error } = await supabaseClient.storage
-            .from('formularios-archivos')
-            .upload(filePath, file, {
-                cacheControl: '3600',
-                upsert: false
-            });
-
-        if (error) {
-            console.error('Error al subir archivo:', error);
-            throw error;
+        if (baseName) {
+            formData.append('baseName', baseName);
         }
 
-        // Obtener URL pública del archivo
-        const { data: { publicUrl } } = supabaseClient.storage
-            .from('formularios-archivos')
-            .getPublicUrl(filePath);
+        console.log('📤 Subiendo justificante mediante el backend');
 
-        console.log('✅ Archivo subido exitosamente:', publicUrl);
+        const response = await fetch(
+            `/api/formularios/${encodeURIComponent(username)}/archivo`,
+            {
+                method: 'POST',
+                headers: window.AuthUtils.getAuthHeaders(),
+                body: formData
+            }
+        );
 
-        return {
-            url: publicUrl,
-            path: filePath,
-            name: file.name,
-            size: file.size,
-            type: file.type
-        };
+        if (window.AuthUtils.handleAuthFailure?.(response)) {
+            throw new Error('La sesión no es válida o ha expirado');
+        }
+
+        let result = null;
+
+        try {
+            result = await response.json();
+        } catch {
+            result = null;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                result?.message || 'Error al subir el archivo'
+            );
+        }
+
+        console.log('✅ Justificante subido mediante el backend');
+
+        return result;
     } catch (error) {
         console.error('Error en uploadFileToSupabase:', error);
         throw error;
     }
-}
+};
