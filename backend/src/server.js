@@ -503,9 +503,17 @@ app.get('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
 
     const isSelf = requester.username === data.username;
     const isManager = requester.role === 'lider' || requester.role === 'administrador';
+    const requesterIsSuperadmin = isSuperadmin(requester);
 
-    if (!isSelf && isManager && data.club_code !== requester.clubCode) {
-      return res.status(403).json({ message: 'No tienes permisos para acceder a usuarios de otro club' });
+    if (
+      !requesterIsSuperadmin &&
+      !isSelf &&
+      isManager &&
+      data.club_code !== requester.clubCode
+    ) {
+      return res.status(403).json({
+        message: 'No tienes permisos para acceder a usuarios de otro club'
+      });
     }
 
     res.json(mapUserForClient(data, true));
@@ -518,6 +526,19 @@ app.get('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
 app.post('/api/users', requireRole(['lider']), async (req, res) => {
     const { username, password, role, fullName, email, dni, address, phone, km, clubCode } = req.body;
     const requester = req.requester || getRequesterIdentity(req);
+    const allowedRoles = ['lider', 'administrador', 'voluntario'];
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
+        error: 'Rol no válido'
+      });
+    }
+
+    if (role === 'lider' && !isSuperadmin(requester)) {
+      return res.status(403).json({
+        error: 'Solo el superadministrador puede crear usuarios con rol de líder'
+      });
+    }
 
     try {
         if (!requester.clubCode) {
@@ -578,7 +599,7 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
   try {
     const { data: targetUser, error: targetUserError } = await supabase
       .from('users')
-      .select('username, club_code')
+      .select('username, club_code, role')
       .eq('username', oldUsername)
       .single();
 
@@ -682,6 +703,24 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
     }
 
     if (isLeader && role !== undefined) {
+      const allowedRoles = ['lider', 'administrador', 'voluntario'];
+
+      if (!allowedRoles.includes(role)) {
+        return res.status(400).json({
+          error: 'Rol no válido'
+        });
+      }
+
+      if (
+        role === 'lider' &&
+        targetUser.role !== 'lider' &&
+        !requesterIsSuperadmin
+      ) {
+        return res.status(403).json({
+          error: 'Solo el superadministrador puede asignar el rol de líder'
+        });
+      }
+
       updateData.role = role;
     }
 
