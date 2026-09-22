@@ -1184,28 +1184,31 @@ app.post('/api/clubs', requireSuperadmin, async (req, res) => {
 
 app.patch('/api/clubs/:club_code', requireSuperadmin, async (req, res) => {
   try {
-    // DESPUÉS
-// DESPUÉS
-const { club_name, nom_presidente, dni_presidente,
+    const { club_name, nom_presidente, dni_presidente,
         color_primary, color_secondary, text_color, accent_color } = req.body;
-const updateData = {};
-if (club_name       !== undefined) updateData.club_name       = club_name;
-if (nom_presidente  !== undefined) updateData.nom_presidente  = nom_presidente;
-if (dni_presidente  !== undefined) updateData.dni_presidente  = dni_presidente;
-if (color_primary   !== undefined) updateData.color_primary   = color_primary;
-if (color_secondary !== undefined) updateData.color_secondary = color_secondary;
-if (text_color      !== undefined) updateData.text_color      = text_color;
-if (accent_color    !== undefined) updateData.accent_color    = accent_color;
-const { data, error } = await supabase
-  .from('clubs')
-  .update(updateData)
+    const updateData = {};
+    if (club_name       !== undefined) updateData.club_name       = club_name;
+    if (nom_presidente  !== undefined) updateData.nom_presidente  = nom_presidente;
+    if (dni_presidente  !== undefined) updateData.dni_presidente  = dni_presidente;
+    if (color_primary   !== undefined) updateData.color_primary   = color_primary;
+    if (color_secondary !== undefined) updateData.color_secondary = color_secondary;
+    if (text_color      !== undefined) updateData.text_color      = text_color;
+    if (accent_color    !== undefined) updateData.accent_color    = accent_color;
+    const { data, error } = await supabase
+      .from('clubs')
+      .update(updateData)
       .eq('club_code', req.params.club_code)
-      .select()
-      .single();
+      .select();
 
     if (error) throw error;
 
-    res.json(data);
+    if (!data || data.length === 0) {
+      return res.status(404).json({
+        message: 'Club no encontrado'
+      });
+    }
+
+    res.json(data[0]);
   } catch (error) {
     console.error('Error al actualizar club:', error);
     res.status(500).json({ message: 'Error al actualizar club', error: error.message });
@@ -1214,17 +1217,24 @@ const { data, error } = await supabase
 
 app.delete('/api/clubs/:club_code', requireSuperadmin, async (req, res) => {
   try {
-        if (req.params.club_code === 'SUPERADMIN') {
+    if (req.params.club_code === 'SUPERADMIN') {
       return res.status(403).json({
         message: 'El club SUPERADMIN es un club del sistema y no puede eliminarse'
       });
     }
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('clubs')
       .delete()
-      .eq('club_code', req.params.club_code);
+      .eq('club_code', req.params.club_code)
+      .select();
 
     if (error) throw error;
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({
+        message: 'Club no encontrado'
+      });
+    }
 
     res.json({ message: 'Club eliminado exitosamente' });
   } catch (error) {
