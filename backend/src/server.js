@@ -591,6 +591,26 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
         error: 'No tienes permisos para modificar usuarios de otro club'
       });
     }
+    // Proteger la identidad estructural de la cuenta superadmin.
+    if (oldUsername === 'superadmin') {
+      if (newUsername !== undefined && newUsername !== 'superadmin') {
+        return res.status(403).json({
+          error: 'No se puede cambiar el nombre de usuario del superadministrador'
+        });
+      }
+
+      if (clubCode !== undefined && clubCode !== 'SUPERADMIN') {
+        return res.status(403).json({
+          error: 'El superadministrador debe permanecer en el club SUPERADMIN'
+        });
+      }
+
+      if (role !== undefined && role !== 'lider') {
+        return res.status(403).json({
+          error: 'El superadministrador debe mantener el rol de líder'
+        });
+      }
+    }
 
     // Si se proporciona una nueva contraseña, validarla
     if (password !== undefined) {
@@ -1155,6 +1175,11 @@ const { data, error } = await supabase
 
 app.delete('/api/clubs/:club_code', requireSuperadmin, async (req, res) => {
   try {
+        if (req.params.club_code === 'SUPERADMIN') {
+      return res.status(403).json({
+        message: 'El club SUPERADMIN es un club del sistema y no puede eliminarse'
+      });
+    }
     const { error } = await supabase
       .from('clubs')
       .delete()
