@@ -23,37 +23,6 @@ const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localh
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-function isPrivateNetworkOrigin(origin) {
-  try {
-    const parsed = new URL(origin);
-    const hostname = parsed.hostname;
-
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
-      return true;
-    }
-
-    if (/^10\./.test(hostname)) {
-      return true;
-    }
-
-    if (/^192\.168\./.test(hostname)) {
-      return true;
-    }
-
-    const match172 = hostname.match(/^172\.(\d+)\./);
-    if (match172) {
-      const secondOctet = Number(match172[1]);
-      if (secondOctet >= 16 && secondOctet <= 31) {
-        return true;
-      }
-    }
-
-    return false;
-  } catch {
-    return false;
-  }
-}
-
 app.use(cors({
   origin(origin, callback) {
     // Permitir requests sin Origin (curl, herramientas locales, mismo host servidor-servidor)
@@ -63,12 +32,11 @@ app.use(cors({
       return callback(null, true);
     }
 
-    if (isPrivateNetworkOrigin(origin)) {
-      return callback(null, true);
-    }
-
     console.warn(`❌ CORS bloqueado para origin no permitido: ${origin}`);
-    return callback(new Error('Not allowed by CORS'));
+
+    const corsError = new Error('Origen no permitido por CORS');
+    corsError.status = 403;
+    return callback(corsError);
   },
   credentials: true
 }));
@@ -1937,6 +1905,16 @@ app.delete('/api/formularios/:username/:year/:month', requireAuthenticated, requ
   }
 });
 
+// Manejo de errores CORS sin exponer información interna.
+app.use((err, req, res, next) => {
+  if (err?.status === 403 && err?.message === 'Origen no permitido por CORS') {
+    return res.status(403).json({
+      message: 'Origen no permitido'
+    });
+  }
+
+  next(err);
+});
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✓ Servidor corriendo en http://localhost:${PORT}`);
