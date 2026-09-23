@@ -2061,7 +2061,7 @@ app.delete('/api/formularios/:username/:year/:month', requireAuthenticated, requ
   const requester = req.requester || getRequesterIdentity(req);
 
   try {
-    if (isManagerRole(requester.role)) {
+    if (isManagerRole(requester.role) && !isSuperadmin(requester)) {
       const targetClubCode = await fetchUserClubCode(username);
       if (!requester.clubCode || !targetClubCode || requester.clubCode !== targetClubCode) {
         return res.status(403).json({ message: 'No autorizado para borrar formularios de otro club' });
