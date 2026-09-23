@@ -375,36 +375,6 @@ function requireSelfOrRole(paramName, roles) {
     return next();
   };
 }
-
-async function isPasswordInUse(password, excludeUsername = null) {
-  const { data: usersData, error } = await supabase
-    .from('users')
-    .select('username, password');
-
-  if (error) {
-    throw error;
-  }
-
-  for (const user of usersData || []) {
-    if (excludeUsername && user.username === excludeUsername) {
-      continue;
-    }
-
-    const storedPassword = user.password || '';
-    if (!storedPassword) {
-      continue;
-    }
-
-    if (isBcryptHash(storedPassword)) {
-      if (await bcrypt.compare(password, storedPassword)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 // ========== LOGIN ==========
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
@@ -547,12 +517,6 @@ app.post('/api/users', requireRole(['lider']), async (req, res) => {
     if (!password || password.length < 8) {
       return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
     }
-
-    // Verificar que la contraseña no esté en uso
-    if (await isPasswordInUse(password)) {
-      return res.status(400).json({ error: 'Esta contraseña ya está en uso. Por favor, elige otra diferente' });
-    }
-
     const hashedPassword = await hashPassword(password);
 
     const { data, error } = await supabase
@@ -629,11 +593,6 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
     if (password !== undefined) {
       if (password.length < 8) {
         return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
-      }
-
-      // Verificar que la contraseña no esté en uso por otro usuario
-      if (await isPasswordInUse(password, oldUsername)) {
-        return res.status(400).json({ error: 'Esta contraseña ya está en uso. Por favor, elige otra diferente' });
       }
     }
 
