@@ -266,33 +266,79 @@ function getRequesterIdentity(req) {
 
   return { username: '', role: '', clubCode: '', source: 'none' };
 }
+async function getCurrentRequester(req) {
+  const requester = getRequesterIdentity(req);
 
+  if (!requester.username) {
+    return requester;
+  }
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('username, role, club_code, active, left_at')
+    .eq('username', requester.username)
+    .maybeSingle();
+
+  if (error || !user) {
+    return {
+      username: '',
+      role: '',
+      clubCode: '',
+      source: 'none'
+    };
+  }
+
+  if (user.active !== true || user.left_at !== null) {
+    return {
+      username: '',
+      role: '',
+      clubCode: '',
+      source: 'none'
+    };
+  }
+
+  return {
+    username: user.username,
+    role: (user.role || '').toLowerCase().trim(),
+    clubCode: user.club_code || '',
+    source: requester.source
+  };
+}
 function requireRole(roles) {
   const normalizedRoles = roles.map((role) => role.toLowerCase());
 
-  return (req, res, next) => {
-    const requester = getRequesterIdentity(req);
-    req.requester = requester;
-    const hasAllowedRole = requester.role && normalizedRoles.includes(requester.role);
+  return async (req, res, next) => {
+    try {
+      const requester = await getCurrentRequester(req);
+      req.requester = requester;
 
-    if (hasAllowedRole) {
+      const hasAllowedRole =
+        requester.role && normalizedRoles.includes(requester.role);
+
+      if (hasAllowedRole) {
+        return next();
+      }
+
+      console.warn(
+        `Acceso sin rol autorizado detectado: ${req.method} ${req.originalUrl} ` +
+        `role='${requester.role || 'none'}' user='${requester.username || 'unknown'}' enforce=${AUTHZ_ENFORCE}`
+      );
+
+      if (AUTHZ_ENFORCE) {
+        return res.status(403).json({
+          message: 'Acceso denegado por política de seguridad',
+          requiredRoles: roles
+        });
+      }
+
       return next();
-    }
+    } catch (error) {
+      console.error('Error validando rol actual:', error);
 
-    console.warn(
-      `⚠️ Acceso sin rol autorizado detectado: ${req.method} ${req.originalUrl} ` +
-      `role='${requester.role || 'none'}' user='${requester.username || 'unknown'}' enforce=${AUTHZ_ENFORCE}`
-    );
-
-    if (AUTHZ_ENFORCE) {
-      return res.status(403).json({
-        message: 'Acceso denegado por política de seguridad',
-        requiredRoles: roles
+      return res.status(500).json({
+        message: 'Error validando la sesión'
       });
     }
-
-    // Modo observación: no bloquear para evitar romper flujos actuales.
-    return next();
   };
 }
 
@@ -307,17 +353,25 @@ function isSuperadmin(requester) {
     requester?.role === 'lider'
   );
 }
-function requireSuperadmin(req, res, next) {
-  const requester = req.requester || getRequesterIdentity(req);
-  req.requester = requester;
+async function requireSuperadmin(req, res, next) {
+  try {
+    const requester = req.requester || await getCurrentRequester(req);
+    req.requester = requester;
 
-  if (isSuperadmin(requester)) {
-    return next();
+    if (isSuperadmin(requester)) {
+      return next();
+    }
+
+    return res.status(403).json({
+      message: 'Acceso exclusivo para superadministrador'
+    });
+  } catch (error) {
+    console.error('Error validando sesión de superadministrador:', error);
+
+    return res.status(500).json({
+      message: 'Error validando la sesión'
+    });
   }
-
-  return res.status(403).json({
-    message: 'Acceso exclusivo para superadministrador'
-  });
 }
 
 async function fetchUserClubCode(username) {
@@ -334,20 +388,27 @@ async function fetchUserClubCode(username) {
   return data.club_code || null;
 }
 
-function requireAuthenticated(req, res, next) {
-  const requester = getRequesterIdentity(req);
-  req.requester = requester;
+async function requireAuthenticated(req, res, next) {
+  try {
+    const requester = await getCurrentRequester(req);
+    req.requester = requester;
 
-  if (requester.username) {
+    if (requester.username) {
+      return next();
+    }
+
+    if (AUTHZ_ENFORCE) {
+      return res.status(401).json({ message: 'Autenticación requerida' });
+    }
+
     return next();
-  }
+  } catch (error) {
+    console.error('Error validando sesión actual:', error);
 
-  if (AUTHZ_ENFORCE) {
-    return res.status(401).json({ message: 'Autenticación requerida' });
+    return res.status(500).json({
+      message: 'Error validando la sesión'
+    });
   }
-
-  // Modo observación: permitir para no romper mientras se completa migración.
-  return next();
 }
 
 function requireSelfOrRole(paramName, roles) {
