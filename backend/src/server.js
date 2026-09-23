@@ -399,8 +399,6 @@ async function isPasswordInUse(password, excludeUsername = null) {
       if (await bcrypt.compare(password, storedPassword)) {
         return true;
       }
-    } else if (storedPassword === password) {
-      return true;
     }
   }
 
@@ -423,31 +421,13 @@ app.post('/api/login', async (req, res) => {
     }
 
     const storedPassword = data.password || '';
-    let validPassword = false;
-
-    if (isBcryptHash(storedPassword)) {
-      validPassword = await bcrypt.compare(password, storedPassword);
-    } else {
-      validPassword = storedPassword === password;
-    }
+    const validPassword =
+      isBcryptHash(storedPassword) &&
+      await bcrypt.compare(password, storedPassword);
 
     if (!validPassword) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
-
-    // Migración progresiva: si la contraseña aún está en texto plano, la actualizamos a hash.
-    if (!isBcryptHash(storedPassword)) {
-      const migratedHash = await hashPassword(password);
-      const { error: migrationError } = await supabase
-        .from('users')
-        .update({ password: migratedHash })
-        .eq('username', username);
-
-      if (migrationError) {
-        console.error('Error migrando password a hash:', migrationError);
-      }
-    }
-
     // Verificar si el usuario está activo
     if (data.active !== true) {
       return res.status(403).json({ error: 'Acceso denegado. Usuario desactivado.' });
