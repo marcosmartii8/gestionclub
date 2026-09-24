@@ -854,38 +854,6 @@ app.delete('/api/users/:username/permanent', requireRole(['lider', 'administrado
         message: 'Solo se pueden eliminar permanentemente ex-miembros dados de baja'
       });
     }
-
-    // Obtener IDs de formularios del usuario
-    const { data: formularios } = await supabase
-      .from('formularios')
-      .select('id')
-      .eq('username', username);
-
-    const formularioIds = (formularios || []).map(f => f.id);
-
-    if (formularioIds.length > 0) {
-      // Eliminar subtablas en orden
-      await supabase
-        .from('desplazamientos')
-        .delete()
-        .in('formulario_id', formularioIds);
-
-      await supabase
-        .from('gastos_transporte')
-        .delete()
-        .in('formulario_id', formularioIds);
-
-      await supabase
-        .from('gastos_dietas')
-        .delete()
-        .in('formulario_id', formularioIds);
-
-      await supabase
-        .from('formularios')
-        .delete()
-        .in('id', formularioIds);
-    }
-
     // Eliminar el usuario
     let deleteQuery = supabase
       .from('users')
