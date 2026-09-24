@@ -779,17 +779,9 @@
   function getAuthHeaders(options) {
     var opts = options || {};
     var extraHeaders = opts.extraHeaders || {};
-    var sessionUser = parseSessionUser();
-    var usernameHeader = localStorage.getItem('username') || sessionUser.username || opts.userHint || '';
-    var roleHeader = (localStorage.getItem('role') || sessionUser.role || '').toLowerCase();
-    var clubCodeHeader = localStorage.getItem('clubCode') || sessionUser.clubCode || '';
     var accessToken = localStorage.getItem('accessToken') || '';
 
-    var authHeaders = {
-      'x-user-name': usernameHeader,
-      'x-user-role': roleHeader,
-      'x-user-club': clubCodeHeader
-    };
+    var authHeaders = {};
 
     if (accessToken) {
       authHeaders.Authorization = 'Bearer ' + accessToken;

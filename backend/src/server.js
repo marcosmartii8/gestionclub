@@ -61,7 +61,6 @@ function getTicketExtension(file) {
 }
 
 const AUTHZ_ENFORCE = process.env.AUTHZ_ENFORCE !== 'false';
-const AUTH_ALLOW_LEGACY_HEADERS = process.env.AUTH_ALLOW_LEGACY_HEADERS === 'true';
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://192.168.0.24:3000')
   .split(',')
   .map((origin) => origin.trim())
@@ -255,15 +254,6 @@ function getRequesterIdentity(req) {
       console.warn(`⚠️ JWT inválido o expirado en ${req.method} ${req.originalUrl}: ${error.message}`);
     }
   }
-
-  if (AUTH_ALLOW_LEGACY_HEADERS) {
-    // Fallback temporal controlado por entorno para no romper transición.
-    const username = req.header('x-user-name') || req.header('x-username') || '';
-    const role = (req.header('x-user-role') || '').toLowerCase().trim();
-    const clubCode = req.header('x-user-club') || '';
-    return { username, role, clubCode, source: 'headers' };
-  }
-
   return { username: '', role: '', clubCode: '', source: 'none' };
 }
 async function getCurrentRequester(req) {
