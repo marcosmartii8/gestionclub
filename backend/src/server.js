@@ -268,7 +268,11 @@ async function getCurrentRequester(req) {
     .eq('username', requester.username)
     .maybeSingle();
 
-  if (error || !user) {
+  if (error) {
+    throw error;
+  }
+
+if (!user) {
     return {
       username: '',
       role: '',
