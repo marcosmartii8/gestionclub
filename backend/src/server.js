@@ -60,7 +60,6 @@ function getTicketExtension(file) {
   return extensionsByMime[file.mimetype] || null;
 }
 
-const AUTHZ_ENFORCE = process.env.AUTHZ_ENFORCE !== 'false';
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://192.168.0.24:3000')
   .split(',')
   .map((origin) => origin.trim())
@@ -311,17 +310,13 @@ function requireRole(roles) {
 
       console.warn(
         `Acceso sin rol autorizado detectado: ${req.method} ${req.originalUrl} ` +
-        `role='${requester.role || 'none'}' user='${requester.username || 'unknown'}' enforce=${AUTHZ_ENFORCE}`
+        `role='${requester.role || 'none'}' user='${requester.username || 'unknown'}'`
       );
 
-      if (AUTHZ_ENFORCE) {
-        return res.status(403).json({
-          message: 'Acceso denegado por política de seguridad',
-          requiredRoles: roles
-        });
-      }
-
-      return next();
+      return res.status(403).json({
+        message: 'Acceso denegado por política de seguridad',
+        requiredRoles: roles
+      });
     } catch (error) {
       console.error('Error validando rol actual:', error);
 
@@ -387,11 +382,7 @@ async function requireAuthenticated(req, res, next) {
       return next();
     }
 
-    if (AUTHZ_ENFORCE) {
-      return res.status(401).json({ message: 'Autenticación requerida' });
-    }
-
-    return next();
+    return res.status(401).json({ message: 'Autenticación requerida' });
   } catch (error) {
     console.error('Error validando sesión actual:', error);
 
@@ -416,12 +407,10 @@ function requireSelfOrRole(paramName, roles) {
       return next();
     }
 
-    if (AUTHZ_ENFORCE) {
-      return res.status(403).json({
-        message: 'Acceso denegado por política de seguridad',
-        required: `self o rol (${roles.join(', ')})`
-      });
-    }
+    return res.status(403).json({
+      message: 'Acceso denegado por política de seguridad',
+      required: `self o rol (${roles.join(', ')})`
+    });
 
     return next();
   };
@@ -1393,7 +1382,7 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
       return res.status(403).json({ message: 'No se pudo determinar el club del usuario' });
     }
 
-    if (requester.role !== 'voluntario' && !isManagerRole(requester.role) && AUTHZ_ENFORCE) {
+    if (requester.role !== 'voluntario' && !isManagerRole(requester.role)) {
       return res.status(403).json({ message: 'Rol no autorizado para consultar formularios' });
     }
 
@@ -1540,7 +1529,7 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
       formulariosFiltrados = formulariosConClub.filter((form) => form.clubCode === requester.clubCode);
     } else if (requester.role === 'voluntario') {
       formulariosFiltrados = formulariosConClub.filter((form) => form.username === requester.username);
-    } else if (AUTHZ_ENFORCE) {
+    } else {
       return res.status(403).json({ message: 'Rol no autorizado para consultar formularios' });
     }
 
