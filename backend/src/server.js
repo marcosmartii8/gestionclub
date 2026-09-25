@@ -1185,6 +1185,18 @@ app.delete('/api/clubs/:club_code', requireSuperadmin, async (req, res) => {
         message: 'El club SUPERADMIN es un club del sistema y no puede eliminarse'
       });
     }
+    const { count: userCount, error: userCountError } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .eq('club_code', req.params.club_code);
+
+    if (userCountError) throw userCountError;
+
+    if (userCount > 0) {
+      return res.status(409).json({
+        message: 'No se puede eliminar el club porque todavía tiene usuarios asociados'
+      });
+    }
     const { data, error } = await supabase
       .from('clubs')
       .delete()
