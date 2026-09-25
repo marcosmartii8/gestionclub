@@ -1363,8 +1363,7 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
     let usersQuery = supabase
       .from('users')
       .select('username, club_code');
-
-    if (isManagerRole(requester.role)) {
+    if (isManagerRole(requester.role) && !isSuperadmin(requester)) {
       usersQuery = usersQuery.eq('club_code', requester.clubCode);
     } else if (requester.role === 'voluntario') {
       usersQuery = usersQuery.eq('username', requester.username);
@@ -1494,16 +1493,22 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
     }));
     
     console.log(`✓ Formularios procesados con clubCode: ${formulariosConClub.length}`);
-
-    let formulariosFiltrados = formulariosConClub;
-
-    if (isManagerRole(requester.role)) {
-      formulariosFiltrados = formulariosConClub.filter((form) => form.clubCode === requester.clubCode);
-    } else if (requester.role === 'voluntario') {
-      formulariosFiltrados = formulariosConClub.filter((form) => form.username === requester.username);
-    } else {
-      return res.status(403).json({ message: 'Rol no autorizado para consultar formularios' });
-    }
+  let formulariosFiltrados = formulariosConClub;
+  if (isSuperadmin(requester)) {
+    // El superadmin puede consultar los formularios de todos los clubes
+  } else if (isManagerRole(requester.role)) {
+    formulariosFiltrados = formulariosConClub.filter(
+      (form) => form.clubCode === requester.clubCode
+    );
+  } else if (requester.role === 'voluntario') {
+    formulariosFiltrados = formulariosConClub.filter(
+      (form) => form.username === requester.username
+  );
+  } else {
+    return res.status(403).json({
+      message: 'Rol no autorizado para consultar formularios'
+    });
+  }
 
     res.json(formulariosFiltrados);
   } catch (error) {
