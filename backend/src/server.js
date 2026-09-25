@@ -1157,6 +1157,12 @@ app.patch('/api/clubs/:club_code', requireSuperadmin, async (req, res) => {
     if (color_secondary !== undefined) updateData.color_secondary = color_secondary;
     if (text_color      !== undefined) updateData.text_color      = text_color;
     if (accent_color    !== undefined) updateData.accent_color    = accent_color;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        message: 'No se proporcionaron campos válidos para actualizar'
+      });
+    }
     const { data, error } = await supabase
       .from('clubs')
       .update(updateData)
