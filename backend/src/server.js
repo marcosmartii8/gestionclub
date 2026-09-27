@@ -1322,8 +1322,8 @@ app.post(
       ].join('/');
 
       const uniquePart = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const fileStem = baseName || uniquePart;
-      const fileName = `${fileStem}.${extension}`;
+      const fileStem = baseName || 'archivo';
+      const fileName = `${fileStem}_${uniquePart}.${extension}`;
       const filePath = `${storageFolder}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
