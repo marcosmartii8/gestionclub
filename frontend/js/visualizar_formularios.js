@@ -477,11 +477,8 @@ const params = new URLSearchParams(window.location.search);
                     const year = formData.year;
                     const month = formData.month;
                     
-                    // Obtener datos del usuario
-                    const userResponse = await fetch(`/api/users/${formUser}`, {
-                        headers: getAuthHeaders()
-                    });
-                    const userData = userResponse.ok ? await userResponse.json() : null;
+                    // Obtener datos del usuario desde la caché cargada previamente
+                    const userData = allUsers[formUser];
                     const fullName = userData?.fullname || userData?.fullName || formUser;
 
                         // --- Desplazamientos detalles con botón desplegable ---
@@ -1157,13 +1154,12 @@ const params = new URLSearchParams(window.location.search);
             }
         }
 
-        // Call the function to populate the username filter on page load
-        loadUsers();
+        async function initializePage() {
+            await loadUsers();
+            await loadForms();
+        }
 
-        // Call the function to populate the year filter on page load
-        // populateYearFilter(); // Ya no es necesario, los años se obtienen de allFormularios
-
-        loadForms();
+        initializePage();
 
         // Añadir función global para el botón desplegable
         function toggleDetails(id) {
