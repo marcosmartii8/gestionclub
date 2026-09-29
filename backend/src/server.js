@@ -430,9 +430,13 @@ app.post('/api/login', async (req, res) => {
       .from('users')
       .select('*')
       .eq('username', username)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
