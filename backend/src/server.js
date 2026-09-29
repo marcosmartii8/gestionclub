@@ -1099,9 +1099,13 @@ app.get('/api/clubs/me', requireAuthenticated, async (req, res) => {
       .from('clubs')
       .select('*')
       .eq('club_code', requester.clubCode)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
       return res.status(404).json({ message: 'Club no encontrado' });
     }
 
