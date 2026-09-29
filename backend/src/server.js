@@ -1643,7 +1643,7 @@ app.get('/api/formularios/:username', requireAuthenticated, requireSelfOrRole('u
     const requester = req.requester || getRequesterIdentity(req);
     const targetUsername = req.params.username;
 
-    if (isManagerRole(requester.role)) {
+    if (isManagerRole(requester.role) && !isSuperadmin(requester)) {
       const targetClubCode = await fetchUserClubCode(targetUsername);
       if (!requester.clubCode || !targetClubCode || requester.clubCode !== targetClubCode) {
         return res.status(403).json({ message: 'No autorizado para consultar formularios de otro club' });
@@ -1779,7 +1779,7 @@ app.post('/api/formularios', requireAuthenticated, async (req, res) => {
       return res.status(403).json({ message: 'No autorizado para guardar formularios de otros usuarios' });
     }
 
-    if (isManager) {
+    if (isManager && !isSuperadmin(requester)) {
       const targetClubCode = await fetchUserClubCode(username);
       if (!requester.clubCode || !targetClubCode || requester.clubCode !== targetClubCode) {
         return res.status(403).json({ message: 'No autorizado para guardar formularios de otro club' });
@@ -1974,7 +1974,7 @@ app.patch('/api/formularios/:username/:year/:month/completar', requireAuthentica
   const completed = req.body?.completed !== false;
 
   try {
-    if (isManagerRole(requester.role)) {
+    if (isManagerRole(requester.role) && !isSuperadmin(requester)) {
       const targetClubCode = await fetchUserClubCode(username);
       if (!requester.clubCode || !targetClubCode || requester.clubCode !== targetClubCode) {
         return res.status(403).json({ message: 'No autorizado para actualizar formularios de otro club' });
