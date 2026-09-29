@@ -419,8 +419,6 @@ function requireSelfOrRole(paramName, roles) {
       message: 'Acceso denegado por política de seguridad',
       required: `self o rol (${roles.join(', ')})`
     });
-
-    return next();
   };
 }
 // ========== LOGIN ==========
