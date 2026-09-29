@@ -843,9 +843,13 @@ app.delete('/api/users/:username/permanent', requireRole(['lider', 'administrado
       .from('users')
       .select('username, left_at, club_code')
       .eq('username', username)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !userData) {
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    if (!userData) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
