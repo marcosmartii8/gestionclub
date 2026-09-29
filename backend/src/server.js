@@ -38,6 +38,58 @@ const ticketUpload = multer({
   }
 });
 const TICKET_BUCKET = 'formularios-archivos';
+function isValidTicketFile(file) {
+  if (!file?.buffer || !file?.mimetype) {
+    return false;
+  }
+
+  const buffer = file.buffer;
+
+  switch (file.mimetype) {
+    case 'application/pdf':
+      return (
+        buffer.length >= 5 &&
+        buffer.subarray(0, 5).toString('ascii') === '%PDF-'
+      );
+
+    case 'image/jpeg':
+      return (
+        buffer.length >= 3 &&
+        buffer[0] === 0xff &&
+        buffer[1] === 0xd8 &&
+        buffer[2] === 0xff
+      );
+
+    case 'image/png':
+      return (
+        buffer.length >= 8 &&
+        buffer[0] === 0x89 &&
+        buffer[1] === 0x50 &&
+        buffer[2] === 0x4e &&
+        buffer[3] === 0x47 &&
+        buffer[4] === 0x0d &&
+        buffer[5] === 0x0a &&
+        buffer[6] === 0x1a &&
+        buffer[7] === 0x0a
+      );
+
+    case 'image/gif':
+      if (buffer.length < 6) return false;
+
+      const gifHeader = buffer.subarray(0, 6).toString('ascii');
+      return gifHeader === 'GIF87a' || gifHeader === 'GIF89a';
+
+    case 'image/webp':
+      return (
+        buffer.length >= 12 &&
+        buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+        buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+      );
+
+    default:
+      return false;
+  }
+}
 function getTicketStoragePath(fileUrl) {
   if (!fileUrl || typeof fileUrl !== 'string') {
     return null;
@@ -1300,6 +1352,11 @@ app.post(
 
       if (!req.file) {
         return res.status(400).json({ message: 'Archivo obligatorio' });
+      }
+      if (!isValidTicketFile(req.file)) {
+        return res.status(400).json({
+          message: 'El contenido del archivo no coincide con un formato permitido'
+        });
       }
 
       if (!Number.isInteger(year) || year < 2000 || year > 2100) {
