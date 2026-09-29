@@ -70,15 +70,23 @@
             if (clubPresidentCache[clubCode]) return clubPresidentCache[clubCode];
 
             try {
-                const response = await fetch('/api/clubs');
+                const response = await fetch('/api/clubs/me', {
+                    headers: getAuthHeaders()
+                });
+
                 if (!response.ok) return { name: '', dni: '' };
 
-                const clubs = await response.json();
-                const club = clubs.find((item) => item.club_code === clubCode);
+                const club = await response.json();
+
+                if (club.club_code !== clubCode) {
+                    return { name: '', dni: '' };
+                }
+
                 const president = {
-                    name: club?.nom_presidente || '',
-                    dni: club?.dni_presidente || ''
+                    name: club.nom_presidente || '',
+                    dni: club.dni_presidente || ''
                 };
+
                 clubPresidentCache[clubCode] = president;
                 return president;
             } catch (error) {
@@ -165,19 +173,16 @@
                 // Mostrar detalles
                 // Obtener nombre y dni del presidente según clubCode
                 let presidenteHtml = '';
+
                 try {
-                    const clubsResponse = await fetch('/api/clubs');
-                    if (clubsResponse.ok) {
-                        const clubs = await clubsResponse.json();
-                        const userClub = clubs.find(club => club.club_code === userData.clubCode);
-                        if (userClub) {
-                            if (userClub.nom_presidente) {
-                                presidenteHtml += `<p><strong>Presidente:</strong> ${userClub.nom_presidente}</p>`;
-                            }
-                            if (userClub.dni_presidente) {
-                                presidenteHtml += `<p><strong>DNI Presidente:</strong> ${userClub.dni_presidente}</p>`;
-                            }
-                        }
+                    const president = await getClubPresident(userData.clubCode);
+
+                    if (president.name) {
+                        presidenteHtml += `<p><strong>Presidente:</strong> ${president.name}</p>`;
+                    }
+
+                    if (president.dni) {
+                        presidenteHtml += `<p><strong>DNI Presidente:</strong> ${president.dni}</p>`;
                     }
                 } catch (error) {
                     presidenteHtml = '';
@@ -267,19 +272,21 @@
 
             // Obtener nombre del club personalizado desde la API
             let clubName = "Club no identificado";
+
             try {
-                const clubsResponse = await fetch('/api/clubs');
-                if (clubsResponse.ok) {
-                    const clubs = await clubsResponse.json();
-                    const userClub = clubs.find(club => club.club_code === userData.clubCode);
-                    if (userClub) {
-                        clubName = userClub.club_name;
-                    } else if (userData.clubCode) {
-                        clubName = userData.clubCode;
-                    }
+                const clubResponse = await fetch('/api/clubs/me', {
+                    headers: getAuthHeaders()
+                });
+
+                if (clubResponse.ok) {
+                    const club = await clubResponse.json();
+                    clubName = club.club_name || userData.clubCode || "Club no identificado";
+                } else if (userData.clubCode) {
+                    clubName = userData.clubCode;
                 }
             } catch (error) {
                 console.error('Error al cargar el nombre del club:', error);
+
                 if (userData.clubCode) {
                     clubName = userData.clubCode;
                 }
@@ -769,21 +776,23 @@
             const month = formData.month;
             const username = formData.username;
 
-            // Obtener nombre del club personalizado desde la API
+            // Obtener nombre del club actual desde la API
             let clubName = "Club no identificado";
+
             try {
-                const clubsResponse = await fetch('/api/clubs');
-                if (clubsResponse.ok) {
-                    const clubs = await clubsResponse.json();
-                    const userClub = clubs.find(club => club.club_code === userData.clubCode);
-                    if (userClub) {
-                        clubName = userClub.club_name;
-                    } else if (userData.clubCode) {
-                        clubName = userData.clubCode;
-                    }
+                const clubResponse = await fetch('/api/clubs/me', {
+                    headers: getAuthHeaders()
+                });
+
+                if (clubResponse.ok) {
+                    const club = await clubResponse.json();
+                    clubName = club.club_name || userData.clubCode || "Club no identificado";
+                } else if (userData.clubCode) {
+                    clubName = userData.clubCode;
                 }
             } catch (error) {
                 console.error('Error al cargar el nombre del club:', error);
+
                 if (userData.clubCode) {
                     clubName = userData.clubCode;
                 }
