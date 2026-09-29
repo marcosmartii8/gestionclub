@@ -503,12 +503,15 @@ app.get('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
       .from('users')
       .select('*')
       .eq('username', req.params.username)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
+    if (error) {
+      throw error;
     }
 
+    if (!data) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
     const isSelf = requester.username === data.username;
     const isManager = requester.role === 'lider' || requester.role === 'administrador';
     const requesterIsSuperadmin = isSuperadmin(requester);
