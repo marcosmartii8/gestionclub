@@ -1482,6 +1482,7 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
 
         if (desplazamientosError) {
           console.error(`❌ Error al obtener desplazamientos para formulario ${form.id}:`, desplazamientosError);
+          throw desplazamientosError;
         } else {
           matches = (desplazamientosData || []).map((desp) => ({
             date: desp.fecha,
@@ -1499,6 +1500,7 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
 
         if (gastosTransporteError) {
           console.error(`❌ Error al obtener gastos de transporte para formulario ${form.id}:`, gastosTransporteError);
+          throw gastosTransporteError;
         } else {
           transportExpenses = (gastosTransporteData || []).map((gasto) => ({
             date: gasto.fecha,
@@ -1517,6 +1519,7 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
 
         if (gastosDietasError) {
           console.error(`❌ Error al obtener gastos de dietas para formulario ${form.id}:`, gastosDietasError);
+          throw gastosDietasError;
         } else {
           dietExpenses = (gastosDietasData || []).map((gasto) => ({
             date: gasto.fecha,
