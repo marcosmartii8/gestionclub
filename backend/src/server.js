@@ -8,7 +8,6 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import fs from 'fs';
-import { cleanupTicketFiles } from './cleanup-ticket-files.js';
 
 dotenv.config();
 
@@ -243,19 +242,7 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '12h';
-const TICKET_CLEANUP_ENABLED = process.env.TICKET_CLEANUP_ENABLED === 'true';
-const TICKET_CLEANUP_INTERVAL_MS = Number(process.env.TICKET_CLEANUP_INTERVAL_MS || 24 * 60 * 60 * 1000);
 
-
-
-if (TICKET_CLEANUP_ENABLED) {
-  setInterval(() => {
-    cleanupTicketFiles({ execute: true }).catch((error) => {
-      console.error('❌ Error en limpieza automática de tickets:', error.message);
-    });
-  }, TICKET_CLEANUP_INTERVAL_MS);
-  console.log(`🧹 Limpieza automática de tickets activada cada ${TICKET_CLEANUP_INTERVAL_MS} ms`);
-}
 
 function isBcryptHash(value) {
   return typeof value === 'string' && /^\$2[aby]\$\d{2}\$/.test(value);
