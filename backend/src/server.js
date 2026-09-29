@@ -610,9 +610,13 @@ app.put('/api/users/:username', requireAuthenticated, requireSelfOrRole('usernam
       .from('users')
       .select('username, club_code, role')
       .eq('username', oldUsername)
-      .single();
+      .maybeSingle();
 
-    if (targetUserError || !targetUser) {
+    if (targetUserError) {
+      throw targetUserError;
+    }
+
+    if (!targetUser) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
