@@ -38,7 +38,30 @@ const ticketUpload = multer({
   }
 });
 const TICKET_BUCKET = 'formularios-archivos';
+function getTicketStoragePath(fileUrl) {
+  if (!fileUrl || typeof fileUrl !== 'string') {
+    return null;
+  }
 
+  try {
+    const url = new URL(fileUrl);
+    const marker = `/storage/v1/object/public/${TICKET_BUCKET}/`;
+
+    const markerIndex = url.pathname.indexOf(marker);
+
+    if (markerIndex === -1) {
+      return null;
+    }
+
+    const filePath = decodeURIComponent(
+      url.pathname.slice(markerIndex + marker.length)
+    );
+
+    return filePath || null;
+  } catch {
+    return null;
+  }
+}
 function normalizeStoragePart(value) {
   return String(value || '')
     .normalize('NFD')
@@ -1951,7 +1974,19 @@ app.post('/api/formularios', requireAuthenticated, async (req, res) => {
 
       if (insertDesplazamientosError) throw insertDesplazamientosError;
     }
+    const { data: oldTransportExpenses, error: oldTransportExpensesError } = await supabase
+      .from('gastos_transporte')
+      .select('archivo')
+      .eq('formulario_id', formularioId);
 
+    if (oldTransportExpensesError) throw oldTransportExpensesError;
+
+    const { data: oldDietExpenses, error: oldDietExpensesError } = await supabase
+      .from('gastos_dietas')
+      .select('archivo')
+      .eq('formulario_id', formularioId);
+
+    if (oldDietExpensesError) throw oldDietExpensesError;
     // Reemplazar gastos de transporte del formulario con el estado actual enviado por frontend.
     const { error: deleteGastosTransporteError } = await supabase
       .from('gastos_transporte')
@@ -2004,6 +2039,38 @@ app.post('/api/formularios', requireAuthenticated, async (req, res) => {
         .insert(gastosDietasRows);
 
       if (insertGastosDietasError) throw insertGastosDietasError;
+    }
+    const currentFileUrls = [
+      ...(gastosTransporteRows || []),
+      ...(gastosDietasRows || [])
+    ]
+      .map((gasto) => gasto.archivo)
+      .filter(Boolean);
+
+    const currentFilePaths = new Set(
+      currentFileUrls
+        .map(getTicketStoragePath)
+        .filter(Boolean)
+    );
+    const oldFilePaths = [
+      ...(oldTransportExpenses || []),
+      ...(oldDietExpenses || [])
+    ]
+      .map((gasto) => getTicketStoragePath(gasto.archivo))
+      .filter(Boolean);
+
+    const filesToDelete = [
+      ...new Set(oldFilePaths)
+    ].filter((filePath) => !currentFilePaths.has(filePath));
+
+    if (filesToDelete.length > 0) {
+      const { error: deleteFilesError } = await supabase.storage
+        .from(TICKET_BUCKET)
+        .remove(filesToDelete);
+
+      if (deleteFilesError) {
+        console.error('Error eliminando justificantes antiguos:', deleteFilesError);
+      }
     }
 
     console.log('✅ Guardado exitoso:', data);
@@ -2088,14 +2155,62 @@ app.delete('/api/formularios/:username/:year/:month', requireAuthenticated, requ
       }
     }
 
-    const { error } = await supabase
+    const { data: formulario, error: formularioError } = await supabase
       .from('formularios')
-      .delete()
+      .select('id')
       .eq('username', username)
       .eq('year', parseInt(year))
-      .eq('month', parseInt(month));
+      .eq('month', parseInt(month))
+      .maybeSingle();
 
-    if (error) throw error;
+    if (formularioError) throw formularioError;
+
+    if (!formulario) {
+      return res.status(404).json({
+        message: 'Formulario no encontrado'
+      });
+    }
+
+    const { data: transportExpenses, error: transportError } = await supabase
+      .from('gastos_transporte')
+      .select('archivo')
+      .eq('formulario_id', formulario.id);
+
+    if (transportError) throw transportError;
+
+    const { data: dietExpenses, error: dietError } = await supabase
+      .from('gastos_dietas')
+      .select('archivo')
+      .eq('formulario_id', formulario.id);
+
+    if (dietError) throw dietError;
+
+    const filesToDelete = [
+      ...(transportExpenses || []),
+      ...(dietExpenses || [])
+    ]
+      .map((gasto) => getTicketStoragePath(gasto.archivo))
+      .filter(Boolean);
+
+    const { error: deleteError } = await supabase
+      .from('formularios')
+      .delete()
+      .eq('id', formulario.id);
+
+    if (deleteError) throw deleteError;
+
+    if (filesToDelete.length > 0) {
+      const { error: storageError } = await supabase.storage
+        .from(TICKET_BUCKET)
+        .remove([...new Set(filesToDelete)]);
+
+      if (storageError) {
+        console.error(
+          'Error eliminando justificantes del formulario desde Storage:',
+          storageError
+        );
+      }
+    }
 
     res.json({ message: 'Formulario eliminado exitosamente' });
   } catch (error) {
