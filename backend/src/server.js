@@ -368,9 +368,13 @@ async function fetchUserClubCode(username) {
     .from('users')
     .select('club_code')
     .eq('username', username)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
     return null;
   }
 
