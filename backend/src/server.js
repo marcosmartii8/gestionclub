@@ -2006,7 +2006,7 @@ app.post('/api/formularios', requireAuthenticated, async (req, res) => {
     res.json({ message: 'Formulario guardado exitosamente', formulario: data });
   } catch (error) {
     console.error('❌ Error al guardar formulario:', error);
-    res.status(400).json({ message: 'Error al guardar formulario', error: error.message });
+    res.status(500).json({ message: 'Error al guardar formulario', error: error.message });
   }
 });
 
