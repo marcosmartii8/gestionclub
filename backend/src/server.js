@@ -1298,9 +1298,13 @@ app.post(
         .from('users')
         .select('username, club_code')
         .eq('username', targetUsername)
-        .single();
+        .maybeSingle();
 
-      if (targetUserError || !targetUser) {
+      if (targetUserError) {
+        throw targetUserError;
+      }
+
+      if (!targetUser) {
         return res.status(404).json({ message: 'Usuario no encontrado' });
       }
 
