@@ -777,14 +777,17 @@ app.delete('/api/users/:username', requireRole(['lider']), async (req, res) => {
       .from('users')
       .select('username, club_code')
       .eq('username', req.params.username)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !targetUser) {
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    if (!targetUser) {
       return res.status(404).json({
         message: 'Usuario no encontrado'
       });
     }
-
     const requesterIsSuperadmin = isSuperadmin(requester);
 
     if (targetUser.username === 'superadmin') {
