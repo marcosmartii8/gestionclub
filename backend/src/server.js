@@ -978,9 +978,13 @@ app.patch('/api/users/:username/leave', requireRole(['lider', 'administrador']),
       .from('users')
       .select('username, club_code')
       .eq('username', username)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !userData) {
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    if (!userData) {
       return res.status(404).json({
         message: 'Usuario no encontrado'
       });
