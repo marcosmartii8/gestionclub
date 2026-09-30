@@ -41,12 +41,10 @@ async function handleRegistration(event) {
             return;
         }
         const result = await response.json();
-        localStorage.setItem('usuario', JSON.stringify(result.user));
         alert('Registro completado.');
-        window.location.href = 'interfaz_lider.html';
+        window.location.href = `interfaz_personalizada.html?nombre=${encodeURIComponent(localStorage.getItem('username') || '')}`;
     } catch (err) {
         alert('Error en el registro: ' + (err.message || 'Error de conexión.'));
-        window.location.href = 'interfaz_lider.html';
     }
 }
 

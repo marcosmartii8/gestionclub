@@ -31,7 +31,7 @@
             </select>
             
             <div class="button-container">
-                <button type="button" onclick="window.location.href='interfaz_lider.html'">Volver</button>
+                <button type="button" onclick="window.location.href='interfaz_personalizada.html?nombre=' + encodeURIComponent(localStorage.getItem('username') || '')">Volver</button>
                 <button type="submit">Registrar</button>
             </div>
         </form>

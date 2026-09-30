@@ -113,7 +113,7 @@
       'formularios.html': true,
       'ver_usuarios.html': true,
       'editar_perfil.html': true,
-      
+      'registro.html': true,
       'visualizar_formularios.html': true,
       'hojas.html': true,
       'ver_gastos.html': true,
@@ -127,6 +127,7 @@
   function getRequiredRolesForCurrentPage() {
     var page = getCurrentPageName();
     var rolesByPage = {
+      'registro.html': ['lider'],
       'ver_usuarios.html': ['lider', 'administrador'],
       'visualizar_formularios.html': ['lider', 'administrador'],
       'hojas.html': ['lider'],

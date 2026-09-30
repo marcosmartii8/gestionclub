@@ -83,7 +83,9 @@ if (userData) {
         // Botón Gestión solo para lider de 82801
         if (userData.role === 'lider' && userData.clubCode === '82801') {
             gestionButton.style.display = 'inline-block';
-            gestionButton.onclick = validateLeaderPassword;
+            gestionButton.onclick = () => {
+                window.location.href = 'registro.html';
+            };
         }
     }
 
@@ -109,30 +111,3 @@ document.getElementById('logout-button').onclick = () => {
         window.location.href = "nueva_interfaz_inicio_sesion.html";
     }
 };
-
-// Validación contraseña líder
-function validateLeaderPassword() {
-    const password = prompt("Introduce la contraseña para Líder:");
-    if (password === "28012004Mmc") {
-        const securityAnswer = prompt("¿Cuál es el nombre de tu club?");
-        if (securityAnswer && securityAnswer.toLowerCase() === "tugestclub") {
-            localStorage.setItem('failedAttempts', 0);
-            window.location.href = "interfaz_lider.html";
-        } else {
-            handleFailedAttempt();
-        }
-    } else {
-        handleFailedAttempt();
-    }
-}
-
-function handleFailedAttempt() {
-    let failedAttempts = parseInt(localStorage.getItem('failedAttempts')) || 0;
-    failedAttempts++;
-    localStorage.setItem('failedAttempts', failedAttempts);
-    if (failedAttempts >= 3) {
-        alert("Has alcanzado el límite de intentos. Por favor, inténtalo más tarde.");
-    } else {
-        alert(`Intento fallido. Te quedan ${3 - failedAttempts} intentos.`);
-    }
-}
