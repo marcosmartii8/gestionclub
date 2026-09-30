@@ -1032,7 +1032,18 @@ app.patch('/api/users/:username/leave', requireRole(['lider', 'administrador']),
     const { username } = req.params;
     const requester = req.requester || getRequesterIdentity(req);
     const requesterIsSuperadmin = isSuperadmin(requester);
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const madridDateParts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Madrid',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+
+    const madridDate = Object.fromEntries(
+      madridDateParts.map(({ type, value }) => [type, value])
+    );
+
+    const today = `${madridDate.year}-${madridDate.month}-${madridDate.day}`;
 
     if (!requester.clubCode) {
       return res.status(403).json({
