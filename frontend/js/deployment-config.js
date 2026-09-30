@@ -6,13 +6,13 @@
   };
   var currentHostname = window.location && window.location.hostname ? window.location.hostname : '';
   var isLocalhost = !!localhostNames[currentHostname];
-  var configuredBaseUrl = window.__TUGESTCLUB_API_BASE_URL__ || '';
+  var configuredBaseUrl = window.__GESTDEVOL_API_BASE_URL__ || '';
 
   if (!configuredBaseUrl && !isLocalhost) {
     configuredBaseUrl = 'https://gestionclub-production-051e.up.railway.app';
   }
 
-  window.__TUGESTCLUB_API_BASE_URL__ = configuredBaseUrl;
+  window.__GESTDEVOL_API_BASE_URL__ = configuredBaseUrl;
 
   if (isLocalhost || !configuredBaseUrl) {
     return;
@@ -67,5 +67,5 @@
     return nativeFetch(rewriteApiUrl(input), init);
   };
 
-  window.__TUGESTCLUB_API_REWRITE_ACTIVE__ = true;
+  window.__GESTDEVOL_API_REWRITE_ACTIVE__ = true;
 })();
