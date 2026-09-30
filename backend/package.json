@@ -1,7 +1,7 @@
 {
-  "name": "tugestclub-backend",
+  "name": "gestdevol-backend",
   "version": "1.0.0",
-  "description": "Backend para tuGestClub (Express + PostgreSQL, fallback JSON)",
+  "description": "Backend de GestDeVol (Express + Supabase)",
   "type": "module",
   "main": "src/server.js",
   "scripts": {

@@ -202,7 +202,7 @@ app.get('/', (req, res) => {
   } else {
     res.status(200).json({
       status: 'ok',
-      service: 'tuGestClub backend',
+      service: 'GestDeVol backend',
       frontend: 'not-configured'
     });
   }
