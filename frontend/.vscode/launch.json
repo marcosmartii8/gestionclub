@@ -34,12 +34,6 @@
             "request": "attach",
             "type": "chrome",
             "webRoot": "${workspaceFolder}"
-        },
-        {
-            "type": "chrome",
-            "request": "launch",
-            "name": "Open interfaz_lider.html",
-            "file": "c:\\Users\\marco\\tugestclub\\tuGestor\\gestionclub\\interfaz_lider.html"
         }
     ]
 }
