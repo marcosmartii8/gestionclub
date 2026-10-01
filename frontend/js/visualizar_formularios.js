@@ -488,7 +488,7 @@ const params = new URLSearchParams(window.location.search);
                             ? formData.matches.map(match => `Fecha: ${match.date}, Localidad: ${match.locality}, Equipo: ${match.place}, Km: ${match.km}`).join('<br>')
                             : '<em style="color: #999;">No hay datos</em>';
                         const matchDetailsHtml = `
-                            <button type="button" onclick="toggleDetails('${matchDetailsId}')">Ver</button>
+                            <button type="button" class="table-action table-action-view" onclick="toggleDetails('${matchDetailsId}')">Ver</button>
                             <div id="${matchDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
                                 ${matchDetailsContent}
                             </div>
@@ -510,7 +510,7 @@ const params = new URLSearchParams(window.location.search);
                             }).join('<br>')
                             : '<em style="color: #999;">No hay datos</em>';
                         const transportDetailsHtml = `
-                            <button type="button" onclick="toggleDetails('${transportDetailsId}')">Ver</button>
+                            <button type="button" class="table-action table-action-view" onclick="toggleDetails('${transportDetailsId}')">Ver</button>
                             <div id="${transportDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
                                 ${transportDetailsContent}
                             </div>
@@ -532,7 +532,7 @@ const params = new URLSearchParams(window.location.search);
                             }).join('<br>')
                             : '<em style="color: #999;">No hay datos</em>';
                         const dietDetailsHtml = `
-                            <button type="button" onclick="toggleDetails('${dietDetailsId}')">Ver</button>
+                            <button type="button" class="table-action table-action-view" onclick="toggleDetails('${dietDetailsId}')">Ver</button>
                             <div id="${dietDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
                                 ${dietDetailsContent}
                             </div>
@@ -555,8 +555,8 @@ const params = new URLSearchParams(window.location.search);
                                 ${dietDetailsHtml}
                             </td>
                             <td>
-                                <button onclick="editForm('${formUser}', ${year}, ${month})">Editar</button>
-                                <button onclick="deleteForm('${formUser}', ${year}, ${month})">Borrar</button>
+                                <button class="table-action table-action-edit" onclick="editForm('${formUser}', ${year}, ${month})">Editar</button>
+                                <button class="table-action table-action-delete" onclick="deleteForm('${formUser}', ${year}, ${month})">Borrar</button>
                             </td>
                         `;
                         tableBody.appendChild(row);
@@ -608,7 +608,7 @@ const params = new URLSearchParams(window.location.search);
                         ? formData.matches.map(match => `Fecha: ${match.date}, Localidad: ${match.locality}, Equipo: ${match.place}, Km: ${match.km}`).join('<br>')
                         : '<em style="color: #999;">No hay datos</em>';
                     const matchDetailsHtml = `
-                        <button type="button" onclick="toggleDetails('${matchDetailsId}')">Ver</button>
+                        <button type="button" class="table-action table-action-view" onclick="toggleDetails('${matchDetailsId}')">Ver</button>
                         <div id="${matchDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
                             ${matchDetailsContent}
                         </div>
@@ -628,7 +628,7 @@ const params = new URLSearchParams(window.location.search);
                         }).join('<br>')
                         : '<em style="color: #999;">No hay datos</em>';
                     const transportDetailsHtml = `
-                        <button type="button" onclick="toggleDetails('${transportDetailsId}')">Ver</button>
+                        <button type="button" class="table-action table-action-view" onclick="toggleDetails('${transportDetailsId}')">Ver</button>
                         <div id="${transportDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
                             ${transportDetailsContent}
                         </div>
@@ -648,7 +648,7 @@ const params = new URLSearchParams(window.location.search);
                         }).join('<br>')
                         : '<em style="color: #999;">No hay datos</em>';
                     const dietDetailsHtml = `
-                        <button type="button" onclick="toggleDetails('${dietDetailsId}')">Ver</button>
+                        <button type="button" class="table-action table-action-view" onclick="toggleDetails('${dietDetailsId}')">Ver</button>
                         <div id="${dietDetailsId}" style="display:none; text-align:left; font-size:0.85em; margin-top:4px;">
                             ${dietDetailsContent}
                         </div>
@@ -670,8 +670,8 @@ const params = new URLSearchParams(window.location.search);
                             ${dietDetailsHtml}
                         </td>
                         <td>
-                            <button onclick="editForm('${formUser}', ${formData.year}, ${formData.month})">Editar</button>
-                            <button onclick="deleteForm('${formUser}', ${formData.year}, ${formData.month})">Borrar</button>
+                            <button class="table-action table-action-edit" onclick="editForm('${formUser}', ${formData.year}, ${formData.month})">Editar</button>
+                            <button class="table-action table-action-delete" onclick="deleteForm('${formUser}', ${formData.year}, ${formData.month})">Borrar</button>
                         </td>
                     `;
                     tableBody.appendChild(row);

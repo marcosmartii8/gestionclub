@@ -667,8 +667,8 @@
     button.type = 'button';
     button.textContent = 'Cerrar sesión';
     button.style.position = 'fixed';
+    button.style.top = '18px';
     button.style.right = '18px';
-    button.style.bottom = '18px';
     button.style.zIndex = '9999';
     button.style.padding = '10px 14px';
     button.style.border = 'none';
