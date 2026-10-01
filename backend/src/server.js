@@ -113,6 +113,91 @@ function getTicketStoragePath(fileUrl) {
     return null;
   }
 }
+async function cleanupExpiredTicketFiles() {
+  const madridDateParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+
+  const madridDate = Object.fromEntries(
+    madridDateParts.map(({ type, value }) => [type, value])
+  );
+
+  const currentMadridDate = new Date(
+    Date.UTC(
+      Number(madridDate.year),
+      Number(madridDate.month) - 1,
+      Number(madridDate.day)
+    )
+  );
+
+  // Los justificantes se conservan durante 3 meses naturales.
+  currentMadridDate.setUTCMonth(currentMadridDate.getUTCMonth() - 3);
+
+  const cutoff = [
+    currentMadridDate.getUTCFullYear(),
+    String(currentMadridDate.getUTCMonth() + 1).padStart(2, '0'),
+    String(currentMadridDate.getUTCDate()).padStart(2, '0')
+  ].join('-');
+
+  console.log(`Comprobando justificantes anteriores a ${cutoff}...`);
+
+  const tables = ['gastos_transporte', 'gastos_dietas'];
+
+  for (const table of tables) {
+    const { data: expiredExpenses, error: selectError } = await supabase
+      .from(table)
+      .select('id, archivo')
+      .not('archivo', 'is', null)
+      .lt('fecha', cutoff);
+
+    if (selectError) {
+      throw selectError;
+    }
+
+    for (const expense of expiredExpenses || []) {
+      const storagePath = getTicketStoragePath(expense.archivo);
+
+      // No tocamos la BD si no podemos identificar con seguridad
+      // el archivo dentro de nuestro bucket.
+      if (!storagePath) {
+        console.error(
+          `No se pudo identificar la ruta del justificante ${table} #${expense.id}`
+        );
+        continue;
+      }
+
+      const { error: storageError } = await supabase.storage
+        .from(TICKET_BUCKET)
+        .remove([storagePath]);
+
+      if (storageError) {
+        console.error(
+          `No se pudo eliminar el justificante ${table} #${expense.id}:`,
+          storageError
+        );
+        continue;
+      }
+
+      const { error: updateError } = await supabase
+        .from(table)
+        .update({ archivo: null })
+        .eq('id', expense.id);
+
+      if (updateError) {
+        console.error(
+          `Archivo eliminado pero no se pudo limpiar la referencia ${table} #${expense.id}:`,
+          updateError
+        );
+        continue;
+      }
+
+      console.log(`Justificante caducado eliminado: ${table} #${expense.id}`);
+    }
+  }
+}
 function normalizeStoragePart(value) {
   return String(value || '')
     .normalize('NFD')
@@ -2303,8 +2388,14 @@ app.use((err, req, res, next) => {
   next(err);
 });
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`✓ Servidor corriendo en http://localhost:${PORT}`);
   console.log(`✓ También accesible desde: http://192.168.0.24:${PORT}`);
   console.log('✓ Conectado a Supabase');
+
+  try {
+    await cleanupExpiredTicketFiles();
+  } catch (error) {
+    console.error('Error en limpieza de justificantes caducados:', error);
+  }
 });
