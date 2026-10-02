@@ -36,6 +36,68 @@ const ticketUpload = multer({
     callback(null, true);
   }
 });
+const clubShieldUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 2 * 1024 * 1024
+  },
+  fileFilter: (req, file, callback) => {
+    const allowedTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/webp'
+    ];
+
+    if (!allowedTypes.includes(file.mimetype)) {
+      return callback(new Error('El escudo debe ser una imagen JPG, PNG o WebP'));
+    }
+
+    callback(null, true);
+  }
+});
+
+const CLUB_ASSETS_BUCKET = 'club-assets';
+
+function isValidClubShield(file) {
+  if (!file?.buffer || !file?.mimetype) {
+    return false;
+  }
+
+  const buffer = file.buffer;
+
+  switch (file.mimetype) {
+    case 'image/jpeg':
+      return (
+        buffer.length >= 3 &&
+        buffer[0] === 0xff &&
+        buffer[1] === 0xd8 &&
+        buffer[2] === 0xff
+      );
+
+    case 'image/png':
+      return (
+        buffer.length >= 8 &&
+        buffer[0] === 0x89 &&
+        buffer[1] === 0x50 &&
+        buffer[2] === 0x4e &&
+        buffer[3] === 0x47 &&
+        buffer[4] === 0x0d &&
+        buffer[5] === 0x0a &&
+        buffer[6] === 0x1a &&
+        buffer[7] === 0x0a
+      );
+
+    case 'image/webp':
+      return (
+        buffer.length >= 12 &&
+        buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+        buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+      );
+
+    default:
+      return false;
+  }
+}
 const TICKET_BUCKET = 'formularios-archivos';
 function isValidTicketFile(file) {
   if (!file?.buffer || !file?.mimetype) {
@@ -1293,6 +1355,194 @@ app.get('/api/clubs', requireSuperadmin, async (req, res) => {
   } catch (error) {
     console.error('Error al obtener clubes:', error);
     res.status(500).json({ message: 'Error al obtener clubes', error: error.message });
+  }
+});
+// Subir o sustituir el escudo de un club
+app.post(
+  '/api/clubs/:club_code/shield',
+  requireSuperadmin,
+  clubShieldUpload.single('shield'),
+  async (req, res) => {
+    try {
+      const { club_code } = req.params;
+
+      if (!req.file) {
+        return res.status(400).json({
+          message: 'Debes seleccionar una imagen para el escudo'
+        });
+      }
+
+      if (!isValidClubShield(req.file)) {
+        return res.status(400).json({
+          message: 'El archivo no contiene una imagen válida'
+        });
+      }
+
+      const { data: club, error: clubError } = await supabase
+        .from('clubs')
+        .select('club_code, shield_url')
+        .eq('club_code', club_code)
+        .maybeSingle();
+
+      if (clubError) throw clubError;
+
+      if (!club) {
+        return res.status(404).json({
+          message: 'Club no encontrado'
+        });
+      }
+
+      const extensionByMime = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp'
+      };
+
+      const extension = extensionByMime[req.file.mimetype];
+      const filePath = `shields/${club_code}-${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(CLUB_ASSETS_BUCKET)
+        .upload(filePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from(CLUB_ASSETS_BUCKET)
+        .getPublicUrl(filePath);
+
+      const newShieldUrl = publicUrlData.publicUrl;
+
+      const { data: updatedClub, error: updateError } = await supabase
+        .from('clubs')
+        .update({ shield_url: newShieldUrl })
+        .eq('club_code', club_code)
+        .select()
+        .single();
+
+      if (updateError) {
+        await supabase.storage
+          .from(CLUB_ASSETS_BUCKET)
+          .remove([filePath]);
+
+        throw updateError;
+      }
+      // Eliminar el escudo anterior después de guardar correctamente el nuevo
+      if (club.shield_url) {
+        try {
+          const oldUrl = new URL(club.shield_url);
+          const marker = `/storage/v1/object/public/${CLUB_ASSETS_BUCKET}/`;
+          const markerIndex = oldUrl.pathname.indexOf(marker);
+
+          if (markerIndex !== -1) {
+            const oldFilePath = decodeURIComponent(
+              oldUrl.pathname.slice(markerIndex + marker.length)
+            );
+
+            if (oldFilePath && oldFilePath !== filePath) {
+              const { error: deleteOldError } = await supabase.storage
+                .from(CLUB_ASSETS_BUCKET)
+                .remove([oldFilePath]);
+
+              if (deleteOldError) {
+                console.error(
+                  'No se pudo eliminar el escudo anterior:',
+                  deleteOldError
+                );
+              }
+            }
+          }
+        } catch (error) {
+          console.error(
+            'No se pudo procesar la URL del escudo anterior:',
+            error
+          );
+        }
+      }
+
+      res.json({
+        message: 'Escudo actualizado correctamente',
+        club: updatedClub
+      });
+    } catch (error) {
+      console.error('Error al actualizar el escudo del club:', error);
+      res.status(500).json({
+        message: 'Error al actualizar el escudo del club',
+        error: error.message
+      });
+    }
+  }
+);
+// Eliminar el escudo de un club
+app.delete('/api/clubs/:club_code/shield', requireSuperadmin, async (req, res) => {
+  try {
+    const { club_code } = req.params;
+
+    const { data: club, error: clubError } = await supabase
+      .from('clubs')
+      .select('club_code, shield_url')
+      .eq('club_code', club_code)
+      .maybeSingle();
+
+    if (clubError) throw clubError;
+
+    if (!club) {
+      return res.status(404).json({
+        message: 'Club no encontrado'
+      });
+    }
+
+    if (!club.shield_url) {
+      return res.status(400).json({
+        message: 'El club no tiene ningún escudo'
+      });
+    }
+
+    const oldUrl = new URL(club.shield_url);
+    const marker = `/storage/v1/object/public/${CLUB_ASSETS_BUCKET}/`;
+    const markerIndex = oldUrl.pathname.indexOf(marker);
+
+    if (markerIndex === -1) {
+      return res.status(400).json({
+        message: 'La URL del escudo no pertenece al almacenamiento de GestDeVol'
+      });
+    }
+
+    const oldFilePath = decodeURIComponent(
+      oldUrl.pathname.slice(markerIndex + marker.length)
+    );
+
+    const { error: storageError } = await supabase.storage
+      .from(CLUB_ASSETS_BUCKET)
+      .remove([oldFilePath]);
+
+    if (storageError) throw storageError;
+
+    const { data: updatedClub, error: updateError } = await supabase
+      .from('clubs')
+      .update({ shield_url: null })
+      .eq('club_code', club_code)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    res.json({
+      message: 'Escudo eliminado correctamente',
+      club: updatedClub
+    });
+  } catch (error) {
+    console.error('Error al eliminar el escudo del club:', error);
+    res.status(500).json({
+      message: 'Error al eliminar el escudo del club',
+      error: error.message
+    });
   }
 });
 

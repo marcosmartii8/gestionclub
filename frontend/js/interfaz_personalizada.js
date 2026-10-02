@@ -22,6 +22,24 @@ if (userData) {
             if (!response.ok) throw new Error('Error al cargar el club');
 
             const userClub = await response.json();
+            const clubShield = document.getElementById('club-shield');
+            const defaultLogo = document.querySelector('.logo-badge svg');
+
+            if (userClub?.shield_url) {
+                clubShield.src = userClub.shield_url;
+                clubShield.style.display = 'block';
+
+                if (defaultLogo) {
+                    defaultLogo.style.display = 'none';
+                }
+            } else {
+                clubShield.removeAttribute('src');
+                clubShield.style.display = 'none';
+
+                if (defaultLogo) {
+                    defaultLogo.style.display = 'block';
+                }
+            }
             
             if (userClub) {
                 welcomeMessage.textContent = userClub.club_name;

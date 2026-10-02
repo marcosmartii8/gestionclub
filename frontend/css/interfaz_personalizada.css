@@ -364,3 +364,15 @@ body {
         line-height: 1.4;
     }
 }
+.club-shield {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    display: block;
+}
+
+.logo-badge:has(.club-shield[style*="display: block"]) {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
