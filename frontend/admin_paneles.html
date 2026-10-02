@@ -1169,7 +1169,43 @@ async function editarClub(clubCode) {
                 <input type="text" id="edit-dni-president" value="${club.dni_presidente || ''}" placeholder="Ej: 23847146X">
             </div>
         </div>
+        <div style="margin-top: 20px;">
+            <label style="font-size:0.85rem;font-weight:600;color:#444;display:block;margin-bottom:12px;">
+                Escudo del club
+            </label>
 
+            <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:16px;border:1.5px solid #e8eaf6;border-radius:10px;">
+                <div style="width:90px;height:90px;display:flex;align-items:center;justify-content:center;border:1px solid #e0e0e0;border-radius:10px;background:#fafafa;">
+                    ${club.shield_url
+                        ? `<img src="${club.shield_url}" alt="Escudo de ${club.club_name}" style="max-width:78px;max-height:78px;object-fit:contain;">`
+                        : `<span style="font-size:0.78rem;color:#999;text-align:center;">Sin escudo</span>`
+                    }
+                </div>
+
+                <div style="flex:1;min-width:220px;">
+                    <input
+                        type="file"
+                        id="edit-club-shield"
+                        accept="image/jpeg,image/png,image/webp"
+                        style="width:100%;margin-bottom:8px;"
+                    >
+                    <small style="display:block;color:#777;">
+                        JPG, PNG o WebP. Máximo 2 MB.
+                    </small>
+
+                    ${club.shield_url
+                        ? `<button
+                            type="button"
+                            class="btn-danger"
+                            style="margin-top:10px;"
+                            onclick="eliminarEscudoClub('${clubCode}')">
+                            Eliminar escudo
+                        </button>`
+                        : ''
+                    }
+                </div>
+            </div>
+        </div>
         <div style="margin-top: 20px;">
             <label style="font-size:0.85rem;font-weight:600;color:#444;display:block;margin-bottom:12px;">Colores corporativos del club</label>
             <div class="color-row">
@@ -1247,6 +1283,22 @@ async function guardarCambiosClub(clubCode) {
     const colorS = document.getElementById('edit-color-secondary').value;
     const textColor = document.getElementById('edit-text-color').value;
     const accentColor = document.getElementById('edit-accent-color').value;
+    const shieldInput = document.getElementById('edit-club-shield');
+    const shieldFile = shieldInput?.files?.[0];
+
+    if (shieldFile) {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+        if (!allowedTypes.includes(shieldFile.type)) {
+            alert('El escudo debe ser una imagen JPG, PNG o WebP.');
+            return;
+        }
+
+        if (shieldFile.size > 2 * 1024 * 1024) {
+            alert('El escudo no puede superar los 2 MB.');
+            return;
+        }
+    }
 
     if (!clubName || !president || !dniPresident) {
         alert('⚠️ Nombre del club, presidente y DNI del presidente son obligatorios.');
@@ -1270,6 +1322,37 @@ async function guardarCambiosClub(clubCode) {
         });
 
         if (res.ok) {
+            if (shieldFile) {
+                const formData = new FormData();
+                formData.append('shield', shieldFile);
+
+                const shieldHeaders = await getSuperadminHeaders();
+
+                // FormData establece automáticamente su Content-Type.
+                delete shieldHeaders['Content-Type'];
+                delete shieldHeaders['content-type'];
+
+                const shieldRes = await fetch(`/api/clubs/${clubCode}/shield`, {
+                    method: 'POST',
+                    headers: shieldHeaders,
+                    body: formData
+                });
+
+                if (!shieldRes.ok) {
+                    let message = 'No se pudo actualizar el escudo';
+
+                    try {
+                        const errorData = await shieldRes.json();
+                        message = errorData.message || message;
+                    } catch (_) {}
+
+                    alert(
+                        'Los datos del club se han guardado, pero hubo un problema con el escudo: ' +
+                        message
+                    );
+                    return;
+                }
+            }
             cerrarModalEdicion();
             await cargarDatos();
             renderClubesList();
@@ -1281,6 +1364,47 @@ async function guardarCambiosClub(clubCode) {
             alert('Error: ' + (err.message || 'No se pudo actualizar'));
         }
     } catch(e) {
+        alert('Error de red: ' + e.message);
+    }
+}
+async function eliminarEscudoClub(clubCode) {
+    if (!confirm('¿Seguro que quieres eliminar el escudo de este club?')) {
+        return;
+    }
+
+    const headers = await getSuperadminHeaders();
+
+    try {
+        const res = await fetch(`/api/clubs/${clubCode}/shield`, {
+            method: 'DELETE',
+            headers
+        });
+
+        if (!res.ok) {
+            let message = 'No se pudo eliminar el escudo';
+
+            try {
+                const errorData = await res.json();
+                message = errorData.message || message;
+            } catch (_) {}
+
+            alert('Error: ' + message);
+            return;
+        }
+
+        await cargarDatos();
+
+        cerrarModalEdicion();
+        renderClubesList();
+
+        document.getElementById('alert-clubes').innerHTML =
+            '<div class="alert alert-success">✅ Escudo eliminado correctamente.</div>';
+
+        setTimeout(() => {
+            document.getElementById('alert-clubes').innerHTML = '';
+        }, 3000);
+
+    } catch (e) {
         alert('Error de red: ' + e.message);
     }
 }
