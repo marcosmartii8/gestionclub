@@ -518,7 +518,7 @@ const params = new URLSearchParams(window.location.search);
                         expenseDiv.innerHTML = `
                             <input type="date" value="${expense.date}" required>
                             <input type="text" value="${expense.concept}" required>
-                            <input type="number" value="${expense.amount}" required>
+                            <input type="number" step="0.01" min="0" value="${expense.amount}" required>
                             <span class="file-upload-area">
                                 ${fileUrl
                                     ? `<a href="${fileUrl}" target="_blank" style="color:#0288d1;display:inline-block;margin-left:8px;">Ver archivo (${fileName})</a>
@@ -548,7 +548,7 @@ const params = new URLSearchParams(window.location.search);
                         expenseDiv.innerHTML = `
                             <input type="date" value="${expense.date}" required>
                             <input type="text" value="${expense.concept}" required>
-                            <input type="number" value="${expense.amount}" required>
+                            <input type="number" step="0.01" min="0" value="${expense.amount}" required>
                             <span class="file-upload-area">
                                 ${fileUrl
                                     ? `<a href="${fileUrl}" target="_blank" style="color:#f57c00;display:inline-block;margin-left:8px;">Ver archivo (${fileName})</a>
@@ -587,7 +587,7 @@ const params = new URLSearchParams(window.location.search);
             expenseDiv.innerHTML = `
                 <input type="date" placeholder="Fecha Gasto Transporte ${expenseIndex}" required>
                 <input type="text" placeholder="Concepto Gasto Transporte ${expenseIndex}" required>
-                <input type="number" placeholder="Importe Gasto Transporte ${expenseIndex}" required>
+                <input type="number" step="0.01" min="0" placeholder="Importe Gasto Transporte ${expenseIndex}" required>
                 <input type="file" accept="image/*,application/pdf" style="width:100%;" title="Archivo Gasto Transporte ${expenseIndex}">
             `;
             transportExpensesDetails.appendChild(expenseDiv);
@@ -607,7 +607,7 @@ const params = new URLSearchParams(window.location.search);
             expenseDiv.innerHTML = `
                 <input type="date" placeholder="Fecha Gasto Dieta ${expenseIndex}" required>
                 <input type="text" placeholder="Concepto Gasto Dieta ${expenseIndex}" required>
-                <input type="number" placeholder="Importe Gasto Dieta ${expenseIndex}" required>
+                <input type="number" step="0.01" min="0" placeholder="Importe Gasto Dieta ${expenseIndex}" required>
                 <input type="file" accept="image/*,application/pdf" style="width:100%;" title="Archivo Gasto Dieta ${expenseIndex}">
             `;
             dietExpensesDetails.appendChild(expenseDiv);
