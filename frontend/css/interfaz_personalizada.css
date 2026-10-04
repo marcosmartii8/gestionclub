@@ -129,7 +129,7 @@ body {
 
 .button-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     margin-top: 32px;
     animation: slideInUp 0.8s ease-out 0.2s both;
