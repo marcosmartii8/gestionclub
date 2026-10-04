@@ -1833,7 +1833,7 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
     // Obtener solo los usuarios que el solicitante puede consultar
     let usersQuery = supabase
       .from('users')
-      .select('username, club_code');
+      .select('username, full_name, club_code');
     if (isManagerRole(requester.role) && !isSuperadmin(requester)) {
       usersQuery = usersQuery.eq('club_code', requester.clubCode);
     } else if (requester.role === 'voluntario') {
@@ -1876,10 +1876,13 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
 
     // Crear un mapa de username -> club_code
     const userClubMap = {};
+    const userFullNameMap = {};
+
     if (users && Array.isArray(users)) {
       users.forEach(user => {
         if (user && user.username) {
           userClubMap[user.username] = user.club_code;
+          userFullNameMap[user.username] = user.full_name || user.username;
         }
       });
     }
@@ -1951,6 +1954,7 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
       return {
         ...form,
         clubCode: userClubMap[form.username] || null,
+        fullName: userFullNameMap[form.username] || form.username,
         completed: form.completado === true,
         completedAt: form.completado_at || null,
         completedBy: form.completado_by || null,

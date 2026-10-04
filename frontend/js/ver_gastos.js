@@ -82,13 +82,9 @@ async function cargarGastos() {
         for (const formData of formularios) {
             if (formData.clubCode === sessionClubCode) {
                 const username = formData.username;
-                
-                // Obtener datos del usuario
-                const userResponse = await fetch(`/api/users/${username}`, {
-                    headers: getAuthHeaders()
-                });
-                const userData = userResponse.ok ? await userResponse.json() : {};
-                const nombreCompleto = (userData.fullName || username || '').trim();
+
+                // El backend ya devuelve el nombre completo junto con el formulario
+                const nombreCompleto = (formData.fullName || username || '').trim();
                 nombreCompletoPorUsuario[username] = nombreCompleto || username;
                 
                 let totalKm = 0;
