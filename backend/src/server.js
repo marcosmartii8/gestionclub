@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import fs from 'fs';
+import { ZipArchive } from 'archiver';
 
 dotenv.config();
 
@@ -1809,6 +1810,307 @@ app.post(
       console.error('Error procesando subida de justificante:', error);
       return res.status(500).json({
         message: 'Error al procesar el archivo'
+      });
+    }
+  }
+);
+// =====================================================
+// DESCARGA MASIVA DE JUSTIFICANTES EN ZIP
+// Solo líderes y administradores de su propio club
+// =====================================================
+app.get(
+  '/api/formularios/tickets/zip',
+  requireRole(['lider', 'administrador']),
+  async (req, res) => {
+    try {
+      const requester = req.requester;
+
+      if (!requester?.clubCode) {
+        return res.status(403).json({
+          message: 'No se pudo determinar el club del usuario'
+        });
+      }
+
+      const { year, month = 'all', username = 'all' } = req.query;
+
+// Validar el año
+const yearNumber = Number(year);
+
+if (
+  !/^\d{4}$/.test(String(year ?? '')) ||
+  yearNumber < 2000 ||
+  yearNumber > 2100
+) {
+  return res.status(400).json({
+    message: 'Año no válido'
+  });
+}
+
+// Validar el mes (0-11 o "all")
+if (
+  month !== 'all' &&
+  (!/^(0|[1-9]|10|11)$/.test(String(month)))
+) {
+  return res.status(400).json({
+    message: 'Mes no válido'
+  });
+}
+
+// Validar el voluntario
+if (
+  typeof username !== 'string' ||
+  username.length > 100 ||
+  (username !== 'all' && !username.trim())
+) {
+  return res.status(400).json({
+    message: 'Voluntario no válido'
+  });
+}
+// Obtener únicamente los usuarios del club autenticado
+let usersQuery = supabase
+  .from('users')
+  .select('username, full_name')
+  .eq('club_code', requester.clubCode);
+
+// Si se ha seleccionado un voluntario, filtrar por él
+if (username !== 'all') {
+  usersQuery = usersQuery.eq('username', username);
+}
+
+const { data: clubUsers, error: usersError } = await usersQuery;
+
+if (usersError) {
+  console.error('Error obteniendo voluntarios para ZIP:', usersError);
+
+  return res.status(500).json({
+    message: 'Error al consultar los voluntarios'
+  });
+}
+
+const allowedUsernames = (clubUsers || [])
+  .map(user => user.username)
+  .filter(Boolean);
+
+// No permitir descargar justificantes de otros clubes
+if (allowedUsernames.length === 0) {
+  return res.status(404).json({
+    message: 'No se encontraron voluntarios autorizados'
+  });
+}
+// Consultar los formularios de los voluntarios autorizados
+let formulariosQuery = supabase
+  .from('formularios')
+  .select('id, username, year, month')
+  .in('username', allowedUsernames)
+  .eq('year', yearNumber);
+
+// Aplicar filtro de mes si se ha seleccionado uno
+if (month !== 'all') {
+  formulariosQuery = formulariosQuery.eq('month', Number(month));
+}
+
+const { data: formulariosZIP, error: formulariosError } =
+  await formulariosQuery;
+
+if (formulariosError) {
+  console.error('Error consultando formularios para ZIP:', formulariosError);
+
+  return res.status(500).json({
+    message: 'Error al consultar los formularios'
+  });
+}
+
+// Si no hay formularios para los filtros seleccionados
+if (!formulariosZIP || formulariosZIP.length === 0) {
+  return res.status(404).json({
+    message: 'No hay formularios para los filtros seleccionados'
+  });
+}
+// Obtener los identificadores de los formularios autorizados
+const formularioIds = formulariosZIP.map(formulario => formulario.id);
+
+// Consultar justificantes de transporte
+const { data: gastosTransporteZIP, error: transporteError } =
+  await supabase
+    .from('gastos_transporte')
+    .select('formulario_id, fecha, concepto, archivo')
+    .in('formulario_id', formularioIds)
+    .not('archivo', 'is', null);
+
+// Consultar justificantes de dietas
+const { data: gastosDietasZIP, error: dietasError } =
+  await supabase
+    .from('gastos_dietas')
+    .select('formulario_id, fecha, concepto, archivo')
+    .in('formulario_id', formularioIds)
+    .not('archivo', 'is', null);
+
+// Comprobar errores de Supabase
+if (transporteError || dietasError) {
+  console.error('Error consultando justificantes ZIP:', {
+    transporteError,
+    dietasError
+  });
+
+  return res.status(500).json({
+    message: 'Error al consultar los justificantes'
+  });
+}
+
+// Comprobar si existen justificantes
+const totalJustificantes =
+  (gastosTransporteZIP || []).length +
+  (gastosDietasZIP || []).length;
+
+if (totalJustificantes === 0) {
+  return res.status(404).json({
+    message: 'No hay justificantes para los filtros seleccionados'
+  });
+}
+// Relacionar cada formulario con su voluntario
+const formulariosPorId = new Map(
+  formulariosZIP.map(formulario => [
+    String(formulario.id),
+    formulario
+  ])
+);
+
+// Preparar los justificantes de transporte y dietas
+const justificantesZIP = [
+  ...(gastosTransporteZIP || []).map(gasto => ({
+    ...gasto,
+    categoria: 'Transporte'
+  })),
+  ...(gastosDietasZIP || []).map(gasto => ({
+    ...gasto,
+    categoria: 'Dietas'
+  }))
+]
+  .map(gasto => ({
+    ...gasto,
+    formulario: formulariosPorId.get(String(gasto.formulario_id))
+  }))
+  .filter(gasto => gasto.formulario && gasto.archivo);
+  // Comprobar que cada archivo pertenece al club y voluntario autorizados
+const justificantesSegurosZIP = justificantesZIP
+  .map(gasto => {
+    const storagePath = getTicketStoragePath(gasto.archivo);
+
+    if (!storagePath) return null;
+
+    const club = normalizeStoragePart(requester.clubCode);
+    const voluntario = normalizeStoragePart(gasto.formulario.username);
+
+    const prefijoAutorizado =
+      `clubs/${club}/usuarios/${voluntario}/`;
+
+    // Evitar archivos de otros clubes o voluntarios
+    if (!storagePath.startsWith(prefijoAutorizado)) {
+      console.warn('Justificante ZIP rechazado por ruta no autorizada');
+      return null;
+    }
+
+    // Evitar rutas con segmentos de navegación
+    if (storagePath.split('/').some(parte =>
+      parte === '.' || parte === '..'
+    )) {
+      return null;
+    }
+
+    return {
+      ...gasto,
+      storagePath
+    };
+  })
+  .filter(Boolean);
+
+if (justificantesSegurosZIP.length === 0) {
+  return res.status(404).json({
+    message: 'No hay justificantes válidos para descargar'
+  });
+}
+// Descargar los justificantes autorizados desde Supabase Storage
+const archivosZIP = [];
+
+for (const gasto of justificantesSegurosZIP) {
+  const { data: archivo, error: descargaError } =
+    await supabase.storage
+      .from(TICKET_BUCKET)
+      .download(gasto.storagePath);
+
+  if (descargaError || !archivo) {
+    console.warn(
+      'No se pudo descargar un justificante:',
+      gasto.storagePath,
+      descargaError
+    );
+    continue;
+  }
+
+  const buffer = Buffer.from(await archivo.arrayBuffer());
+
+  archivosZIP.push({
+    buffer,
+    username: gasto.formulario.username,
+    categoria: gasto.categoria,
+    nombreOriginal: path.posix.basename(gasto.storagePath)
+  });
+}
+
+if (archivosZIP.length === 0) {
+  return res.status(404).json({
+    message: 'No se pudieron descargar los justificantes'
+  });
+}
+// Preparar la respuesta ZIP
+const nombreZIP = `Justificantes_${yearNumber}_${month === 'all' ? 'Todos' : Number(month) + 1}.zip`;
+
+res.setHeader('Content-Type', 'application/zip');
+res.setHeader(
+  'Content-Disposition',
+  `attachment; filename="${nombreZIP}"`
+);
+
+// Crear el archivo comprimido
+const zip = new ZipArchive({
+  zlib: { level: 6 }
+});
+
+zip.on('error', error => {
+  console.error('Error creando ZIP:', error);
+  res.destroy(error);
+});
+
+// Enviar el ZIP al navegador
+zip.pipe(res);
+
+// Incorporar los justificantes
+archivosZIP.forEach((archivo, index) => {
+  const voluntario = normalizeStoragePart(archivo.username);
+
+  const nombreArchivo =
+    `${String(index + 1).padStart(3, '0')}_${archivo.nombreOriginal}`;
+
+  const rutaZIP =
+    `${voluntario}/${archivo.categoria}/${nombreArchivo}`;
+
+  zip.append(archivo.buffer, {
+    name: rutaZIP
+  });
+});
+
+// Finalizar el ZIP
+await zip.finalize();
+
+    } catch (error) {
+      console.error('Error descargando tickets ZIP:', error);
+
+      if (res.headersSent) {
+        return res.destroy(error);
+      }
+
+      return res.status(500).json({
+        message: 'Error al generar el archivo ZIP'
       });
     }
   }

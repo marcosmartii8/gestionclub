@@ -1153,11 +1153,79 @@ const params = new URLSearchParams(window.location.search);
                 }
             }
         }
+        async function descargarTicketsZIP() {
+    const year = document.getElementById('filter-year').value;
+    const month = document.getElementById('filter-month').value;
+    const username = document.getElementById('filter-username').value;
 
-        async function initializePage() {
-            await loadUsers();
-            await loadForms();
+    if (year === 'all') {
+        notify('Selecciona un año para descargar los justificantes.', 'error');
+        return;
+    }
+
+    const button = document.getElementById('download-tickets-zip');
+
+    try {
+        button.disabled = true;
+        button.textContent = '⏳ Preparando ZIP...';
+
+        const params = new URLSearchParams({
+            year,
+            month,
+            username
+        });
+
+        const response = await fetch(
+            `/api/formularios/tickets/zip?${params.toString()}`,
+            {
+                headers: getAuthHeaders()
+            }
+        );
+
+        if (!response.ok) {
+            if (handleAuthFailure(response)) return;
+
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Error al descargar justificantes');
         }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Justificantes_${year}_${month === 'all' ? 'Todos' : Number(month) + 1}.zip`;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        URL.revokeObjectURL(url);
+
+        notify('Justificantes descargados correctamente.', 'success');
+
+    } catch (error) {
+        console.error('Error descargando ZIP:', error);
+        notify(error.message, 'error');
+
+    } finally {
+        button.disabled = false;
+        button.textContent = '📦 Descargar tickets ZIP';
+    }
+}
+
+window.descargarTicketsZIP = descargarTicketsZIP;
+        async function initializePage() {
+    await loadUsers();
+    await loadForms();
+
+    const zipButton = document.getElementById('download-tickets-zip');
+    const role = String(currentUserData?.role || '').toLowerCase();
+
+    if (zipButton) {
+        zipButton.disabled = !['lider', 'administrador'].includes(role);
+    }
+}
 
         initializePage();
 

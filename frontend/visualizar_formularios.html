@@ -133,7 +133,20 @@
                     </select>
                 </div>
             </div>
-            <button class="button-filter" onclick="applyFilters()">🔍 Filtrar</button>
+            <button class="button-filter" onclick="applyFilters()">
+    🔍 Filtrar
+</button>
+
+<button
+    id="download-tickets-zip"
+    class="button-filter"
+    type="button"
+    onclick="descargarTicketsZIP()"
+    style="margin-left: 10px;"
+    disabled
+>
+    📦 Descargar tickets ZIP
+</button>
         </div>
 
         <div class="table-wrapper">
