@@ -182,7 +182,16 @@ function renderTablaGastos() {
 
     html = '<table><thead><tr><th>Usuario</th><th>Año</th><th>Mes</th><th>Total Desplazamientos (€)</th><th>Total Gasto Dietas (€)</th><th>Suma Transporte + Dietas (€)</th><th>Gasto Total (€)</th></tr></thead><tbody>';
     
-    Object.entries(gastosPorUsuario).forEach(([username, forms]) => {
+    Object.entries(gastosPorUsuario)
+    .sort(([usuarioA], [usuarioB]) => {
+        const nombreA = nombreCompletoPorUsuario[usuarioA] || usuarioA;
+        const nombreB = nombreCompletoPorUsuario[usuarioB] || usuarioB;
+
+        return nombreA.localeCompare(nombreB, 'es', {
+            sensitivity: 'base'
+        });
+    })
+    .forEach(([username, forms]) => {
         if (usuarioSel && username !== usuarioSel) return;
         forms.forEach(form => {
             if (mesSel !== "" && String(form.month) !== mesSel) return;
