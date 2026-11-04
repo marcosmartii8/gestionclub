@@ -237,7 +237,16 @@ function exportarAExcel() {
     let totalSuma = 0;
     
     // Recopilar datos para exportar
-    Object.entries(gastosPorUsuario).forEach(([username, forms]) => {
+    Object.entries(gastosPorUsuario)
+    .sort(([usuarioA], [usuarioB]) => {
+        const nombreA = nombreCompletoPorUsuario[usuarioA] || usuarioA;
+        const nombreB = nombreCompletoPorUsuario[usuarioB] || usuarioB;
+
+        return nombreA.localeCompare(nombreB, 'es', {
+            sensitivity: 'base'
+        });
+    })
+    .forEach(([username, forms]) => {
         if (usuarioSel && username !== usuarioSel) return;
         forms.forEach(form => {
             if (mesSel !== "" && String(form.month) !== mesSel) return;
