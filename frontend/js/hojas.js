@@ -1107,6 +1107,9 @@
             const selectedUser = filterUserSelect.value;
             const selectedYear = filterYearSelect.value;
             const selectedMonth = filterMonthSelect.value;
+            // Mostrar que se está trabajando
+generateBatchPdfBtn.disabled = true;
+generateBatchPdfBtn.textContent = '⏳ Generando PDFs...';
 
             batchStatus.textContent = 'Generando PDFs...';
             batchStatus.className = 'batch-status info';
@@ -1136,8 +1139,11 @@
                     return;
                 }
 
-                // Generar PDFs uno por uno
-                let count = 0;
+                // Crear un ZIP para guardar todos los PDFs
+const zip = new JSZip();
+
+// Contador de PDFs generados
+let count = 0;
                 for (const formData of filteredForms) {
                     try {
                         // Obtener datos del usuario
@@ -1148,25 +1154,73 @@
                         
                         // Generar PDF
                         const doc = await generarPDFIndividual(formData, userData);
-                        doc.save(`hoja_${formData.username}_${formData.year}_${formData.month}.pdf`);
+                        const nombrePDF = `hoja_${formData.username}_${formData.year}_${formData.month}.pdf`;
+
+const pdfBlob = doc.output('blob');
+
+zip.file(nombrePDF, pdfBlob);
                         
                         count++;
-                        batchStatus.textContent = `Generando PDFs... ${count}/${filteredForms.length}`;
+
+// Actualizar progreso en el botón
+generateBatchPdfBtn.textContent =
+    `⏳ Generando PDFs... ${count} de ${filteredForms.length}`;
+
+// Actualizar mensaje de estado
+batchStatus.textContent =
+    `Generando PDFs... ${count}/${filteredForms.length}`;
+
+// Permitir que el navegador actualice visualmente el botón
+                await new Promise(resolve => setTimeout(resolve, 0));
                         
-                        // Pequeña pausa para permitir la descarga
-                        await new Promise(resolve => setTimeout(resolve, 500));
                     } catch (error) {
                         console.error('Error generando PDF para:', formData.username, error);
                     }
                 }
 
-                batchStatus.textContent = `✓ Se generaron ${count} PDFs correctamente.`;
-                batchStatus.className = 'batch-status success';
+                if (count === 0) {
+    batchStatus.textContent = 'No se pudo generar ningún PDF.';
+    batchStatus.className = 'batch-status error';
+    return;
+}
+
+// Generar el archivo ZIP
+batchStatus.textContent = 'Comprimiendo PDFs...';
+generateBatchPdfBtn.textContent = '📦 Comprimiendo ZIP...';
+
+const zipBlob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 }
+});
+
+// Crear nombre según los filtros
+const nombreZIP = `Hojas_${selectedYear === 'all' ? 'Todos' : selectedYear}_${selectedMonth === 'all' ? 'Todos' : Number(selectedMonth) + 1}_${selectedUser === 'all' ? 'Todos' : selectedUser}.zip`;
+
+// Descargar el ZIP
+const url = URL.createObjectURL(zipBlob);
+const link = document.createElement('a');
+
+link.href = url;
+link.download = nombreZIP;
+
+document.body.appendChild(link);
+link.click();
+link.remove();
+
+setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+batchStatus.textContent = `✓ Se generaron ${count} PDFs en un único ZIP.`;
+batchStatus.className = 'batch-status success';
             } catch (error) {
-                console.error('Error en generación masiva:', error);
-                batchStatus.textContent = 'Error al generar los PDFs.';
-                batchStatus.className = 'batch-status error';
-            }
+    console.error('Error en generación masiva:', error);
+    batchStatus.textContent = 'Error al generar los PDFs.';
+    batchStatus.className = 'batch-status error';
+} finally {
+    // Restaurar el botón tanto si termina bien como si hay un error
+    generateBatchPdfBtn.disabled = false;
+    generateBatchPdfBtn.textContent = '🎯 Generar PDFs Seleccionados';
+}
         });
 
         // Poblar filtros al cargar la página
