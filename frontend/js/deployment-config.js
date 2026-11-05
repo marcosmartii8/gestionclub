@@ -9,8 +9,8 @@
   var configuredBaseUrl = window.__GESTDEVOL_API_BASE_URL__ || '';
 
   if (!configuredBaseUrl && !isLocalhost) {
-    configuredBaseUrl = 'https://gestionclub-production-051e.up.railway.app';
-  }
+  configuredBaseUrl = window.location.origin;
+}
 
   window.__GESTDEVOL_API_BASE_URL__ = configuredBaseUrl;
 
