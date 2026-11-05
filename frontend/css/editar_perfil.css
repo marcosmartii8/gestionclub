@@ -452,3 +452,253 @@ body {
         font-size: 1.2rem;
     }
 }
+/* =====================================
+   REDISEÑO PROFESIONAL GESTDEVOL
+===================================== */
+
+body {
+    align-items: flex-start;
+    background: #f3f6f5;
+    color: #263238;
+    padding: 48px 20px;
+}
+
+.background-shapes {
+    display: none;
+}
+
+.container {
+    width: 100%;
+    max-width: 820px;
+    max-height: none;
+    overflow: visible;
+    padding: 40px;
+    background: #ffffff;
+    border: 1px solid #e4ebe8;
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(20, 60, 50, 0.07);
+    animation: none;
+}
+
+.header-section,
+.profile-form,
+.button-container {
+    animation: none;
+}
+
+.header-section {
+    margin-bottom: 36px;
+}
+
+.logo-badge {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+    border: 1px solid #dceee8;
+    box-shadow: none;
+}
+
+.title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #173f36;
+    letter-spacing: -0.5px;
+}
+
+.form-group label {
+    color: #374b45;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.form-group input {
+    width: 100%;
+    min-height: 48px;
+    background: #ffffff;
+    border: 1px solid #d9e3df;
+    border-radius: 9px;
+}
+
+.form-group input:focus {
+    border-color: #00897b;
+    box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
+}
+
+.form-group input:read-only {
+    background: #f5f7f6;
+    color: #657570;
+}
+
+.input-underline {
+    display: none;
+}
+
+.button-back {
+    background: #edf2f0;
+    color: #344c44;
+    box-shadow: none;
+}
+
+.button-back:hover {
+    background: #e0e9e5;
+    box-shadow: none;
+}
+
+.button-save {
+    background: #00897b;
+    box-shadow: none;
+}
+
+.button-save:hover {
+    background: #007568;
+    box-shadow: 0 4px 12px rgba(0, 137, 123, 0.2);
+}
+
+.notifications-section {
+    margin-top: 36px;
+    padding: 24px;
+    background: #f8fbfa;
+    border: 1px solid #e0eae6;
+    border-radius: 12px;
+    text-align: left;
+}
+
+.notifications-section h2 {
+    font-size: 1.15rem;
+    color: #173f36;
+}
+
+.notification-button {
+    background: #00897b;
+}
+
+/* Adaptación móvil */
+@media (max-width: 768px) {
+    body {
+        padding: 20px 12px;
+    }
+
+    .container {
+        padding: 28px 22px;
+        max-height: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 24px 18px;
+    }
+
+    .title {
+        font-size: 1.5rem;
+    }
+
+    .notifications-section {
+        padding: 20px 16px;
+    }
+}
+/* =====================================
+   SECCIONES DEL PERFIL
+===================================== */
+
+.profile-section {
+    margin-bottom: 28px;
+    padding: 28px;
+    background: #ffffff;
+    border: 1px solid #e3ebe7;
+    border-radius: 14px;
+}
+
+.section-heading {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #edf1ef;
+}
+
+.section-heading h2 {
+    margin: 0 0 6px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #173f36;
+}
+
+.section-heading p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #71817a;
+}
+
+/* Campos distribuidos en dos columnas */
+.profile-section {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 22px;
+    row-gap: 18px;
+}
+
+.section-heading {
+    grid-column: 1 / -1;
+}
+
+.profile-section .form-group {
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+/* Adaptación a móviles */
+@media (max-width: 600px) {
+    .profile-section {
+        grid-template-columns: 1fr;
+        padding: 20px 16px;
+        row-gap: 18px;
+    }
+
+    .section-heading {
+        margin-bottom: 4px;
+    }
+}
+/* Eliminar tarjetas blancas interiores */
+.profile-section {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+}
+
+/* Separación entre secciones */
+.profile-section + .profile-section {
+    margin-top: 36px;
+}
+
+/* Mantener etiquetas encima de los campos */
+.profile-section .form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.profile-section .form-group label {
+    display: block;
+    margin-bottom: 8px;
+}
+/* Ocultar correctamente los botones de notificaciones */
+#enable-notifications[disabled],
+#disable-notifications[hidden] {
+    display: none;
+}
+/* Cerrar sesión: posición adaptada a móviles */
+@media (max-width: 600px) {
+    #global-logout-button {
+        position: absolute !important;
+        top: 12px !important;
+        right: 12px !important;
+        padding: 8px 12px !important;
+        font-size: 0.8rem !important;
+        box-shadow: none !important;
+    }
+
+    .container {
+        margin-top: 48px;
+    }
+}
