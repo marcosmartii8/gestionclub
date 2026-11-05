@@ -924,6 +924,82 @@ app.post('/api/push/test', requireAuthenticated, async (req, res) => {
         });
     }
 });
+// PRUEBA TEMPORAL WEB PUSH EN PRODUCCIÓN
+app.post('/api/push/test-production', requireAuthenticated, async (req, res) => {
+    try {
+        // Solo el usuario y club autorizados para esta prueba
+        if (
+            req.requester.username !== 'MMartiTBCF' ||
+            req.requester.clubCode !== 'G46857736' ||
+            req.requester.source !== 'jwt'
+        ) {
+            return res.status(403).json({
+                message: 'No autorizado'
+            });
+        }
+
+        if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+            return res.status(503).json({
+                message: 'Web Push no configurado'
+            });
+        }
+
+        const { data: subscriptions, error } = await supabase
+            .from('push_subscriptions')
+            .select('endpoint, p256dh, auth')
+            .eq('username', req.requester.username)
+            .eq('club_code', req.requester.clubCode);
+
+        if (error) throw error;
+
+        if (!subscriptions?.length) {
+            return res.status(404).json({
+                message: 'No hay dispositivos registrados'
+            });
+        }
+
+        const payload = JSON.stringify({
+            title: 'GestDeVol - Prueba de producción',
+            body: 'Las notificaciones de GestDeVol funcionan correctamente.',
+            url: '/interfaz_personalizada.html'
+        });
+
+        let enviados = 0;
+        let fallidos = 0;
+
+        for (const item of subscriptions) {
+            try {
+                await webpush.sendNotification({
+                    endpoint: item.endpoint,
+                    keys: {
+                        p256dh: item.p256dh,
+                        auth: item.auth
+                    }
+                }, payload);
+
+                enviados++;
+            } catch (pushError) {
+                fallidos++;
+                console.error(
+                    '[Push prueba producción]',
+                    pushError.statusCode || pushError.message
+                );
+            }
+        }
+
+        return res.json({
+            message: 'Prueba de producción finalizada',
+            enviados,
+            fallidos
+        });
+
+    } catch (error) {
+        console.error('[Push prueba producción]', error.message);
+        return res.status(500).json({
+            message: 'Error realizando la prueba'
+        });
+    }
+});
 
 // ========== LOGIN ==========
 app.post('/api/login', async (req, res) => {
