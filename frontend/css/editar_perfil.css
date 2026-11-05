@@ -375,6 +375,80 @@ body {
         width: 100%;
     }
 }
-        width: 100%;
+
+/* =====================================
+   NOTIFICACIONES
+===================================== */
+
+.notifications-section {
+    margin-top: 32px;
+    padding: 24px;
+    background: linear-gradient(135deg, #f0faf7, #e8f5e9);
+    border: 1px solid #b2dfdb;
+    border-radius: 14px;
+    text-align: center;
+}
+
+.notifications-section h2 {
+    margin: 0 0 12px;
+    color: #004d40;
+    font-size: 1.35rem;
+    font-weight: 800;
+}
+
+.notifications-section p {
+    margin: 0 0 16px;
+    color: #546e7a;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+#notification-status {
+    padding: 12px;
+    margin-bottom: 16px;
+    background: #ffffff;
+    border: 1px solid #dceee9;
+    border-radius: 10px;
+    color: #455a64;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.notification-button {
+    width: 100%;
+    min-height: 48px;
+    padding: 13px 18px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #26a69a, #00897b);
+    color: white;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.notification-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.notification-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.notification-button[hidden] {
+    display: none;
+}
+
+@media (max-width: 480px) {
+    .notifications-section {
+        padding: 18px 14px;
+        margin-top: 24px;
+    }
+
+    .notifications-section h2 {
+        font-size: 1.2rem;
     }
 }

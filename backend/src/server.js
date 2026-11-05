@@ -7,15 +7,47 @@ import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import webpush from 'web-push';
+import cron from 'node-cron';
 import fs from 'fs';
 import { ZipArchive } from 'archiver';
 
 dotenv.config();
+// ==========================================
+// CONFIGURACIÓN DE NOTIFICACIONES WEB PUSH
+// ==========================================
+
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+        'mailto:marcosmarticordoba@gmail.com',
+        VAPID_PUBLIC_KEY,
+        VAPID_PRIVATE_KEY
+    );
+
+    console.log('✓ Web Push configurado correctamente');
+} else {
+    console.warn('⚠ Web Push no configurado: faltan claves VAPID');
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+// Clave pública para suscripciones Web Push
+app.get('/api/push/public-key', (req, res) => {
+    if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+        return res.status(503).json({
+            error: 'Las notificaciones no están configuradas'
+        });
+    }
+
+    res.json({
+        publicKey: VAPID_PUBLIC_KEY
+    });
+});
 const ticketUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -631,6 +663,268 @@ function requireSelfOrRole(paramName, roles) {
     });
   };
 }
+// ==========================================
+// NOTIFICACIONES PUSH - DESACTIVAR DISPOSITIVO
+// ==========================================
+
+app.delete('/api/push/subscribe', requireAuthenticated, async (req, res) => {
+  try {
+    const { username, clubCode } = req.requester;
+    const endpoint = req.body?.endpoint;
+
+    if (typeof endpoint !== 'string' || !endpoint || endpoint.length > 2048) {
+      return res.status(400).json({
+        message: 'Endpoint de suscripción no válido'
+      });
+    }
+
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('username', username)
+      .eq('club_code', clubCode)
+      .eq('endpoint', endpoint);
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      subscribed: false,
+      message: 'Notificaciones desactivadas correctamente'
+    });
+
+  } catch (error) {
+    console.error('Error desactivando notificaciones:', error.message);
+
+    return res.status(500).json({
+      message: 'No se pudieron desactivar las notificaciones'
+    });
+  }
+});
+// ==========================================
+// NOTIFICACIONES PUSH - REGISTRAR DISPOSITIVO
+// ==========================================
+
+app.post('/api/push/subscribe', requireAuthenticated, async (req, res) => {
+  try {
+    const { username, clubCode, role } = req.requester;
+    const subscription = req.body?.subscription;
+
+    if (role !== 'voluntario') {
+      return res.status(403).json({
+        message: 'Las notificaciones están disponibles para voluntarios'
+      });
+    }
+
+    if (!clubCode) {
+      return res.status(400).json({
+        message: 'El usuario no tiene un club asociado'
+      });
+    }
+
+    const endpoint = subscription?.endpoint;
+    const p256dh = subscription?.keys?.p256dh;
+    const auth = subscription?.keys?.auth;
+
+    if (
+      typeof endpoint !== 'string' ||
+      endpoint.length > 2048 ||
+      !endpoint.startsWith('https://') ||
+      typeof p256dh !== 'string' ||
+      !/^[A-Za-z0-9_-]{80,120}$/.test(p256dh) ||
+      typeof auth !== 'string' ||
+      !/^[A-Za-z0-9_-]{16,40}$/.test(auth)
+    ) {
+      return res.status(400).json({
+        message: 'Suscripción push no válida'
+      });
+    }
+
+    const { data: existing, error: lookupError } = await supabase
+  .from('push_subscriptions')
+  .select('username, club_code')
+  .eq('endpoint', endpoint)
+  .maybeSingle();
+
+if (lookupError) {
+  throw lookupError;
+}
+
+if (
+  existing &&
+  (existing.username !== username || existing.club_code !== clubCode)
+) {
+  return res.status(409).json({
+    message: 'Este dispositivo ya está asociado a otra cuenta'
+  });
+}
+
+const { error } = await supabase
+  .from('push_subscriptions')
+  .upsert({
+    username,
+    club_code: clubCode,
+    endpoint,
+    p256dh,
+    auth,
+    updated_at: new Date().toISOString()
+  }, {
+    onConflict: 'endpoint'
+  });
+
+    if (error) {
+      throw error;
+    }
+
+    return res.status(200).json({
+      subscribed: true,
+      message: 'Notificaciones activadas correctamente'
+    });
+
+  } catch (error) {
+    console.error('Error registrando suscripción push:', error.message);
+
+    return res.status(500).json({
+      message: 'No se pudo registrar la suscripción'
+    });
+  }
+});
+
+// ==========================================
+// NOTIFICACIONES PUSH - CONSULTAR SUSCRIPCIÓN
+// ==========================================
+
+app.get('/api/push/subscription', requireAuthenticated, async (req, res) => {
+    try {
+        const { username, clubCode } = req.requester;
+
+        const endpoint = req.query.endpoint;
+
+        if (typeof endpoint !== 'string' || !endpoint) {
+            return res.status(400).json({
+                message: 'Endpoint de suscripción requerido'
+            });
+        }
+
+        const { data, error } = await supabase
+            .from('push_subscriptions')
+            .select('id')
+            .eq('username', username)
+            .eq('club_code', clubCode)
+            .eq('endpoint', endpoint)
+            .maybeSingle();
+
+        if (error) {
+            throw error;
+        }
+
+        return res.json({
+            subscribed: Boolean(data)
+        });
+
+    } catch (error) {
+        console.error('Error consultando suscripción push:', error);
+
+        return res.status(500).json({
+            message: 'Error consultando las notificaciones'
+        });
+    }
+});
+
+ // ==========================================
+ // NOTIFICACIONES PUSH - ENVÍO DE PRUEBA LOCAL
+ // ==========================================
+
+app.post('/api/push/test', requireAuthenticated, async (req, res) => {
+    try {
+        // Esta ruta solo debe funcionar en desarrollo local
+        if (process.env.NODE_ENV === 'production' ||
+            !['localhost', '127.0.0.1'].includes(req.hostname)) {
+            return res.status(404).json({
+                message: 'Ruta no disponible'
+            });
+        }
+
+        if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+            return res.status(503).json({
+                message: 'Web Push no está configurado'
+            });
+        }
+
+        const { username, clubCode } = req.requester;
+
+        const { data: subscriptions, error } = await supabase
+            .from('push_subscriptions')
+            .select('endpoint, p256dh, auth')
+            .eq('username', username)
+            .eq('club_code', clubCode);
+
+        if (error) {
+            throw error;
+        }
+
+        if (!subscriptions?.length) {
+            return res.status(404).json({
+                message: 'No tienes dispositivos registrados'
+            });
+        }
+
+        const payload = JSON.stringify({
+  title: 'GestDeVol - Notificación de prueba',
+  body: '¡Las notificaciones push funcionan correctamente!',
+  url: '/interfaz_personalizada.html'
+});
+
+        let enviados = 0;
+        let fallidos = 0;
+
+        for (const item of subscriptions) {
+            try {
+                await webpush.sendNotification({
+                    endpoint: item.endpoint,
+                    keys: {
+                        p256dh: item.p256dh,
+                        auth: item.auth
+                    }
+                }, payload);
+
+                enviados++;
+            } catch (pushError) {
+                fallidos++;
+
+                // Eliminar suscripciones caducadas
+                if ([404, 410].includes(pushError.statusCode)) {
+                    await supabase
+                        .from('push_subscriptions')
+                        .delete()
+                        .eq('username', username)
+                        .eq('club_code', clubCode)
+                        .eq('endpoint', item.endpoint);
+                }
+
+                console.error(
+                    'Error enviando notificación de prueba:',
+                    pushError.statusCode || pushError.message
+                );
+            }
+        }
+
+        return res.json({
+            message: 'Prueba de notificaciones finalizada',
+            enviados,
+            fallidos
+        });
+
+    } catch (error) {
+        console.error('Error en prueba Web Push:', error.message);
+
+        return res.status(500).json({
+            message: 'No se pudo realizar la prueba'
+        });
+    }
+});
+
 // ========== LOGIN ==========
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
@@ -2943,11 +3237,374 @@ app.use((err, req, res, next) => {
 
   next(err);
 });
+// ==========================================
+// RECORDATORIOS AUTOMÁTICOS DE LIQUIDACIONES
+// ==========================================
+
+async function obtenerVoluntariosPendientes(year, month) {
+  const { data: usuarios, error: usersError } = await supabase
+    .from('users')
+    .select('username, club_code, role, active, left_at');
+  if (usersError) throw usersError;
+
+  const voluntariosActivos = (usuarios || []).filter(user =>
+  (user.role || '').toLowerCase().trim() === 'voluntario' &&
+  user.username &&
+  user.club_code &&
+  user.active !== false &&
+  !user.left_at
+);
+
+  if (voluntariosActivos.length === 0) {
+    return [];
+  }
+
+  const { data: formularios, error: formsError } = await supabase
+    .from('formularios')
+    .select('username, completado')
+    .eq('year', year)
+    .eq('month', month)
+    .in('username', [...new Set(voluntariosActivos.map(user => user.username))]);
+
+  if (formsError) throw formsError;
+
+  const completados = new Set(
+    (formularios || [])
+      .filter(form => form.completado === true)
+      .map(form => form.username)
+  );
+
+  return voluntariosActivos.filter(user =>
+    !completados.has(user.username)
+  );
+}
+function crearMensajeRecordatorio(dia) {
+  if (dia === 25) {
+    return JSON.stringify({
+      title: 'GestDeVol - Liquidación pendiente',
+      body: 'Recuerda completar tu liquidación mensual.',
+      url: '/interfaz_personalizada.html'
+    });
+  }
+
+  if (dia === 28) {
+    return JSON.stringify({
+      title: 'GestDeVol - Último recordatorio',
+      body: 'Tu liquidación mensual sigue pendiente. Recuerda completarla.',
+      url: '/interfaz_personalizada.html'
+    });
+  }
+
+  throw new Error('Día de recordatorio no válido');
+}
+async function enviarPushRecordatorio(voluntario, dia) {
+  const { username, club_code: clubCode } = voluntario;
+
+  const { data: dispositivos, error } = await supabase
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth')
+    .eq('username', username)
+    .eq('club_code', clubCode);
+
+  if (error) throw error;
+
+  const resultado = {
+  enviados: 0,
+  fallidos: 0,
+  dispositivos: (dispositivos || []).length
+};
+
+  const mensaje = crearMensajeRecordatorio(dia);
+
+  for (const dispositivo of dispositivos || []) {
+    try {
+      await webpush.sendNotification({
+        endpoint: dispositivo.endpoint,
+        keys: {
+          p256dh: dispositivo.p256dh,
+          auth: dispositivo.auth
+        }
+      }, mensaje);
+
+      resultado.enviados++;
+
+    } catch (errorPush) {
+      resultado.fallidos++;
+
+      if ([404, 410].includes(errorPush.statusCode)) {
+        const { error: deleteError } = await supabase
+          .from('push_subscriptions')
+          .delete()
+          .eq('username', username)
+          .eq('club_code', clubCode)
+          .eq('endpoint', dispositivo.endpoint);
+
+        if (deleteError) {
+          console.error('Error eliminando suscripción caducada:', deleteError);
+        }
+      }
+
+      console.error(
+        'Error enviando recordatorio Push:',
+        errorPush.statusCode || errorPush.message
+      );
+    }
+  }
+
+  return resultado;
+}
+async function liquidacionSiguePendiente(username, year, month) {
+  const { data, error } = await supabase
+    .from('formularios')
+    .select('completado')
+    .eq('username', username)
+    .eq('year', year)
+    .eq('month', month);
+
+  if (error) throw error;
+
+  return !(data || []).some(form => form.completado === true);
+}
+async function reservarRecordatorio(voluntario, year, month, dia) {
+  const { data, error } = await supabase.rpc('claim_push_reminder', {
+    p_username: voluntario.username,
+    p_club_code: voluntario.club_code,
+    p_year: year,
+    p_month: month,
+    p_reminder_day: dia
+  });
+
+  if (error) throw error;
+
+  return data === true;
+}
+async function registrarResultadoRecordatorio(
+  voluntario, year, month, dia, estado
+) {
+  if (!['sent', 'failed', 'skipped'].includes(estado)) {
+    throw new Error('Estado de recordatorio no válido');
+  }
+
+  const { error } = await supabase
+    .from('push_reminder_log')
+    .update({
+      status: estado,
+      sent_at: estado === 'sent'
+        ? new Date().toISOString()
+        : null
+    })
+    .eq('username', voluntario.username)
+    .eq('club_code', voluntario.club_code)
+    .eq('year', year)
+    .eq('month', month)
+    .eq('reminder_day', dia)
+    .eq('status', 'pending');
+
+  if (error) throw error;
+}async function procesarRecordatorios(year, month, dia) {
+  if (![25, 28].includes(dia)) {
+    throw new Error('Día de recordatorio no válido');
+  }
+
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    throw new Error('Web Push no está configurado');
+  }
+
+  const todosPendientes = await obtenerVoluntariosPendientes(year, month);
+
+const pendientes = await obtenerVoluntariosPendientes(year, month);
+
+  console.log(
+    `[Recordatorios] ${year}/${month + 1}, día ${dia}: ` +
+    `${pendientes.length} voluntarios pendientes`
+  );
+
+  const resumen = {
+    pendientes: pendientes.length,
+    enviados: 0,
+    fallidos: 0,
+    omitidos: 0
+  };
+
+  for (const voluntario of pendientes) {
+    try {
+      // Comprobar que sigue pendiente.
+      if (!await liquidacionSiguePendiente(
+        voluntario.username, year, month
+      )) {
+        resumen.omitidos++;
+        continue;
+      }
+
+      // No reservar si no tiene dispositivos.
+      const { count, error: countError } = await supabase
+        .from('push_subscriptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('username', voluntario.username)
+        .eq('club_code', voluntario.club_code);
+
+      if (countError) throw countError;
+
+      if (!count) {
+        resumen.omitidos++;
+        continue;
+      }
+
+      const reservado = await reservarRecordatorio(
+        voluntario, year, month, dia
+      );
+
+      if (!reservado) {
+        resumen.omitidos++;
+        continue;
+      }
+            // Comprobar nuevamente antes de enviar.
+      if (!await liquidacionSiguePendiente(
+        voluntario.username, year, month
+      )) {
+        await registrarResultadoRecordatorio(
+          voluntario, year, month, dia, 'skipped'
+        );
+
+        resumen.omitidos++;
+        continue;
+      }
+
+      const resultado = await enviarPushRecordatorio(
+        voluntario, dia
+      );
+
+      const enviado = resultado.enviados > 0;
+
+      await registrarResultadoRecordatorio(
+        voluntario,
+        year,
+        month,
+        dia,
+        enviado ? 'sent' : 'failed'
+      );
+
+      if (enviado) {
+        resumen.enviados++;
+      } else {
+        resumen.fallidos++;
+      }
+
+    } catch (error) {
+      resumen.fallidos++;
+      console.error(
+        `[Recordatorios] Error procesando ${voluntario.username}:`,
+        error.message
+      );
+    }
+  }
+
+  console.log('[Recordatorios] Resultado:', resumen);
+  return resumen;
+}
+async function marcarRecordatoriosInterrumpidos() {
+  const limite = new Date(
+    Date.now() - 30 * 60 * 1000
+  ).toISOString();
+
+  const { data, error } = await supabase
+    .from('push_reminder_log')
+    .update({
+      status: 'interrupted'
+    })
+    .eq('status', 'pending')
+    .lt('claimed_at', limite)
+    .select('id');
+
+  if (error) throw error;
+
+  if (data?.length) {
+    console.warn(
+      `[Recordatorios] ${data.length} reservas interrumpidas detectadas`
+    );
+  }
+
+  return data?.length || 0;
+}
+// Recordatorios automáticos: días 25 y 28 a las 10:00 (España).
+// Desactivados hasta completar las pruebas.
+if (process.env.ENABLE_PUSH_REMINDERS === 'true') {
+  cron.schedule('0 10 25,28 * *', async () => {
+    try {
+      const partes = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/Madrid',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric'
+      }).formatToParts(new Date());
+
+      const obtener = tipo =>
+        Number(partes.find(p => p.type === tipo).value);
+
+      const year = obtener('year');
+      const month = obtener('month') - 1;
+      const dia = obtener('day');
+
+      await marcarRecordatoriosInterrumpidos();
+      await procesarRecordatorios(year, month, dia);
+
+    } catch (error) {
+      console.error(
+        '[Recordatorios] Error en ejecución automática:',
+        error
+      );
+    }
+  }, {
+    timezone: 'Europe/Madrid',
+    noOverlap: true
+  });
+
+  console.log('[Recordatorios] Programador activado');
+}
+async function recuperarRecordatoriosDelDia() {
+  const ahora = new Date();
+
+  const partes = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    hourCycle: 'h23'
+  }).formatToParts(ahora);
+
+  const obtener = tipo =>
+    Number(partes.find(p => p.type === tipo).value);
+
+  const year = obtener('year');
+  const month = obtener('month') - 1;
+  const dia = obtener('day');
+  const hora = obtener('hour');
+
+  if (![25, 28].includes(dia) || hora < 10) {
+    return;
+  }
+
+  console.log('[Recordatorios] Comprobando envíos pendientes del día');
+
+  await marcarRecordatoriosInterrumpidos();
+  await procesarRecordatorios(year, month, dia);
+}
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`✓ Servidor corriendo en http://localhost:${PORT}`);
   console.log(`✓ También accesible desde: http://192.168.0.24:${PORT}`);
   console.log('✓ Conectado a Supabase');
+  if (process.env.ENABLE_PUSH_REMINDERS === 'true') {
+  try {
+    await recuperarRecordatoriosDelDia();
+  } catch (error) {
+    console.error(
+      '[Recordatorios] Error recuperando recordatorios:',
+      error
+    );
+  }
+}
 
   try {
     await cleanupExpiredTicketFiles();

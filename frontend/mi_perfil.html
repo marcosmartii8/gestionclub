@@ -26,6 +26,35 @@
             <button type="button" class="button" id="save-btn">Guardar</button>
             <button type="button" class="button" id="back-btn">Volver</button>
         </form>
+        <section id="notifications-section" class="notifications-section">
+    <h3>🔔 Notificaciones</h3>
+
+    <p>
+        Recibe recordatorios para presentar tu
+        liquidación mensual los días 25 y 28.
+    </p>
+
+    <p id="notification-status">
+        Comprobando estado de las notificaciones...
+    </p>
+
+    <button
+        type="button"
+        class="button"
+        id="enable-notifications"
+        disabled>
+        Activar notificaciones
+    </button>
+
+    <button
+        type="button"
+        class="button"
+        id="disable-notifications"
+        disabled
+        hidden>
+        Desactivar notificaciones
+    </button>
+</section>
     </div>
     <script src="js/auth-utils.js"></script>
     <script src="js/mi_perfil.js"></script>

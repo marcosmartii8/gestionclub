@@ -843,7 +843,16 @@
     notify: notify,
     confirmDialog: confirmDialog
   };
-
+    // Registrar Service Worker para notificaciones push
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(function(registration) {
+        console.log('GestDeVol: Service Worker registrado correctamente', registration.scope);
+      })
+      .catch(function(error) {
+        console.error('GestDeVol: Error registrando Service Worker:', error);
+      });
+  }
   consumeQueuedToast();
   ensureAuthenticatedRoute();
   initializeTokenLifecycle();

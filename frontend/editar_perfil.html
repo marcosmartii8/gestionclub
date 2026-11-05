@@ -83,6 +83,35 @@
                 <button type="button" class="button-save" id="save-btn">💾 Guardar</button>
             </div>
         </form>
+        <section id="notifications-section" class="notifications-section">
+    <h2>🔔 Notificaciones</h2>
+
+    <p>
+        Recibe recordatorios para presentar tu liquidación
+        mensual los días 25 y 28 de cada mes.
+    </p>
+
+    <div id="notification-status" role="status" aria-live="polite">
+        Comprobando estado de las notificaciones...
+    </div>
+
+    <button
+        type="button"
+        id="enable-notifications"
+        class="notification-button"
+        disabled>
+        🔔 Activar notificaciones
+    </button>
+
+    <button
+        type="button"
+        id="disable-notifications"
+        class="notification-button"
+        disabled
+        hidden>
+        Desactivar notificaciones
+    </button>
+</section>
     </div>
 
     <script src="js/auth-utils.js"></script>

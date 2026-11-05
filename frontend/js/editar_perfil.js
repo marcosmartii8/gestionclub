@@ -154,5 +154,215 @@ document.addEventListener('DOMContentLoaded', async function() {
             window.location.href = `interfaz_personalizada.html?nombre=${encodeURIComponent(originalUsername)}`;
         }
     };
-});
+    // ==========================================
+    // NOTIFICACIONES PUSH - ESTADO DEL NAVEGADOR
+    // ==========================================
 
+    async function comprobarEstadoNotificaciones() {
+        const status = document.getElementById('notification-status');
+        const activar = document.getElementById('enable-notifications');
+        const desactivar = document.getElementById('disable-notifications');
+
+        if (!status || !activar || !desactivar) return;
+
+        activar.disabled = true;
+        desactivar.disabled = true;
+        desactivar.hidden = true;
+
+        // Comprobar compatibilidad
+        if (
+            !('serviceWorker' in navigator) ||
+            !('PushManager' in window) ||
+            !('Notification' in window)
+        ) {
+            status.textContent =
+                'Este navegador no admite notificaciones push. En iPhone, instala GestDeVol en la pantalla de inicio.';
+            return;
+        }
+
+        // Comprobar permisos
+        if (Notification.permission === 'denied') {
+            status.textContent =
+                'Las notificaciones están bloqueadas. Puedes cambiar el permiso desde los ajustes del navegador.';
+            return;
+        }
+
+        if (Notification.permission === 'default') {
+    status.textContent =
+        'Las notificaciones están desactivadas. Todavía no has concedido permiso.';
+
+    activar.disabled = false;
+    return;
+}
+
+        // Comprobar si existe una suscripción push
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+
+            if (subscription) {
+    const respuesta = await fetch(
+        `/api/push/subscription?endpoint=${encodeURIComponent(subscription.endpoint)}`,
+        {
+            headers: getAuthHeaders()
+        }
+    );
+
+    if (!respuesta.ok) {
+        throw new Error(`Error consultando suscripción: HTTP ${respuesta.status}`);
+    }
+
+    const datos = await respuesta.json();
+
+    if (datos.subscribed) {
+        status.textContent = '✅ Notificaciones activadas en este dispositivo.';
+        activar.disabled = true;
+        desactivar.hidden = false;
+        desactivar.disabled = false;
+    } else {
+        status.textContent =
+            'Este dispositivo todavía no está registrado en GestDeVol.';
+        activar.disabled = false;
+    }
+} else {
+    status.textContent =
+        'Permiso concedido. Pulsa Activar notificaciones para registrar este dispositivo.';
+
+    activar.disabled = false;
+}
+        } catch (error) {
+            console.error('Error comprobando notificaciones:', error);
+            status.textContent =
+                'No se ha podido comprobar el estado de las notificaciones.';
+        }
+    }
+        // Solicitar permiso al pulsar Activar notificaciones
+    const botonActivar = document.getElementById('enable-notifications');
+
+    if (botonActivar) {
+        botonActivar.addEventListener('click', async () => {
+            const status = document.getElementById('notification-status');
+
+            botonActivar.disabled = true;
+
+            try {
+                const permiso = await Notification.requestPermission();
+
+                if (permiso === 'granted') {
+    status.textContent = 'Registrando dispositivo...';
+
+    const respuestaClave = await fetch('/api/push/public-key');
+
+    if (!respuestaClave.ok) {
+        throw new Error('No se pudo obtener la clave VAPID');
+    }
+
+    const { publicKey } = await respuestaClave.json();
+
+    const registration = await navigator.serviceWorker.ready;
+
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertirClaveVapid(publicKey)
+        });
+    }
+
+    const respuestaRegistro = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: getAuthHeaders({
+            'Content-Type': 'application/json'
+        }),
+        body: JSON.stringify({
+            subscription: subscription.toJSON()
+        })
+    });
+
+    if (!respuestaRegistro.ok) {
+        throw new Error(
+            `Error registrando dispositivo: HTTP ${respuestaRegistro.status}`
+        );
+    }
+
+    status.textContent = 'Notificaciones activadas correctamente.';
+} else if (permiso === 'denied') {
+                    status.textContent =
+                        'Has bloqueado las notificaciones. Puedes cambiarlo en los ajustes del navegador.';
+                } else {
+                    status.textContent =
+                        'No has concedido permiso para recibir notificaciones.';
+                }
+
+                await comprobarEstadoNotificaciones();
+
+            } catch (error) {
+                console.error('Error solicitando permiso:', error);
+                status.textContent =
+                    'No se pudo solicitar el permiso de notificaciones.';
+                botonActivar.disabled = false;
+            }
+        });
+    }
+        // Convertir la clave pública VAPID al formato que necesita el navegador
+    function convertirClaveVapid(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+            .replace(/-/g, '+')
+            .replace(/_/g, '/');
+
+        const rawData = window.atob(base64);
+
+        return Uint8Array.from(rawData, caracter => caracter.charCodeAt(0));
+    }
+    // Desactivar las notificaciones de este dispositivo
+    const botonDesactivar = document.getElementById('disable-notifications');
+
+    if (botonDesactivar) {
+        botonDesactivar.addEventListener('click', async () => {
+            const status = document.getElementById('notification-status');
+
+            botonDesactivar.disabled = true;
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.getSubscription();
+
+                if (subscription) {
+                    const respuesta = await fetch('/api/push/subscribe', {
+                        method: 'DELETE',
+                        headers: getAuthHeaders({
+                            'Content-Type': 'application/json'
+                        }),
+                        body: JSON.stringify({
+                            endpoint: subscription.endpoint
+                        })
+                    });
+
+                    if (!respuesta.ok) {
+                        throw new Error(`Error del servidor: HTTP ${respuesta.status}`);
+                    }
+
+                    const eliminada = await subscription.unsubscribe();
+
+                    if (!eliminada) {
+                        throw new Error('El navegador no pudo cancelar la suscripción');
+                    }
+                }
+
+                status.textContent = 'Notificaciones desactivadas correctamente.';
+                await comprobarEstadoNotificaciones();
+
+            } catch (error) {
+                console.error('Error desactivando notificaciones:', error);
+                status.textContent =
+                    'No se pudieron desactivar las notificaciones.';
+                botonDesactivar.disabled = false;
+            }
+        });
+    }
+
+    comprobarEstadoNotificaciones();
+
+});
