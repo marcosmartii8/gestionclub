@@ -22,6 +22,49 @@ const params = new URLSearchParams(window.location.search);
             return false;
         }
 
+async function abrirJustificanteSeguro(categoria, gastoId) {
+    if (!gastoId) {
+        alert('No se ha encontrado el identificador del justificante.');
+        return;
+    }
+
+    const ventana = window.open('', '_blank');
+
+    try {
+        const endpoint =
+            `/api/formularios/tickets/${categoria}/${encodeURIComponent(gastoId)}/acceso`;
+
+        const { response, authHandled } =
+            await window.AuthUtils.authFetch(endpoint);
+
+        if (authHandled) {
+            if (ventana) ventana.close();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error('No se pudo obtener el justificante');
+        }
+
+        const data = await response.json();
+
+        if (!data.url) {
+            throw new Error('El servidor no devolvió el archivo');
+        }
+
+        if (ventana) {
+            ventana.location.href = data.url;
+        } else {
+            alert('Permite las ventanas emergentes para abrir el justificante.');
+        }
+    } catch (error) {
+        if (ventana) ventana.close();
+        console.error('Error abriendo justificante:', error);
+        alert('No se pudo abrir el justificante.');
+    }
+}
+
+
         function notify(message, type = 'info') {
             if (window.AuthUtils && typeof window.AuthUtils.notify === 'function') {
                 window.AuthUtils.notify(message, { type });
@@ -503,9 +546,9 @@ const params = new URLSearchParams(window.location.search);
                                 let fileType = expense.type || (expense.file && typeof expense.file === 'object' ? expense.file.type : '');
                                 let fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
                                 let fileLink = '';
-                                if (fileUrl) {
-                                    fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #0288d1;">${fileIcon} Ver archivo</a>`;
-                                }
+                                if (fileUrl && expense.id) {
+    fileLink = `<br><a href="#" onclick="abrirJustificanteSeguro('transporte', '${expense.id}'); return false;" style="color: #0288d1;">${fileIcon} Ver archivo</a>`;
+}
                                 return `Fecha: ${expense.date}, Concepto: ${expense.concept || ''}, Importe: ${expense.amount}€${fileLink}`;
                             }).join('<br>')
                             : '<em style="color: #999;">No hay datos</em>';
@@ -525,9 +568,9 @@ const params = new URLSearchParams(window.location.search);
                                 let fileType = expense.type || (expense.file && typeof expense.file === 'object' ? expense.file.type : '');
                                 let fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
                                 let fileLink = '';
-                                if (fileUrl) {
-                                    fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #f57c00;">${fileIcon} Ver archivo</a>`;
-                                }
+                                if (fileUrl && expense.id) {
+    fileLink = `<br><a href="#" onclick="abrirJustificanteSeguro('dietas', '${expense.id}'); return false;" style="color: #f57c00;">${fileIcon} Ver archivo</a>`;
+}
                                 return `Fecha: ${expense.date}, Concepto: ${expense.concept || ''}, Importe: ${expense.amount}€${fileLink}`;
                             }).join('<br>')
                             : '<em style="color: #999;">No hay datos</em>';
@@ -621,9 +664,9 @@ const params = new URLSearchParams(window.location.search);
                             let fileType = expense.type || (expense.file && typeof expense.file === 'object' ? expense.file.type : '');
                             let fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
                             let fileLink = '';
-                            if (fileUrl) {
-                                fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #0288d1;">${fileIcon} Ver archivo</a>`;
-                            }
+                            if (fileUrl && expense.id) {
+    fileLink = `<br><a href="#" onclick="abrirJustificanteSeguro('transporte', '${expense.id}'); return false;" style="color: #0288d1;">${fileIcon} Ver archivo</a>`;
+}
                             return `Fecha: ${expense.date}, Concepto: ${expense.concept || ''}, Importe: ${expense.amount}€${fileLink}`;
                         }).join('<br>')
                         : '<em style="color: #999;">No hay datos</em>';
@@ -641,9 +684,9 @@ const params = new URLSearchParams(window.location.search);
                             let fileType = expense.type || (expense.file && typeof expense.file === 'object' ? expense.file.type : '');
                             let fileIcon = fileType?.includes('pdf') ? '📄' : '🖼️';
                             let fileLink = '';
-                            if (fileUrl) {
-                                fileLink = `<br><a href="${fileUrl}" target="_blank" style="color: #f57c00;">${fileIcon} Ver archivo</a>`;
-                            }
+                            if (fileUrl && expense.id) {
+    fileLink = `<br><a href="#" onclick="abrirJustificanteSeguro('dietas', '${expense.id}'); return false;" style="color: #f57c00;">${fileIcon} Ver archivo</a>`;
+}
                             return `Fecha: ${expense.date}, Concepto: ${expense.concept}, Importe: ${expense.amount}€${fileLink}`;
                         }).join('<br>')
                         : '<em style="color: #999;">No hay datos</em>';
@@ -793,6 +836,8 @@ const params = new URLSearchParams(window.location.search);
                             return e.fileUrl || e.url || (typeof e.file === 'string' ? e.file : (e.file && e.file.url ? e.file.url : null)) || null;
                         }) : []
                     };
+                    window.nextTransportExpenseIndex = window.existingFilesData.transport.length;
+window.nextDietExpenseIndex = window.existingFilesData.diet.length;
                     // El mes y el año estarán preestablecidos y solo se podrá editar el resto de campos
                     const modalHtml = `
                         <div id="edit-form-modal" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); z-index: 1000; color: black; max-height: 80vh; overflow-y: auto;">
@@ -842,7 +887,9 @@ const params = new URLSearchParams(window.location.search);
                                         <input type="number" value="${expense.amount}">
                                         <label>Ticket/Factura:</label>
                                         <input type="file" accept="image/*,application/pdf">
-                                        ${fileUrl ? `<a href="${fileUrl}" target="_blank" style="color:#0288d1;">Ver actual (${fileName})</a>` : '<span style="color:#888;">No hay archivo</span>'}
+                                        ${fileUrl && expense.id
+    ? `<a href="#" onclick="abrirJustificanteSeguro('transporte', '${expense.id}'); return false;" style="color:#0288d1;">Ver archivo actual</a>`
+    : '<span style="color:#888;">No hay archivo disponible</span>'}
                                         <button type="button" onclick="removeElement('transport-expense-${index}')">Eliminar</button>
                                     </div>
                                     `;
@@ -864,7 +911,9 @@ const params = new URLSearchParams(window.location.search);
                                         <input type="number" value="${expense.amount}">
                                         <label>Ticket/Factura:</label>
                                         <input type="file" accept="image/*,application/pdf">
-                                        ${fileUrl ? `<a href="${fileUrl}" target="_blank" style="color:#f57c00;">Ver actual (${fileName})</a>` : '<span style="color:#888;">No hay archivo</span>'}
+                                        ${fileUrl && expense.id
+    ? `<a href="#" onclick="abrirJustificanteSeguro('dietas', '${expense.id}'); return false;" style="color:#f57c00;">Ver archivo actual</a>`
+    : '<span style="color:#888;">No hay archivo disponible</span>'}
                                         <button type="button" onclick="removeElement('diet-expense-${index}')">Eliminar</button>
                                     </div>
                                     `;
@@ -909,8 +958,10 @@ const params = new URLSearchParams(window.location.search);
 
         function addTransportExpense() {
             const container = document.getElementById('edit-transportExpenses');
-            const index = container.children.length;
+            const index = window.nextTransportExpenseIndex++;
             if (!window.existingFilesData) window.existingFilesData = { transport: [], diet: [] };
+            window.nextTransportExpenseIndex ??= window.existingFilesData.transport.length;
+const uniqueIndex = window.nextTransportExpenseIndex++;
             window.existingFilesData.transport[index] = null;
             
             const div = document.createElement('div');
@@ -934,8 +985,10 @@ const params = new URLSearchParams(window.location.search);
 
         function addDietExpense() {
             const container = document.getElementById('edit-dietExpenses');
-            const index = container.children.length;
+            const index = window.nextDietExpenseIndex++;
             if (!window.existingFilesData) window.existingFilesData = { transport: [], diet: [] };
+            window.nextDietExpenseIndex ??= window.existingFilesData.diet.length;
+const uniqueIndex = window.nextDietExpenseIndex++;
             window.existingFilesData.diet[index] = null;
             
             const div = document.createElement('div');

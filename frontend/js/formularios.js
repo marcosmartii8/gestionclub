@@ -27,6 +27,48 @@ const params = new URLSearchParams(window.location.search);
             return false;
         }
 
+async function abrirJustificanteSeguro(categoria, gastoId) {
+    if (!gastoId) {
+        alert('No se ha encontrado el identificador del justificante.');
+        return;
+    }
+
+    const ventana = window.open('', '_blank');
+
+    try {
+        const endpoint =
+            `/api/formularios/tickets/${categoria}/${encodeURIComponent(gastoId)}/acceso`;
+
+        const { response, authHandled } =
+            await window.AuthUtils.authFetch(endpoint);
+
+        if (authHandled) {
+            if (ventana) ventana.close();
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error('No se pudo obtener el justificante');
+        }
+
+        const data = await response.json();
+
+        if (!data.url) {
+            throw new Error('El servidor no devolvió el archivo');
+        }
+
+        if (ventana) {
+            ventana.location.href = data.url;
+        } else {
+            alert('Permite las ventanas emergentes para abrir el justificante.');
+        }
+    } catch (error) {
+        if (ventana) ventana.close();
+        console.error('Error abriendo justificante:', error);
+        alert('No se pudo abrir el justificante.');
+    }
+}
+
         document.getElementById('user-title').textContent = `Formulario Mensual: ${username}`;
 
         function redirectToPersonalizedInterface() {
@@ -332,7 +374,9 @@ const params = new URLSearchParams(window.location.search);
                                             <strong>📅 ${gasto.date}</strong><br>
                                             📝 ${gasto.concept}<br>
                                             💰 ${amount.toFixed(2)}€<br>
-                                            ${gasto.fileUrl ? `<a href='${gasto.fileUrl}' target='_blank'>Ver archivo</a>` : ''}
+                                            ${gasto.fileUrl && gasto.id
+    ? `<a href="#" onclick="abrirJustificanteSeguro('transporte', '${gasto.id}'); return false;">Ver archivo</a>`
+    : ''}
                                         </div>`;
                                     }).join('');
                                     html += `<div style='margin-top:8px;padding:5px;background:#e3f2fd;font-weight:bold;'>Total: ${total.toFixed(2)}€</div>`;
@@ -349,7 +393,9 @@ const params = new URLSearchParams(window.location.search);
                                             <strong>📅 ${gasto.date}</strong><br>
                                             📝 ${gasto.concept}<br>
                                             💰 ${amount.toFixed(2)}€<br>
-                                            ${gasto.fileUrl ? `<a href='${gasto.fileUrl}' target='_blank'>Ver archivo</a>` : ''}
+                                            ${gasto.fileUrl && gasto.id
+    ? `<a href="#" onclick="abrirJustificanteSeguro('dietas', '${gasto.id}'); return false;">Ver archivo</a>`
+    : ''}
                                         </div>`;
                                     }).join('');
                                     html += `<div style='margin-top:8px;padding:5px;background:#fff3e0;font-weight:bold;'>Total: ${total.toFixed(2)}€</div>`;
@@ -513,6 +559,7 @@ const params = new URLSearchParams(window.location.search);
                     const transportExpenses = formData.gastosTransporte || [];
                     transportExpenses.forEach(expense => {
                         const expenseDiv = document.createElement('div');
+                        expenseDiv.expenseOriginal = expense;
                         let fileUrl = expense.fileUrl || expense.url || (expense.file ? (typeof expense.file === 'string' ? expense.file : expense.file.url) : null);
                         let fileName = fileUrl ? fileUrl.split('/').pop() : '';
                         expenseDiv.innerHTML = `
@@ -520,8 +567,8 @@ const params = new URLSearchParams(window.location.search);
                             <input type="text" value="${expense.concept}" required>
                             <input type="number" step="0.01" min="0" value="${expense.amount}" required>
                             <span class="file-upload-area">
-                                ${fileUrl
-                                    ? `<a href="${fileUrl}" target="_blank" style="color:#0288d1;display:inline-block;margin-left:8px;">Ver archivo (${fileName})</a>
+                                ${fileUrl && expense.id
+    ? `<a href="#" onclick="abrirJustificanteSeguro('transporte', '${expense.id}'); return false;" style="color:#0288d1;display:inline-block;margin-left:8px;">Ver archivo</a>
                                        <button type="button" class="remove-file-btn" style="margin-left:8px;">Eliminar</button>`
                                     : `<input type="file" accept="image/*,application/pdf" style="width:100%;">`}
                             </span>
@@ -543,6 +590,7 @@ const params = new URLSearchParams(window.location.search);
                     const dietExpenses = formData.gastosDietas || [];
                     dietExpenses.forEach(expense => {
                         const expenseDiv = document.createElement('div');
+                        expenseDiv.expenseOriginal = expense;
                         let fileUrl = expense.fileUrl || expense.url || (expense.file ? (typeof expense.file === 'string' ? expense.file : expense.file.url) : null);
                         let fileName = fileUrl ? fileUrl.split('/').pop() : '';
                         expenseDiv.innerHTML = `
@@ -550,8 +598,8 @@ const params = new URLSearchParams(window.location.search);
                             <input type="text" value="${expense.concept}" required>
                             <input type="number" step="0.01" min="0" value="${expense.amount}" required>
                             <span class="file-upload-area">
-                                ${fileUrl
-                                    ? `<a href="${fileUrl}" target="_blank" style="color:#f57c00;display:inline-block;margin-left:8px;">Ver archivo (${fileName})</a>
+                               ${fileUrl && expense.id
+    ? `<a href="#" onclick="abrirJustificanteSeguro('dietas', '${expense.id}'); return false;" style="color:#f57c00;display:inline-block;margin-left:8px;">Ver archivo</a>
                                        <button type="button" class="remove-file-btn" style="margin-left:8px;">Eliminar</button>`
                                     : `<input type="file" accept="image/*,application/pdf" style="width:100%;">`}
                             </span>

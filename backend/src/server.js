@@ -191,6 +191,11 @@ function getTicketStoragePath(fileUrl) {
 
   try {
     const url = new URL(fileUrl);
+    const supabaseOrigin = new URL(process.env.SUPABASE_URL).origin;
+
+if (url.origin !== supabaseOrigin) {
+  return null;
+}
     const marker = `/storage/v1/object/public/${TICKET_BUCKET}/`;
 
     const markerIndex = url.pathname.indexOf(marker);
@@ -2108,6 +2113,145 @@ app.post(
     }
   }
 );
+
+/**
+ * Genera una URL temporal para un justificante autorizado.
+ * El cliente indica el gasto, no una ruta arbitraria de Storage.
+ */
+app.get(
+  '/api/formularios/tickets/:categoria/:gastoId/acceso',
+  requireAuthenticated,
+  async (req, res) => {
+    try {
+      const requester = req.requester;
+      const { categoria, gastoId } = req.params;
+
+      const tablas = {
+        transporte: 'gastos_transporte',
+        dietas: 'gastos_dietas'
+      };
+
+      const tabla = tablas[categoria];
+
+      if (!tabla || !/^\d+$/.test(gastoId)) {
+        return res.status(400).json({
+          message: 'Justificante no válido'
+        });
+      }
+
+      const { data: gasto, error: gastoError } = await supabase
+        .from(tabla)
+        .select('id, archivo, formulario_id')
+        .eq('id', gastoId)
+        .maybeSingle();
+
+      if (gastoError) throw gastoError;
+
+      if (!gasto || !gasto.archivo) {
+        return res.status(404).json({
+          message: 'Justificante no encontrado'
+        });
+      }
+
+      const { data: formulario, error: formularioError } =
+        await supabase
+          .from('formularios')
+          .select('id, username')
+          .eq('id', gasto.formulario_id)
+          .maybeSingle();
+
+      if (formularioError) throw formularioError;
+
+      if (!formulario) {
+        return res.status(404).json({
+          message: 'Formulario no encontrado'
+        });
+      }
+
+      const { data: propietario, error: usuarioError } =
+        await supabase
+          .from('users')
+          .select('username, club_code')
+          .eq('username', formulario.username)
+          .maybeSingle();
+
+      if (usuarioError) throw usuarioError;
+
+      if (!propietario) {
+        return res.status(404).json({
+          message: 'Usuario no encontrado'
+        });
+      }
+
+      const esPropietario =
+        requester.username === propietario.username;
+
+      const esResponsable =
+        isManagerRole(requester.role);
+
+      const mismoClub =
+        requester.clubCode &&
+        propietario.club_code &&
+        requester.clubCode === propietario.club_code;
+
+      const autorizado =
+        esPropietario ||
+        (esResponsable &&
+          (isSuperadmin(requester) || mismoClub));
+
+      if (!autorizado) {
+        return res.status(403).json({
+          message: 'No autorizado para consultar este justificante'
+        });
+      }
+
+      const storagePath = getTicketStoragePath(gasto.archivo);
+
+      if (!storagePath) {
+        return res.status(404).json({
+          message: 'Ruta del justificante no válida'
+        });
+      }
+
+      const prefijo =
+        `clubs/${normalizeStoragePart(propietario.club_code)}` +
+        `/usuarios/${normalizeStoragePart(propietario.username)}/`;
+
+      if (
+        !storagePath.startsWith(prefijo) ||
+        storagePath.split('/').some(
+          segmento => segmento === '.' || segmento === '..'
+        )
+      ) {
+        return res.status(403).json({
+          message: 'Ruta del justificante no autorizada'
+        });
+      }
+
+      const { data, error } = await supabase.storage
+        .from(TICKET_BUCKET)
+        .createSignedUrl(storagePath, 60);
+
+      if (error || !data?.signedUrl) {
+        console.error('Error generando URL temporal:', error);
+        return res.status(500).json({
+          message: 'No se pudo acceder al justificante'
+        });
+      }
+
+      return res.json({
+        url: data.signedUrl,
+        expiresIn: 60
+      });
+    } catch (error) {
+      console.error('Error accediendo al justificante:', error);
+      return res.status(500).json({
+        message: 'Error al consultar el justificante'
+      });
+    }
+  }
+);
+
 // =====================================================
 // DESCARGA MASIVA DE JUSTIFICANTES EN ZIP
 // Solo líderes y administradores de su propio club
@@ -2510,7 +2654,7 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
 
         const { data: gastosTransporteData, error: gastosTransporteError } = await supabase
           .from('gastos_transporte')
-          .select('fecha, concepto, importe, archivo')
+          .select('id, fecha, concepto, importe, archivo')
           .eq('formulario_id', form.id)
           .order('fecha', { ascending: true });
 
@@ -2519,17 +2663,18 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
           throw gastosTransporteError;
         } else {
           transportExpenses = (gastosTransporteData || []).map((gasto) => ({
-            date: gasto.fecha,
-            concept: gasto.concepto,
-            amount: gasto.importe?.toString() || '0',
-            fileUrl: gasto.archivo || null,
-            url: gasto.archivo || null
-          }));
+  id: gasto.id, // AÑADIR ESTA LÍNEA
+  date: gasto.fecha,
+  concept: gasto.concepto,
+  amount: gasto.importe?.toString() || '0',
+  fileUrl: gasto.archivo || null,
+  url: gasto.archivo || null
+}));
         }
 
         const { data: gastosDietasData, error: gastosDietasError } = await supabase
           .from('gastos_dietas')
-          .select('fecha, concepto, importe, archivo')
+          .select('id, fecha, concepto, importe, archivo')
           .eq('formulario_id', form.id)
           .order('fecha', { ascending: true });
 
@@ -2538,6 +2683,7 @@ app.get('/api/formularios', requireAuthenticated, async (req, res) => {
           throw gastosDietasError;
         } else {
           dietExpenses = (gastosDietasData || []).map((gasto) => ({
+            id: gasto.id, // AÑADIR ESTA LÍNEA
             date: gasto.fecha,
             concept: gasto.concepto,
             amount: gasto.importe?.toString() || '0',
@@ -2742,7 +2888,7 @@ app.get('/api/formularios/:username', requireAuthenticated, requireSelfOrRole('u
 
         const { data: gastosTransporteData, error: gastosTransporteError } = await supabase
           .from('gastos_transporte')
-          .select('fecha, concepto, importe, archivo')
+          .select('id, fecha, concepto, importe, archivo')
           .eq('formulario_id', form.id)
           .order('fecha', { ascending: true });
 
@@ -2751,6 +2897,7 @@ app.get('/api/formularios/:username', requireAuthenticated, requireSelfOrRole('u
           throw gastosTransporteError;
         } else {
           transportExpenses = (gastosTransporteData || []).map((gasto) => ({
+            id: gasto.id,
             date: gasto.fecha,
             concept: gasto.concepto,
             amount: gasto.importe?.toString() || '0',
@@ -2761,7 +2908,7 @@ app.get('/api/formularios/:username', requireAuthenticated, requireSelfOrRole('u
 
         const { data: gastosDietasData, error: gastosDietasError } = await supabase
           .from('gastos_dietas')
-          .select('fecha, concepto, importe, archivo')
+          .select('id, fecha, concepto, importe, archivo')
           .eq('formulario_id', form.id)
           .order('fecha', { ascending: true });
 
@@ -2770,6 +2917,7 @@ app.get('/api/formularios/:username', requireAuthenticated, requireSelfOrRole('u
           throw gastosDietasError;
         } else {
           dietExpenses = (gastosDietasData || []).map((gasto) => ({
+            id: gasto.id,
             date: gasto.fecha,
             concept: gasto.concepto,
             amount: gasto.importe?.toString() || '0',
