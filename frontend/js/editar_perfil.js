@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         userData = JSON.parse(localStorage.getItem(originalUsername)) || {};
     }
 
-    document.getElementById('profile-title').textContent = `Perfil: ${originalUsername}`;
+    document.getElementById('profile-title').textContent = 'Mi perfil';
     document.getElementById('username').value = userData.username || originalUsername || '';
     document.getElementById('full-name').value = userData.fullName || userData.fullname || '';
     document.getElementById('email').value = userData.email || '';

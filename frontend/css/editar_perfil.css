@@ -702,3 +702,37 @@ body {
         margin-top: 48px;
     }
 }
+/* Cabecera más limpia, sin dibujo decorativo */
+.logo-badge {
+    display: none;
+}
+
+.header-section {
+    margin-bottom: 32px;
+}
+
+.title {
+    text-align: left;
+    font-size: 1.8rem;
+    color: #173f36;
+}
+
+/* Botón Atrás más visible */
+.button-back {
+    background: #e1eae6;
+    color: #173f36;
+    border: 2px solid #8baaa0;
+    box-shadow: none;
+}
+
+.button-back:hover {
+    background: #cbded6;
+    border-color: #00897b;
+    transform: none;
+    box-shadow: none;
+}
+
+.button-back:focus-visible {
+    outline: 3px solid #00897b;
+    outline-offset: 3px;
+}
