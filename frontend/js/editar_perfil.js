@@ -276,8 +276,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             'Content-Type': 'application/json'
         }),
         body: JSON.stringify({
-            subscription: subscription.toJSON()
-        })
+    subscription: subscription.toJSON(),
+    revokeToken:
+    localStorage.getItem('pushRevokeEndpoint') === subscription.endpoint
+        ? localStorage.getItem('pushRevokeToken')
+        : null
+})
     });
 
     if (!respuestaRegistro.ok) {
@@ -285,7 +289,16 @@ document.addEventListener('DOMContentLoaded', async function() {
             `Error registrando dispositivo: HTTP ${respuestaRegistro.status}`
         );
     }
+    const datosRegistro = await respuestaRegistro.json();
 
+if (datosRegistro.revokeToken) {
+    localStorage.setItem('pushRevokeToken', datosRegistro.revokeToken);
+    localStorage.setItem('pushRevokeEndpoint', subscription.endpoint);
+}
+localStorage.setItem('pushOwnerAccount', JSON.stringify({
+    username: localStorage.getItem('username') || '',
+    clubCode: localStorage.getItem('clubCode') || ''
+}));
     status.textContent = 'Notificaciones activadas correctamente.';
 } else if (permiso === 'denied') {
                     status.textContent =

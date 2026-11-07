@@ -10,8 +10,17 @@ import dotenv from 'dotenv';
 import webpush from 'web-push';
 import cron from 'node-cron';
 import fs from 'fs';
+import crypto from 'node:crypto';
 import { ZipArchive } from 'archiver';
+function generarTokenRevocacionPush() {
+  return crypto.randomBytes(32).toString('hex');
+}
 
+function calcularHashTokenRevocacionPush(token) {
+  return crypto.createHash('sha256')
+    .update(token)
+    .digest('hex');
+}
 dotenv.config();
 // ==========================================
 // CONFIGURACIÓN DE NOTIFICACIONES WEB PUSH
@@ -671,7 +680,45 @@ function requireSelfOrRole(paramName, roles) {
 // ==========================================
 // NOTIFICACIONES PUSH - DESACTIVAR DISPOSITIVO
 // ==========================================
+// Comprobar si la suscripción pertenece a la cuenta autenticada.
+app.post('/api/push/check-owner', requireAuthenticated, async (req, res) => {
+  try {
+    const { endpoint } = req.body || {};
+    const { username, clubCode } = req.requester;
 
+    if (
+      typeof endpoint !== 'string' ||
+      endpoint.length > 2048 ||
+      !endpoint.startsWith('https://')
+    ) {
+      return res.status(400).json({
+        message: 'Endpoint no válido'
+      });
+    }
+
+    const { data, error } = await supabase
+      .from('push_subscriptions')
+      .select('username, club_code')
+      .eq('endpoint', endpoint)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return res.json({
+      registered: Boolean(data),
+      belongsToCurrentUser: Boolean(
+        data &&
+        data.username === username &&
+        data.club_code === clubCode
+      )
+    });
+  } catch (error) {
+    console.error('Error comprobando propietario push:', error.message);
+    return res.status(500).json({
+      message: 'No se pudo comprobar la suscripción'
+    });
+  }
+});
 app.delete('/api/push/subscribe', requireAuthenticated, async (req, res) => {
   try {
     const { username, clubCode } = req.requester;
@@ -710,11 +757,61 @@ app.delete('/api/push/subscribe', requireAuthenticated, async (req, res) => {
 // ==========================================
 // NOTIFICACIONES PUSH - REGISTRAR DISPOSITIVO
 // ==========================================
+// Desvincular una suscripción push mediante su credencial de dispositivo.
+app.post('/api/push/revoke-device', requireAuthenticated, async (req, res) => {
+  try {
+    const { endpoint, revokeToken } = req.body || {};
 
+    if (
+      typeof endpoint !== 'string' ||
+      endpoint.length > 2048 ||
+      !endpoint.startsWith('https://') ||
+      typeof revokeToken !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(revokeToken)
+    ) {
+      return res.status(400).json({
+        message: 'Datos de desvinculación no válidos'
+      });
+    }
+
+    const tokenHash = calcularHashTokenRevocacionPush(revokeToken);
+
+    const { data, error } = await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('endpoint', endpoint)
+      .eq('revoke_token_hash', tokenHash)
+      .select('id');
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(403).json({
+        message: 'No se ha podido verificar la credencial del dispositivo'
+      });
+    }
+
+    return res.status(200).json({
+      revoked: true,
+      message: 'Dispositivo desvinculado correctamente'
+    });
+
+  } catch (error) {
+    console.error('Error desvinculando dispositivo push:', error.message);
+
+    return res.status(500).json({
+      message: 'No se pudo desvincular el dispositivo'
+    });
+  }
+});
 app.post('/api/push/subscribe', requireAuthenticated, async (req, res) => {
   try {
     const { username, clubCode, role } = req.requester;
     const subscription = req.body?.subscription;
+    const suppliedRevokeToken = req.body?.revokeToken;
+    const isLegacySubscription = req.body?.legacyMigration === true;
 
     if (role !== 'voluntario') {
       return res.status(403).json({
@@ -748,7 +845,7 @@ app.post('/api/push/subscribe', requireAuthenticated, async (req, res) => {
 
     const { data: existing, error: lookupError } = await supabase
   .from('push_subscriptions')
-  .select('username, club_code')
+  .select('username, club_code, revoke_token_hash, p256dh, auth')
   .eq('endpoint', endpoint)
   .maybeSingle();
 
@@ -763,29 +860,71 @@ if (
   return res.status(409).json({
     message: 'Este dispositivo ya está asociado a otra cuenta'
   });
+
+}
+// Validar las claves de una suscripción antigua antes de migrarla.
+if (existing && !existing.revoke_token_hash) {
+  if (
+    existing.p256dh !== p256dh ||
+    existing.auth !== auth
+  ) {
+    return res.status(409).json({
+      message: 'Las claves de la suscripción antigua no coinciden'
+    });
+  }
+}
+if (existing?.revoke_token_hash) {
+  if (
+    typeof suppliedRevokeToken !== 'string' ||
+    suppliedRevokeToken.length !== 64 ||
+    !/^[a-f0-9]{64}$/.test(suppliedRevokeToken) ||
+    calcularHashTokenRevocacionPush(suppliedRevokeToken) !==
+      existing.revoke_token_hash
+  ) {
+    return res.status(409).json({
+      message: 'La suscripción ya está protegida. Es necesario volver a vincular el dispositivo.'
+    });
+  }
+}
+const revokeToken = existing?.revoke_token_hash
+  ? null
+  : generarTokenRevocacionPush();
+
+const revokeTokenHash = revokeToken
+  ? calcularHashTokenRevocacionPush(revokeToken)
+  : existing?.revoke_token_hash;
+const { data: registrado, error } = await supabase.rpc(
+  'registrar_suscripcion_push',
+  {
+    p_username: username,
+    p_club_code: clubCode,
+    p_endpoint: endpoint,
+    p_p256dh: p256dh,
+    p_auth: auth,
+    p_revoke_token_hash: revokeTokenHash,
+    p_existing_token_hash:
+      typeof suppliedRevokeToken === 'string' &&
+      /^[a-f0-9]{64}$/.test(suppliedRevokeToken)
+        ? calcularHashTokenRevocacionPush(suppliedRevokeToken)
+        : null
+  }
+);
+
+if (error) {
+  throw error;
 }
 
-const { error } = await supabase
-  .from('push_subscriptions')
-  .upsert({
-    username,
-    club_code: clubCode,
-    endpoint,
-    p256dh,
-    auth,
-    updated_at: new Date().toISOString()
-  }, {
-    onConflict: 'endpoint'
+if (registrado !== true) {
+  return res.status(409).json({
+    message: 'No se pudo verificar la propiedad de la suscripción push'
   });
-
-    if (error) {
-      throw error;
-    }
+}
 
     return res.status(200).json({
-      subscribed: true,
-      message: 'Notificaciones activadas correctamente'
-    });
+  subscribed: true,
+  revokeToken,
+  message: 'Notificaciones activadas correctamente'
+});
 
   } catch (error) {
     console.error('Error registrando suscripción push:', error.message);
@@ -1288,7 +1427,7 @@ app.delete('/api/users/:username', requireRole(['lider']), async (req, res) => {
 
     const { data: targetUser, error: fetchError } = await supabase
       .from('users')
-      .select('username, club_code')
+      .select('username, club_code, revoke_token_hash')
       .eq('username', req.params.username)
       .maybeSingle();
 

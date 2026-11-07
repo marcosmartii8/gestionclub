@@ -757,10 +757,154 @@
       redirectToLogin('Tu sesión ha expirado. Inicia sesión de nuevo.', loginPath);
     }, expiryInMs);
   }
+  async function comprobarPropietarioPush(token, endpoint) {
+  const response = await fetch('/api/push/check-owner', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ endpoint })
+  });
 
-  function setSessionFromLogin(user, token) {
+  if (!response.ok) {
+    throw new Error(
+      `Error comprobando propietario push: HTTP ${response.status}`
+    );
+  }
+
+  return await response.json();
+}
+  async function desvincularPushAnterior(token) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return true;
+  }
+
+  const registration = await navigator.serviceWorker.getRegistration();
+
+const subscription = registration
+  ? await registration.pushManager.getSubscription()
+  : null;
+
+  // No hay suscripción anterior que desvincular.
+  if (!subscription) {
+    localStorage.removeItem('pushRevokeToken');
+    localStorage.removeItem('pushRevokeEndpoint');
+    return true;
+  }
+
+  const revokeToken = localStorage.getItem('pushRevokeToken');
+  const endpoint = localStorage.getItem('pushRevokeEndpoint');
+
+  // Existe una suscripción, pero no tenemos credenciales válidas.
+  // No debemos eliminarla del servidor sin autorización.
+  if (!revokeToken || endpoint !== subscription.endpoint) {
+    return false;
+  }
+
+  const response = await fetch('/api/push/revoke-device', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      endpoint,
+      revokeToken
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Error desvinculando push: HTTP ${response.status}`);
+  }
+
+  const eliminada = await subscription.unsubscribe();
+
+  if (!eliminada) {
+    throw new Error('No se pudo cancelar la suscripción del navegador');
+  }
+
+  localStorage.removeItem('pushRevokeToken');
+  localStorage.removeItem('pushRevokeEndpoint');
+
+  return true;
+}
+  async function setSessionFromLogin(user, token) {
     var safeUser = user && typeof user === 'object' ? user : {};
     var clubCode = safeUser.clubcode || safeUser.clubCode || '';
+    try {
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      const estadoPush = await comprobarPropietarioPush(
+        token,
+        subscription.endpoint
+      );
+
+      if (estadoPush.registered && !estadoPush.belongsToCurrentUser) {
+        const revokeToken = localStorage.getItem('pushRevokeToken');
+const revokeEndpoint = localStorage.getItem('pushRevokeEndpoint');
+
+if (revokeToken && revokeEndpoint === subscription.endpoint) {
+  const respuestaRevocacion = await fetch('/api/push/revoke-device', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + token
+    },
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+      revokeToken: revokeToken
+    })
+  });
+
+  if (!respuestaRevocacion.ok) {
+    console.warn(
+      'GestDeVol: no se pudo eliminar el registro push anterior de Supabase.'
+    );
+  }
+}
+  console.warn(
+    'GestDeVol: cancelando suscripción push de otra cuenta.'
+  );
+
+  const cancelada = await subscription.unsubscribe();
+
+  if (!cancelada) {
+    throw new Error(
+      'No se pudo cancelar la suscripción push anterior.'
+    );
+  }
+
+  localStorage.removeItem('pushRevokeToken');
+  localStorage.removeItem('pushRevokeEndpoint');
+  localStorage.removeItem('pushOwnerAccount');
+  localStorage.setItem('pushMigrationPending', 'true');
+}
+    }
+  }
+} catch (error) {
+  console.warn(
+    'GestDeVol: error verificando la seguridad de las notificaciones.',
+    error
+  );
+
+  localStorage.setItem('pushMigrationPending', 'true');
+
+  throw new Error(
+    'No se ha podido verificar la seguridad de las notificaciones. ' +
+    'Comprueba tu conexión e intenta iniciar sesión de nuevo.'
+  );
+}
+    var previousPushUser = localStorage.getItem('pushOwnerAccount') || '';
+var currentPushUser = JSON.stringify({
+  username: safeUser.username || '',
+  clubCode: clubCode
+});
+
+localStorage.setItem('lastPushAccount', currentPushUser);
 
     localStorage.setItem('usuario', JSON.stringify(safeUser));
     localStorage.setItem('username', safeUser.username || '');

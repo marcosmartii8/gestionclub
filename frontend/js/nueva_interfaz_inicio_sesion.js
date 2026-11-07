@@ -35,7 +35,7 @@ async function handleLogin(event) {
         if (data.user) {
             const user = data.user;
             if (window.AuthUtils && typeof window.AuthUtils.setSessionFromLogin === 'function') {
-                window.AuthUtils.setSessionFromLogin(user, data.token || '');
+                await window.AuthUtils.setSessionFromLogin(user, data.token || '');
             } else {
                 const clubCode = user.clubcode || user.clubCode || '';
                 localStorage.setItem('clubCode', clubCode);
